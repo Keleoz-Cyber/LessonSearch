@@ -1,0 +1,54 @@
+# === Excel / 原始数据 ===
+data/
+
+# === Python ===
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# === 环境变量 ===
+.env
+.env.*
+!.env.example
+
+# === 日志 ===
+*.log
+logs/
+
+# === 数据库文件 ===
+*.db
+*.sqlite
+*.sqlite3
+
+# === 构建产物 ===
+build/
+dist/
+*.apk
+*.aab
+
+# === Flutter ===
+app/.dart_tool/
+app/.packages
+app/.flutter-plugins
+app/.flutter-plugins-dependencies
+app/build/
+
+# === IDE ===
+.idea/
+.vscode/
+*.iml
+*.swp
+*.swo
+*~
+
+# === OS ===
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# === 导入脚本输出 ===
+scripts/output/
+scripts/reports/

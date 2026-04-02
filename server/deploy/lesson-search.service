@@ -7,10 +7,12 @@ Type=simple
 User=www-data
 Group=www-data
 WorkingDirectory=/opt/lesson-search/server
-ExecStart=/opt/lesson-search/venv/bin/uvicorn main:app --host 127.0.0.1 --port 8000 --workers 2
+ExecStart=/opt/lesson-search/venv/bin/uvicorn main:app --host 127.0.0.1 --port 8000 --workers 1 --limit-max-requests 1000
 Restart=always
 RestartSec=5
 Environment=PYTHONUNBUFFERED=1
+# 内存限制，避免抢博客资源
+MemoryMax=256M
 
 [Install]
 WantedBy=multi-user.target
