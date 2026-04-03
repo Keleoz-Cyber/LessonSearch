@@ -1,7 +1,7 @@
 import 'package:dio/dio.dart';
 
 class ApiClient {
-  static const String defaultBaseUrl = 'http://10.0.2.2:8000/api';
+  static const String defaultBaseUrl = 'https://api.keleoz.cn/api';
 
   late final Dio dio;
 

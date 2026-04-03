@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -9,6 +10,13 @@ class HomePage extends StatelessWidget {
       appBar: AppBar(
         title: const Text('查课'),
         centerTitle: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.bug_report),
+            tooltip: '联调测试',
+            onPressed: () => context.push('/debug/sync'),
+          ),
+        ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(24.0),
@@ -21,12 +29,7 @@ class HomePage extends StatelessWidget {
               title: '点名',
               subtitle: '随机点名查课',
               color: Colors.blue,
-              onTap: () {
-                // TODO P4: context.push('/roll-call/select');
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('点名功能开发中')),
-                );
-              },
+              onTap: () => context.push('/roll-call/select'),
             ),
             const SizedBox(height: 16),
             _EntryCard(

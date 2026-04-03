@@ -190,7 +190,7 @@ git push
 
 # 服务器
 cd /opt
-git clone 你的仓库地址 lesson-search
+git clone https://github.com/Keleoz-Cyber/LessonSearch lesson-search
 ```
 
 ### 步骤 3：创建虚拟环境
@@ -394,15 +394,15 @@ static const String defaultBaseUrl = 'https://api.你的域名/api';
 
 ```bash
 # HTTP 应该自动跳转到 HTTPS
-curl -I http://api.你的域名/health
+curl -I http://api.keleoz.cn/health
 # 预期：301 或 302 跳转到 https://
 
 # HTTPS 直接访问
-curl https://api.你的域名/health
+curl https://api.keleoz.cn/health
 # 预期：{"status":"ok"}
 
 # 确认博客没受影响
-curl https://你的主域名
+curl https://keleoz.cn
 # 预期：正常返回博客页面
 ```
 
