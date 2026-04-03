@@ -213,4 +213,17 @@ class NameCheckNotifier extends StateNotifier<NameCheckState> {
 
     state = state.copyWith(isFinished: true);
   }
+
+  /// 放弃任务（删除任务和记录）
+  Future<void> abandonTask() async {
+    final task = state.task;
+    if (task == null) return;
+
+    await _attendanceRepo.updateTaskStatus(
+      task,
+      status: TaskStatus.abandoned,
+    );
+
+    state = const NameCheckState();
+  }
 }

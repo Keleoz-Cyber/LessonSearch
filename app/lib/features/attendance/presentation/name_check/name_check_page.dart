@@ -267,18 +267,37 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
   }
 
   Future<void> _showExitDialog(BuildContext context) async {
-    final confirm = await showDialog<bool>(
+    final result = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('退出记名'),
-        content: const Text('当前进度将保存，是否退出？'),
+        content: const Text('当前记名尚未完成，请选择操作：'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('取消')),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('退出')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, 'cancel'),
+            child: const Text('继续记名'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, 'abandon'),
+            child: const Text('放弃', style: TextStyle(color: Colors.red)),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, 'save'),
+            child: const Text('保存退出'),
+          ),
         ],
       ),
     );
-    if (confirm == true && mounted) context.pop();
+    if (!mounted) return;
+    switch (result) {
+      case 'save':
+        context.pop();
+      case 'abandon':
+        await ref.read(nameCheckProvider.notifier).abandonTask();
+        if (mounted) context.pop();
+      default:
+        break;
+    }
   }
 
   Future<void> _showFinishDialog(BuildContext context, NameCheckState state) async {

@@ -34,7 +34,7 @@ class RollCallState {
   }
 
   int get totalCount => students.length;
-  int get processedCount => currentIndex;
+  int get processedCount => isFinished ? totalCount : currentIndex;
   bool get hasNext => currentIndex < students.length - 1;
 
   RollCallState copyWith({
@@ -156,5 +156,18 @@ class RollCallNotifier extends StateNotifier<RollCallState> {
     );
 
     state = state.copyWith(isFinished: true);
+  }
+
+  /// 放弃任务
+  Future<void> abandonTask() async {
+    final task = state.task;
+    if (task == null) return;
+
+    await _attendanceRepo.updateTaskStatus(
+      task,
+      status: TaskStatus.abandoned,
+    );
+
+    state = const RollCallState();
   }
 }
