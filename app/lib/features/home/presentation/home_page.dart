@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/announcement/announcement_service.dart';
 import '../../../core/resume/task_resume_checker.dart';
 import '../../../core/sync/sync_service.dart';
 import '../../../shared/providers.dart';
@@ -17,8 +18,11 @@ class _HomePageState extends ConsumerState<HomePage> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      TaskResumeChecker.check(context, ref);
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      await AnnouncementService.checkAndShow(context);
+      if (!mounted) return;
+      await TaskResumeChecker.check(context, ref);
     });
   }
 
@@ -52,6 +56,12 @@ class _HomePageState extends ConsumerState<HomePage> {
                 onPressed: () => ref.read(syncServiceProvider).syncNow(),
               ),
             ),
+          // 设置
+          IconButton(
+            icon: const Icon(Icons.settings_outlined),
+            tooltip: '设置',
+            onPressed: () => context.push('/settings'),
+          ),
         ],
       ),
       body: Padding(

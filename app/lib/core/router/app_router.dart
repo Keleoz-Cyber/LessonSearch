@@ -8,6 +8,7 @@ import '../../features/attendance/presentation/confirmation/confirmation_page.da
 import '../../features/attendance/presentation/text_generation/text_gen_page.dart';
 import '../../features/records/presentation/records_list_page.dart';
 import '../../features/records/presentation/record_detail_page.dart';
+import '../../features/settings/presentation/settings_page.dart';
 import '../../features/debug/sync_test_page.dart';
 import '../../features/home/presentation/home_page.dart';
 
@@ -91,6 +92,13 @@ final appRouter = GoRouter(
       name: 'record-detail',
       builder: (context, state) =>
           RecordDetailPage(taskId: state.pathParameters['id']!),
+    ),
+
+    // 设置
+    GoRoute(
+      path: '/settings',
+      name: 'settings',
+      builder: (context, state) => const SettingsPage(),
     ),
 
     // 联调测试
