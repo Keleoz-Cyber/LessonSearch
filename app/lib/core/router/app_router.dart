@@ -4,6 +4,8 @@ import '../../features/attendance/domain/models.dart';
 import '../../features/attendance/presentation/selection/selection_page.dart';
 import '../../features/attendance/presentation/roll_call/roll_call_page.dart';
 import '../../features/attendance/presentation/name_check/name_check_page.dart';
+import '../../features/attendance/presentation/confirmation/confirmation_page.dart';
+import '../../features/attendance/presentation/text_generation/text_gen_page.dart';
 import '../../features/debug/sync_test_page.dart';
 import '../../features/home/presentation/home_page.dart';
 
@@ -55,6 +57,23 @@ final appRouter = GoRouter(
           gradeId: extra['gradeId'] as int,
           majorId: extra['majorId'] as int,
         );
+      },
+    ),
+
+    // 确认页
+    GoRoute(
+      path: '/confirmation',
+      name: 'confirmation',
+      builder: (context, state) => const ConfirmationPage(),
+    ),
+
+    // 文本生成
+    GoRoute(
+      path: '/text-gen',
+      name: 'text-gen',
+      builder: (context, state) {
+        final extra = state.extra as Map<String, dynamic>;
+        return TextGenPage(taskId: extra['taskId'] as String);
       },
     ),
 

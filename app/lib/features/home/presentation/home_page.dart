@@ -1,8 +1,25 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-class HomePage extends StatelessWidget {
+import '../../../core/resume/task_resume_checker.dart';
+
+class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
+
+  @override
+  ConsumerState<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends ConsumerState<HomePage> {
+  @override
+  void initState() {
+    super.initState();
+    // 启动时检查未完成任务
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      TaskResumeChecker.check(context, ref);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {

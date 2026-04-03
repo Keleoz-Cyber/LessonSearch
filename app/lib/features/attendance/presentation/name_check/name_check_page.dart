@@ -58,36 +58,17 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
     }
 
     if (state.isFinished) {
-      return _buildFinishedView(context, state);
+      // 完成后跳转到确认页
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) context.push('/confirmation');
+      });
+      return Scaffold(
+        appBar: AppBar(title: const Text('记名')),
+        body: const Center(child: CircularProgressIndicator()),
+      );
     }
 
     return _buildExecutingView(context, state);
-  }
-
-  Widget _buildFinishedView(BuildContext context, NameCheckState state) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('记名完成')),
-      body: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.check_circle, size: 80, color: Colors.green),
-            const SizedBox(height: 24),
-            Text('记名完成', style: Theme.of(context).textTheme.headlineMedium),
-            const SizedBox(height: 8),
-            Text(
-              '共 ${state.totalStudents} 人，已处理 ${state.processedStudents} 人',
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.grey[600]),
-            ),
-            const SizedBox(height: 32),
-            FilledButton(
-              onPressed: () => context.go('/'),
-              child: const Text('返回首页'),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 
   Widget _buildExecutingView(BuildContext context, NameCheckState state) {
