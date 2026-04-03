@@ -27,10 +27,10 @@ from excel_analyzer import scan_and_analyze, AnalysisReport, parse_class_label
 
 def generate_pinyin(name: str) -> tuple[str, str]:
     """
-    生成姓名拼音和缩写。
-    '张三' → ('zhangsan', 'zs')
+    生成姓名拼音（带声调）和缩写。
+    '张三' → ('zhāngsān', 'zs')
     """
-    full = "".join(lazy_pinyin(name, style=Style.NORMAL))
+    full = "".join(lazy_pinyin(name, style=Style.TONE))
     abbr = "".join(lazy_pinyin(name, style=Style.FIRST_LETTER))
     return full, abbr
 
