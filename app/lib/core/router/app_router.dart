@@ -29,10 +29,10 @@ final appRouter = GoRouter(
       builder: (context, state) {
         final extra = state.extra as Map<String, dynamic>;
         return RollCallPage(
-          classId: extra['classId'] as int,
+          classIds: (extra['classIds'] as List).cast<int>(),
+          classNames: (extra['classNames'] as List).cast<String>(),
           gradeId: extra['gradeId'] as int,
           majorId: extra['majorId'] as int,
-          className: extra['className'] as String,
         );
       },
     ),

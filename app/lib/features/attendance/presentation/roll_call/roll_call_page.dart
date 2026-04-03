@@ -5,17 +5,17 @@ import 'package:go_router/go_router.dart';
 import '../../../../shared/providers.dart';
 
 class RollCallPage extends ConsumerStatefulWidget {
-  final int classId;
+  final List<int> classIds;
+  final List<String> classNames;
   final int gradeId;
   final int majorId;
-  final String className;
 
   const RollCallPage({
     super.key,
-    required this.classId,
+    required this.classIds,
+    required this.classNames,
     required this.gradeId,
     required this.majorId,
-    required this.className,
   });
 
   @override
@@ -26,10 +26,9 @@ class _RollCallPageState extends ConsumerState<RollCallPage> {
   @override
   void initState() {
     super.initState();
-    // 启动后初始化点名
     Future.microtask(() {
       ref.read(rollCallProvider.notifier).startRollCall(
-            classId: widget.classId,
+            classIds: widget.classIds,
             gradeId: widget.gradeId,
             majorId: widget.majorId,
           );
@@ -40,7 +39,6 @@ class _RollCallPageState extends ConsumerState<RollCallPage> {
   Widget build(BuildContext context) {
     final state = ref.watch(rollCallProvider);
 
-    // 加载中
     if (state.isLoading) {
       return Scaffold(
         appBar: AppBar(title: const Text('点名')),
@@ -48,7 +46,6 @@ class _RollCallPageState extends ConsumerState<RollCallPage> {
       );
     }
 
-    // 错误
     if (state.error != null) {
       return Scaffold(
         appBar: AppBar(title: const Text('点名')),
@@ -70,7 +67,6 @@ class _RollCallPageState extends ConsumerState<RollCallPage> {
       );
     }
 
-    // 完成
     if (state.isFinished) {
       return Scaffold(
         appBar: AppBar(title: const Text('点名完成')),
@@ -80,13 +76,10 @@ class _RollCallPageState extends ConsumerState<RollCallPage> {
             children: [
               const Icon(Icons.check_circle, size: 80, color: Colors.green),
               const SizedBox(height: 24),
-              Text(
-                '点名完成',
-                style: Theme.of(context).textTheme.headlineMedium,
-              ),
+              Text('点名完成', style: Theme.of(context).textTheme.headlineMedium),
               const SizedBox(height: 8),
               Text(
-                '${widget.className} · 已点名 ${state.processedCount} / ${state.totalCount} 人',
+                '已点名 ${state.processedCount} / ${state.totalCount} 人',
                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                       color: Colors.grey[600],
                     ),
@@ -102,13 +95,12 @@ class _RollCallPageState extends ConsumerState<RollCallPage> {
       );
     }
 
-    // 正在点名
     final student = state.currentStudent;
     if (student == null) return const SizedBox();
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.className),
+        title: Text(state.currentClassName),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => _showExitDialog(),
@@ -150,9 +142,9 @@ class _RollCallPageState extends ConsumerState<RollCallPage> {
             ),
             const SizedBox(height: 24),
 
-            // 学号
+            // 班级 + 学号
             Text(
-              student.studentNo,
+              '${state.currentClassName} · ${student.studentNo}',
               style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                     color: Colors.grey[400],
                     fontFamily: 'monospace',
@@ -164,7 +156,6 @@ class _RollCallPageState extends ConsumerState<RollCallPage> {
             // 操作按钮
             Row(
               children: [
-                // 结束查课
                 Expanded(
                   child: OutlinedButton.icon(
                     onPressed: () => _showFinishDialog(),
@@ -177,7 +168,6 @@ class _RollCallPageState extends ConsumerState<RollCallPage> {
                   ),
                 ),
                 const SizedBox(width: 16),
-                // 下一位
                 Expanded(
                   flex: 2,
                   child: FilledButton.icon(
@@ -210,17 +200,16 @@ class _RollCallPageState extends ConsumerState<RollCallPage> {
         ],
       ),
     );
-    if (confirm == true && mounted) {
-      context.pop();
-    }
+    if (confirm == true && mounted) context.pop();
   }
 
   Future<void> _showFinishDialog() async {
+    final state = ref.read(rollCallProvider);
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('结束查课'),
-        content: Text('已点名 ${ref.read(rollCallProvider).processedCount} / ${ref.read(rollCallProvider).totalCount} 人，确认结束？'),
+        content: Text('已点名 ${state.processedCount} / ${state.totalCount} 人，确认结束？'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('取消')),
           FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('确认结束')),

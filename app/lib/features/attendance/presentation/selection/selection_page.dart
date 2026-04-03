@@ -21,9 +21,6 @@ class _SelectionPageState extends ConsumerState<SelectionPage> {
 
   GradeInfo? _selectedGrade;
   MajorInfo? _selectedMajor;
-
-  // 点名：单选；记名：多选
-  ClassInfo? _selectedClass;
   final Set<int> _selectedClassIds = {};
 
   bool _loading = true;
@@ -31,13 +28,7 @@ class _SelectionPageState extends ConsumerState<SelectionPage> {
 
   bool get _isNameCheck => widget.taskType == TaskType.nameCheck;
 
-  bool get _canStart {
-    if (_isNameCheck) {
-      return _selectedClassIds.isNotEmpty;
-    } else {
-      return _selectedClass != null;
-    }
-  }
+  bool get _canStart => _selectedClassIds.isNotEmpty;
 
   @override
   void initState() {
@@ -68,7 +59,6 @@ class _SelectionPageState extends ConsumerState<SelectionPage> {
     setState(() {
       _selectedGrade = grade;
       _selectedMajor = null;
-      _selectedClass = null;
       _selectedClassIds.clear();
       _classes = [];
     });
@@ -77,7 +67,6 @@ class _SelectionPageState extends ConsumerState<SelectionPage> {
   Future<void> _onMajorChanged(MajorInfo? major) async {
     setState(() {
       _selectedMajor = major;
-      _selectedClass = null;
       _selectedClassIds.clear();
     });
     if (_selectedGrade != null && major != null) {
@@ -93,29 +82,19 @@ class _SelectionPageState extends ConsumerState<SelectionPage> {
   void _startTask() {
     if (!_canStart) return;
 
-    if (_isNameCheck) {
-      final selectedClasses =
-          _classes.where((c) => _selectedClassIds.contains(c.id)).toList();
-      context.push(
-        '/name-check/execute',
-        extra: {
-          'classIds': selectedClasses.map((c) => c.id).toList(),
-          'classNames': selectedClasses.map((c) => c.displayName).toList(),
-          'gradeId': _selectedGrade!.id,
-          'majorId': _selectedMajor!.id,
-        },
-      );
-    } else {
-      context.push(
-        '/roll-call/execute',
-        extra: {
-          'classId': _selectedClass!.id,
-          'gradeId': _selectedGrade!.id,
-          'majorId': _selectedMajor!.id,
-          'className': _selectedClass!.displayName,
-        },
-      );
-    }
+    final selectedClasses =
+        _classes.where((c) => _selectedClassIds.contains(c.id)).toList();
+    final route = _isNameCheck ? '/name-check/execute' : '/roll-call/execute';
+
+    context.push(
+      route,
+      extra: {
+        'classIds': selectedClasses.map((c) => c.id).toList(),
+        'classNames': selectedClasses.map((c) => c.displayName).toList(),
+        'gradeId': _selectedGrade!.id,
+        'majorId': _selectedMajor!.id,
+      },
+    );
   }
 
   @override
@@ -186,27 +165,13 @@ class _SelectionPageState extends ConsumerState<SelectionPage> {
             ),
             const SizedBox(height: 16),
 
-            // 班级：点名单选 / 记名多选
-            if (_isNameCheck)
-              _buildMultiSelectClasses()
-            else
-              DropdownButtonFormField<ClassInfo>(
-                decoration: const InputDecoration(
-                  labelText: '班级',
-                  border: OutlineInputBorder(),
-                ),
-                initialValue: _selectedClass,
-                items: _classes
-                    .map((c) =>
-                        DropdownMenuItem(value: c, child: Text(c.displayName)))
-                    .toList(),
-                onChanged: (c) => setState(() => _selectedClass = c),
-              ),
+            // 班级多选
+            _buildMultiSelectClasses(),
 
             const Spacer(),
 
             // 选中数量提示（记名模式）
-            if (_isNameCheck && _selectedClassIds.isNotEmpty)
+            if (_selectedClassIds.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.only(bottom: 12),
                 child: Text(

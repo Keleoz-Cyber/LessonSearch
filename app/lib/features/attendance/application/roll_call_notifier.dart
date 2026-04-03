@@ -7,7 +7,8 @@ import '../../student/data/student_repository.dart';
 /// 点名流程状态
 class RollCallState {
   final AttendanceTask? task;
-  final List<StudentInfo> students;
+  final List<StudentInfo> students; // 所有班级的学生按学号排序
+  final Map<int, String> classNameMap; // classId → displayName
   final int currentIndex;
   final bool isLoading;
   final bool isFinished;
@@ -16,6 +17,7 @@ class RollCallState {
   const RollCallState({
     this.task,
     this.students = const [],
+    this.classNameMap = const {},
     this.currentIndex = 0,
     this.isLoading = false,
     this.isFinished = false,
@@ -25,6 +27,12 @@ class RollCallState {
   StudentInfo? get currentStudent =>
       currentIndex < students.length ? students[currentIndex] : null;
 
+  String get currentClassName {
+    final s = currentStudent;
+    if (s == null) return '';
+    return classNameMap[s.classId] ?? '';
+  }
+
   int get totalCount => students.length;
   int get processedCount => currentIndex;
   bool get hasNext => currentIndex < students.length - 1;
@@ -32,6 +40,7 @@ class RollCallState {
   RollCallState copyWith({
     AttendanceTask? task,
     List<StudentInfo>? students,
+    Map<int, String>? classNameMap,
     int? currentIndex,
     bool? isLoading,
     bool? isFinished,
@@ -40,6 +49,7 @@ class RollCallState {
     return RollCallState(
       task: task ?? this.task,
       students: students ?? this.students,
+      classNameMap: classNameMap ?? this.classNameMap,
       currentIndex: currentIndex ?? this.currentIndex,
       isLoading: isLoading ?? this.isLoading,
       isFinished: isFinished ?? this.isFinished,
@@ -56,37 +66,42 @@ class RollCallNotifier extends StateNotifier<RollCallState> {
   RollCallNotifier(this._attendanceRepo, this._studentRepo)
       : super(const RollCallState());
 
-  /// 初始化点名：创建任务 + 加载学生
+  /// 初始化点名：创建任务 + 加载学生（多班级按学号排序）
   Future<void> startRollCall({
-    required int classId,
+    required List<int> classIds,
     required int gradeId,
     required int majorId,
   }) async {
-    // 重置所有状态
     state = const RollCallState(isLoading: true);
 
     try {
-      // 确保学生数据已在本地
-      await _studentRepo.ensureStudentsForClass(classId);
-      final students = await _studentRepo.getStudentsByClass(classId);
+      final allStudents = <StudentInfo>[];
+      final classNameMap = <int, String>{};
 
-      if (students.isEmpty) {
-        state = state.copyWith(isLoading: false, error: '该班级没有学生数据');
-        return;
+      // 按班级顺序加载学生
+      final allClasses = await _studentRepo.getClasses();
+      for (final classId in classIds) {
+        await _studentRepo.ensureStudentsForClass(classId);
+        final students = await _studentRepo.getStudentsByClass(classId);
+        allStudents.addAll(students); // 已按学号排序
+
+        final classInfo = allClasses.firstWhere((c) => c.id == classId);
+        classNameMap[classId] = classInfo.displayName;
       }
 
-      // 打乱顺序（随机点名）
-      final shuffled = List<StudentInfo>.from(students)..shuffle();
+      if (allStudents.isEmpty) {
+        state = state.copyWith(isLoading: false, error: '所选班级没有学生数据');
+        return;
+      }
 
       // 创建任务
       final task = await _attendanceRepo.createTask(
         type: TaskType.rollCall,
-        classIds: [classId],
+        classIds: classIds,
         selectedGradeId: gradeId,
         selectedMajorId: majorId,
       );
 
-      // 更新任务状态为执行中
       final updated = await _attendanceRepo.updateTaskStatus(
         task,
         phase: TaskPhase.executing,
@@ -94,7 +109,8 @@ class RollCallNotifier extends StateNotifier<RollCallState> {
 
       state = state.copyWith(
         task: updated,
-        students: shuffled,
+        students: allStudents,
+        classNameMap: classNameMap,
         currentIndex: 0,
         isLoading: false,
       );
@@ -109,7 +125,6 @@ class RollCallNotifier extends StateNotifier<RollCallState> {
     final task = state.task;
     if (student == null || task == null) return;
 
-    // 记录当前学生为 present
     await _attendanceRepo.createRecord(
       taskId: task.id,
       studentId: student.id,
@@ -125,7 +140,6 @@ class RollCallNotifier extends StateNotifier<RollCallState> {
       );
       state = state.copyWith(task: updated, currentIndex: newIndex);
     } else {
-      // 最后一个学生，自动结束
       await finishRollCall();
     }
   }
