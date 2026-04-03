@@ -22,7 +22,7 @@ class SettingsPage extends StatelessWidget {
           const ListTile(
             leading: Icon(Icons.tag),
             title: Text('版本号'),
-            subtitle: Text('0.2.0'),
+            subtitle: Text('0.2.1'),
           ),
 
           const Divider(),
@@ -165,7 +165,7 @@ class AboutPage extends StatelessWidget {
 
           Center(
             child: Text(
-              '查课 App v0.2.0',
+              '查课 App v0.2.1',
               style: TextStyle(color: Colors.grey[400], fontSize: 13),
             ),
           ),
