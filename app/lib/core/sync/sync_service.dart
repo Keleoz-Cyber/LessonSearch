@@ -59,7 +59,13 @@ class SyncService {
           final newRetry = item.retryCount + 1;
           await _local.markSyncFailed(item.id, retryCount: newRetry);
           failCount++;
-          if (newRetry >= _maxRetries) {
+          final isNetwork = e.toString().contains('SocketException') ||
+              e.toString().contains('Connection refused') ||
+              e.toString().contains('timed out');
+          if (isNetwork) {
+            debugPrint('[Sync] 网络不可用，稍后重试');
+            break; // 网络不通就不继续尝试后面的了
+          } else if (newRetry >= _maxRetries) {
             debugPrint('[Sync] GIVE UP: ${item.entityType}/${item.action} #${item.entityId} ($e)');
           } else {
             debugPrint('[Sync] RETRY $newRetry/$_maxRetries: ${item.entityType}/${item.action} #${item.entityId} ($e)');

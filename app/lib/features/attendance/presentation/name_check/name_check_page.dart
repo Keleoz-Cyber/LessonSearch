@@ -27,7 +27,7 @@ class NameCheckPage extends ConsumerStatefulWidget {
 }
 
 class _NameCheckPageState extends ConsumerState<NameCheckPage> {
-  int? _focusedIndex; // 当前选中的学生索引
+  int? _focusedIndex = 0; // 默认选中第一个
 
   @override
   void initState() {

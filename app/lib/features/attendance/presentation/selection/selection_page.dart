@@ -210,11 +210,25 @@ class _SelectionPageState extends ConsumerState<SelectionPage> {
       );
     }
 
+    final allSelected = _selectedClassIds.length == _classes.length;
+
     return InputDecorator(
-      decoration: const InputDecoration(
+      decoration: InputDecoration(
         labelText: '班级（多选）',
-        border: OutlineInputBorder(),
-        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        border: const OutlineInputBorder(),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        suffixIcon: TextButton(
+          onPressed: () {
+            setState(() {
+              if (allSelected) {
+                _selectedClassIds.clear();
+              } else {
+                _selectedClassIds.addAll(_classes.map((c) => c.id));
+              }
+            });
+          },
+          child: Text(allSelected ? '取消全选' : '全选'),
+        ),
       ),
       child: Wrap(
         spacing: 8,
