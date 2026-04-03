@@ -6,6 +6,8 @@ import '../../features/attendance/presentation/roll_call/roll_call_page.dart';
 import '../../features/attendance/presentation/name_check/name_check_page.dart';
 import '../../features/attendance/presentation/confirmation/confirmation_page.dart';
 import '../../features/attendance/presentation/text_generation/text_gen_page.dart';
+import '../../features/records/presentation/records_list_page.dart';
+import '../../features/records/presentation/record_detail_page.dart';
 import '../../features/debug/sync_test_page.dart';
 import '../../features/home/presentation/home_page.dart';
 
@@ -76,6 +78,19 @@ final appRouter = GoRouter(
         final extra = state.extra as Map<String, dynamic>;
         return TextGenPage(taskId: extra['taskId'] as String);
       },
+    ),
+
+    // 查课记录
+    GoRoute(
+      path: '/records',
+      name: 'records',
+      builder: (context, state) => const RecordsListPage(),
+    ),
+    GoRoute(
+      path: '/records/:id',
+      name: 'record-detail',
+      builder: (context, state) =>
+          RecordDetailPage(taskId: state.pathParameters['id']!),
     ),
 
     // 联调测试

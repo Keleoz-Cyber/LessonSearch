@@ -5,6 +5,7 @@ import '../core/network/api_client.dart';
 import '../core/sync/sync_service.dart';
 import '../features/attendance/application/roll_call_notifier.dart';
 import '../features/attendance/application/name_check_notifier.dart';
+import '../features/records/data/records_repository.dart';
 import '../features/attendance/data/local/attendance_local_ds.dart';
 import '../features/attendance/data/remote/attendance_remote_ds.dart';
 import '../features/attendance/data/attendance_repository.dart';
@@ -81,4 +82,9 @@ final nameCheckProvider =
     ref.watch(attendanceRepositoryProvider),
     ref.watch(studentRepositoryProvider),
   );
+});
+
+/// 查课记录仓库
+final recordsRepositoryProvider = Provider<RecordsRepository>((ref) {
+  return RecordsRepository(ref.watch(databaseProvider));
 });

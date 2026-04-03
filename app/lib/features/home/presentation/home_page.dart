@@ -62,12 +62,7 @@ class _HomePageState extends ConsumerState<HomePage> {
               title: '查课记录',
               subtitle: '查看历史记录',
               color: Colors.orange,
-              onTap: () {
-                // TODO P7: context.push('/records');
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('查课记录功能开发中')),
-                );
-              },
+              onTap: () => context.push('/records'),
             ),
           ],
         ),
