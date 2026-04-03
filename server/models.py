@@ -97,6 +97,7 @@ class AttendanceRecord(Base):
     student_id = Column(Integer, ForeignKey("students.id"), nullable=False)
     class_id = Column(Integer, ForeignKey("classes.id"), nullable=False)
     status = Column(String(20), nullable=False, default="pending")  # pending|present|absent|leave|other
+    remark = Column(String(200), nullable=True)
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 

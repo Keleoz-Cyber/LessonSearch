@@ -135,6 +135,7 @@ class AttendanceRecord {
   final int studentId;
   final int classId;
   final AttendanceStatus status;
+  final String? remark;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -144,6 +145,7 @@ class AttendanceRecord {
     required this.studentId,
     required this.classId,
     this.status = AttendanceStatus.pending,
+    this.remark,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -151,6 +153,7 @@ class AttendanceRecord {
   AttendanceRecord copyWith({
     int? id,
     AttendanceStatus? status,
+    String? remark,
     DateTime? updatedAt,
   }) {
     return AttendanceRecord(
@@ -159,6 +162,7 @@ class AttendanceRecord {
       studentId: studentId,
       classId: classId,
       status: status ?? this.status,
+      remark: remark ?? this.remark,
       createdAt: createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );

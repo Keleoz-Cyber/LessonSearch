@@ -2296,6 +2296,15 @@ class $AttendanceRecordsTable extends AttendanceRecords
     requiredDuringInsert: false,
     defaultValue: const Constant('pending'),
   );
+  static const VerificationMeta _remarkMeta = const VerificationMeta('remark');
+  @override
+  late final GeneratedColumn<String> remark = GeneratedColumn<String>(
+    'remark',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -2327,6 +2336,7 @@ class $AttendanceRecordsTable extends AttendanceRecords
     studentId,
     classId,
     status,
+    remark,
     createdAt,
     updatedAt,
   ];
@@ -2375,6 +2385,12 @@ class $AttendanceRecordsTable extends AttendanceRecords
         status.isAcceptableOrUnknown(data['status']!, _statusMeta),
       );
     }
+    if (data.containsKey('remark')) {
+      context.handle(
+        _remarkMeta,
+        remark.isAcceptableOrUnknown(data['remark']!, _remarkMeta),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -2416,6 +2432,10 @@ class $AttendanceRecordsTable extends AttendanceRecords
         DriftSqlType.string,
         data['${effectivePrefix}status'],
       )!,
+      remark: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}remark'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -2440,6 +2460,7 @@ class AttendanceRecord extends DataClass
   final int studentId;
   final int classId;
   final String status;
+  final String? remark;
   final DateTime createdAt;
   final DateTime updatedAt;
   const AttendanceRecord({
@@ -2448,6 +2469,7 @@ class AttendanceRecord extends DataClass
     required this.studentId,
     required this.classId,
     required this.status,
+    this.remark,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -2459,6 +2481,9 @@ class AttendanceRecord extends DataClass
     map['student_id'] = Variable<int>(studentId);
     map['class_id'] = Variable<int>(classId);
     map['status'] = Variable<String>(status);
+    if (!nullToAbsent || remark != null) {
+      map['remark'] = Variable<String>(remark);
+    }
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
@@ -2471,6 +2496,9 @@ class AttendanceRecord extends DataClass
       studentId: Value(studentId),
       classId: Value(classId),
       status: Value(status),
+      remark: remark == null && nullToAbsent
+          ? const Value.absent()
+          : Value(remark),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -2487,6 +2515,7 @@ class AttendanceRecord extends DataClass
       studentId: serializer.fromJson<int>(json['studentId']),
       classId: serializer.fromJson<int>(json['classId']),
       status: serializer.fromJson<String>(json['status']),
+      remark: serializer.fromJson<String?>(json['remark']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -2500,6 +2529,7 @@ class AttendanceRecord extends DataClass
       'studentId': serializer.toJson<int>(studentId),
       'classId': serializer.toJson<int>(classId),
       'status': serializer.toJson<String>(status),
+      'remark': serializer.toJson<String?>(remark),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
@@ -2511,6 +2541,7 @@ class AttendanceRecord extends DataClass
     int? studentId,
     int? classId,
     String? status,
+    Value<String?> remark = const Value.absent(),
     DateTime? createdAt,
     DateTime? updatedAt,
   }) => AttendanceRecord(
@@ -2519,6 +2550,7 @@ class AttendanceRecord extends DataClass
     studentId: studentId ?? this.studentId,
     classId: classId ?? this.classId,
     status: status ?? this.status,
+    remark: remark.present ? remark.value : this.remark,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
   );
@@ -2529,6 +2561,7 @@ class AttendanceRecord extends DataClass
       studentId: data.studentId.present ? data.studentId.value : this.studentId,
       classId: data.classId.present ? data.classId.value : this.classId,
       status: data.status.present ? data.status.value : this.status,
+      remark: data.remark.present ? data.remark.value : this.remark,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -2542,6 +2575,7 @@ class AttendanceRecord extends DataClass
           ..write('studentId: $studentId, ')
           ..write('classId: $classId, ')
           ..write('status: $status, ')
+          ..write('remark: $remark, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -2549,8 +2583,16 @@ class AttendanceRecord extends DataClass
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, taskId, studentId, classId, status, createdAt, updatedAt);
+  int get hashCode => Object.hash(
+    id,
+    taskId,
+    studentId,
+    classId,
+    status,
+    remark,
+    createdAt,
+    updatedAt,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -2560,6 +2602,7 @@ class AttendanceRecord extends DataClass
           other.studentId == this.studentId &&
           other.classId == this.classId &&
           other.status == this.status &&
+          other.remark == this.remark &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -2570,6 +2613,7 @@ class AttendanceRecordsCompanion extends UpdateCompanion<AttendanceRecord> {
   final Value<int> studentId;
   final Value<int> classId;
   final Value<String> status;
+  final Value<String?> remark;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   const AttendanceRecordsCompanion({
@@ -2578,6 +2622,7 @@ class AttendanceRecordsCompanion extends UpdateCompanion<AttendanceRecord> {
     this.studentId = const Value.absent(),
     this.classId = const Value.absent(),
     this.status = const Value.absent(),
+    this.remark = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
   });
@@ -2587,6 +2632,7 @@ class AttendanceRecordsCompanion extends UpdateCompanion<AttendanceRecord> {
     required int studentId,
     required int classId,
     this.status = const Value.absent(),
+    this.remark = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
   }) : taskId = Value(taskId),
@@ -2598,6 +2644,7 @@ class AttendanceRecordsCompanion extends UpdateCompanion<AttendanceRecord> {
     Expression<int>? studentId,
     Expression<int>? classId,
     Expression<String>? status,
+    Expression<String>? remark,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
   }) {
@@ -2607,6 +2654,7 @@ class AttendanceRecordsCompanion extends UpdateCompanion<AttendanceRecord> {
       if (studentId != null) 'student_id': studentId,
       if (classId != null) 'class_id': classId,
       if (status != null) 'status': status,
+      if (remark != null) 'remark': remark,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
     });
@@ -2618,6 +2666,7 @@ class AttendanceRecordsCompanion extends UpdateCompanion<AttendanceRecord> {
     Value<int>? studentId,
     Value<int>? classId,
     Value<String>? status,
+    Value<String?>? remark,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
   }) {
@@ -2627,6 +2676,7 @@ class AttendanceRecordsCompanion extends UpdateCompanion<AttendanceRecord> {
       studentId: studentId ?? this.studentId,
       classId: classId ?? this.classId,
       status: status ?? this.status,
+      remark: remark ?? this.remark,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -2650,6 +2700,9 @@ class AttendanceRecordsCompanion extends UpdateCompanion<AttendanceRecord> {
     if (status.present) {
       map['status'] = Variable<String>(status.value);
     }
+    if (remark.present) {
+      map['remark'] = Variable<String>(remark.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -2667,6 +2720,7 @@ class AttendanceRecordsCompanion extends UpdateCompanion<AttendanceRecord> {
           ..write('studentId: $studentId, ')
           ..write('classId: $classId, ')
           ..write('status: $status, ')
+          ..write('remark: $remark, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -5795,6 +5849,7 @@ typedef $$AttendanceRecordsTableCreateCompanionBuilder =
       required int studentId,
       required int classId,
       Value<String> status,
+      Value<String?> remark,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
     });
@@ -5805,6 +5860,7 @@ typedef $$AttendanceRecordsTableUpdateCompanionBuilder =
       Value<int> studentId,
       Value<int> classId,
       Value<String> status,
+      Value<String?> remark,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
     });
@@ -5899,6 +5955,11 @@ class $$AttendanceRecordsTableFilterComposer
 
   ColumnFilters<String> get status => $composableBuilder(
     column: $table.status,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get remark => $composableBuilder(
+    column: $table.remark,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -6001,6 +6062,11 @@ class $$AttendanceRecordsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get remark => $composableBuilder(
+    column: $table.remark,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -6095,6 +6161,9 @@ class $$AttendanceRecordsTableAnnotationComposer
 
   GeneratedColumn<String> get status =>
       $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<String> get remark =>
+      $composableBuilder(column: $table.remark, builder: (column) => column);
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -6210,6 +6279,7 @@ class $$AttendanceRecordsTableTableManager
                 Value<int> studentId = const Value.absent(),
                 Value<int> classId = const Value.absent(),
                 Value<String> status = const Value.absent(),
+                Value<String?> remark = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
               }) => AttendanceRecordsCompanion(
@@ -6218,6 +6288,7 @@ class $$AttendanceRecordsTableTableManager
                 studentId: studentId,
                 classId: classId,
                 status: status,
+                remark: remark,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
               ),
@@ -6228,6 +6299,7 @@ class $$AttendanceRecordsTableTableManager
                 required int studentId,
                 required int classId,
                 Value<String> status = const Value.absent(),
+                Value<String?> remark = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
               }) => AttendanceRecordsCompanion.insert(
@@ -6236,6 +6308,7 @@ class $$AttendanceRecordsTableTableManager
                 studentId: studentId,
                 classId: classId,
                 status: status,
+                remark: remark,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
               ),

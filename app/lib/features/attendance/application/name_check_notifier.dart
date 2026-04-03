@@ -74,18 +74,21 @@ class NameCheckState {
 class StudentWithStatus {
   final StudentInfo student;
   final AttendanceStatus status;
-  final int? recordId; // 本地 record id
+  final String? remark;
+  final int? recordId;
 
   const StudentWithStatus({
     required this.student,
     this.status = AttendanceStatus.pending,
+    this.remark,
     this.recordId,
   });
 
-  StudentWithStatus copyWith({AttendanceStatus? status, int? recordId}) {
+  StudentWithStatus copyWith({AttendanceStatus? status, String? remark, int? recordId}) {
     return StudentWithStatus(
       student: student,
       status: status ?? this.status,
+      remark: remark ?? this.remark,
       recordId: recordId ?? this.recordId,
     );
   }
@@ -159,7 +162,7 @@ class NameCheckNotifier extends StateNotifier<NameCheckState> {
   }
 
   /// 标记学生状态
-  Future<void> markStudent(int classId, int studentIndex, AttendanceStatus status) async {
+  Future<void> markStudent(int classId, int studentIndex, AttendanceStatus status, {String? remark}) async {
     final task = state.task;
     if (task == null) return;
 
@@ -169,18 +172,17 @@ class NameCheckNotifier extends StateNotifier<NameCheckState> {
     final student = students[studentIndex];
 
     if (student.recordId != null) {
-      // 已有记录，更新状态
-      await _attendanceRepo.updateRecordStatus(student.recordId!, status);
-      students[studentIndex] = student.copyWith(status: status);
+      await _attendanceRepo.updateRecordStatus(student.recordId!, status, remark: remark);
+      students[studentIndex] = student.copyWith(status: status, remark: remark);
     } else {
-      // 创建新记录
       final record = await _attendanceRepo.createRecord(
         taskId: task.id,
         studentId: student.student.id,
         classId: classId,
         status: status,
+        remark: remark,
       );
-      students[studentIndex] = student.copyWith(status: status, recordId: record.id);
+      students[studentIndex] = student.copyWith(status: status, remark: remark, recordId: record.id);
     }
 
     final updatedMap = Map<int, List<StudentWithStatus>>.from(state.studentsByClass);

@@ -68,6 +68,7 @@ class AttendanceRecords extends Table {
   IntColumn get classId => integer().references(Classes, #id)();
   TextColumn get status =>
       text().withDefault(const Constant('pending'))(); // pending|present|absent|leave|other
+  TextColumn get remark => text().nullable()(); // "其他"状态的自定义说明
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
 }

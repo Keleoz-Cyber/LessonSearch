@@ -163,6 +163,7 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
                   name: sw.student.name,
                   studentNo: sw.student.studentNo,
                   status: sw.status,
+                  remark: sw.remark,
                   isFocused: isFocused,
                   onTap: () => setState(() => _focusedIndex = index),
                 );
@@ -185,9 +186,9 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
     final classId = state.currentClass?.id;
     if (classId == null) return const SizedBox();
 
-    void mark(AttendanceStatus status) {
+    void mark(AttendanceStatus status, {String? remark}) {
       if (_focusedIndex == null || _focusedIndex! >= students.length) return;
-      ref.read(nameCheckProvider.notifier).markStudent(classId, _focusedIndex!, status);
+      ref.read(nameCheckProvider.notifier).markStudent(classId, _focusedIndex!, status, remark: remark);
       // 自动移到下一个未处理的学生
       final nextIndex = students.indexWhere(
         (s) => s.status == AttendanceStatus.pending,
@@ -196,6 +197,35 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
       setState(() {
         _focusedIndex = nextIndex >= 0 ? nextIndex : _focusedIndex;
       });
+    }
+
+    Future<void> markOther() async {
+      if (_focusedIndex == null || _focusedIndex! >= students.length) return;
+      final controller = TextEditingController();
+      final result = await showDialog<String>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('其他状态'),
+          content: TextField(
+            controller: controller,
+            autofocus: true,
+            decoration: const InputDecoration(
+              hintText: '请输入说明（如：迟到、早退…）',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('取消')),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, controller.text.trim()),
+              child: const Text('确认'),
+            ),
+          ],
+        ),
+      );
+      if (result != null && result.isNotEmpty) {
+        mark(AttendanceStatus.other, remark: result);
+      }
     }
 
     return Container(
@@ -221,7 +251,7 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
           _ActionButton(
             label: '其他',
             color: Colors.grey,
-            onPressed: _focusedIndex != null ? () => mark(AttendanceStatus.other) : null,
+            onPressed: _focusedIndex != null ? () => markOther() : null,
           ),
           const SizedBox(width: 8),
           Expanded(
@@ -282,6 +312,7 @@ class _StudentCard extends StatelessWidget {
   final String name;
   final String studentNo;
   final AttendanceStatus status;
+  final String? remark;
   final bool isFocused;
   final VoidCallback onTap;
 
@@ -289,6 +320,7 @@ class _StudentCard extends StatelessWidget {
     required this.name,
     required this.studentNo,
     required this.status,
+    this.remark,
     required this.isFocused,
     required this.onTap,
   });
@@ -306,7 +338,7 @@ class _StudentCard extends StatelessWidget {
         AttendanceStatus.present => '到',
         AttendanceStatus.absent => '缺',
         AttendanceStatus.leave => '假',
-        AttendanceStatus.other => '他',
+        AttendanceStatus.other => remark ?? '他',
       };
 
   @override

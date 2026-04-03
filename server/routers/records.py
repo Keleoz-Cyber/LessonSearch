@@ -29,6 +29,7 @@ def create_records(task_id: str, body: list[RecordCreate], db: Session = Depends
             student_id=item.student_id,
             class_id=item.class_id,
             status=item.status,
+            remark=item.remark,
         )
         db.add(record)
         created.append(record)
@@ -61,6 +62,8 @@ def update_record(record_id: int, body: RecordUpdate, db: Session = Depends(get_
         raise HTTPException(status_code=404, detail="记录不存在")
 
     record.status = body.status
+    if body.remark is not None:
+        record.remark = body.remark
     db.commit()
     db.refresh(record)
     return record

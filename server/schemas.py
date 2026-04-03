@@ -94,10 +94,12 @@ class RecordCreate(BaseModel):
     student_id: int
     class_id: int
     status: str = "pending"
+    remark: str | None = None
 
 
 class RecordUpdate(BaseModel):
     status: str
+    remark: str | None = None
 
 
 class RecordOut(BaseModel):
@@ -106,6 +108,7 @@ class RecordOut(BaseModel):
     student_id: int
     class_id: int
     status: str
+    remark: str | None
     created_at: datetime
     updated_at: datetime
 
