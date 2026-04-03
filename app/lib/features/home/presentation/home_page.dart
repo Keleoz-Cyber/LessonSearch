@@ -37,12 +37,7 @@ class HomePage extends StatelessWidget {
               title: '记名',
               subtitle: '逐人记录考勤',
               color: Colors.green,
-              onTap: () {
-                // TODO P5: context.push('/name-check/select');
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('记名功能开发中')),
-                );
-              },
+              onTap: () => context.push('/name-check/select'),
             ),
             const SizedBox(height: 16),
             _EntryCard(

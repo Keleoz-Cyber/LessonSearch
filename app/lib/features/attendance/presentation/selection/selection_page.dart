@@ -21,10 +21,23 @@ class _SelectionPageState extends ConsumerState<SelectionPage> {
 
   GradeInfo? _selectedGrade;
   MajorInfo? _selectedMajor;
+
+  // 点名：单选；记名：多选
   ClassInfo? _selectedClass;
+  final Set<int> _selectedClassIds = {};
 
   bool _loading = true;
   String? _error;
+
+  bool get _isNameCheck => widget.taskType == TaskType.nameCheck;
+
+  bool get _canStart {
+    if (_isNameCheck) {
+      return _selectedClassIds.isNotEmpty;
+    } else {
+      return _selectedClass != null;
+    }
+  }
 
   @override
   void initState() {
@@ -56,6 +69,7 @@ class _SelectionPageState extends ConsumerState<SelectionPage> {
       _selectedGrade = grade;
       _selectedMajor = null;
       _selectedClass = null;
+      _selectedClassIds.clear();
       _classes = [];
     });
   }
@@ -64,6 +78,7 @@ class _SelectionPageState extends ConsumerState<SelectionPage> {
     setState(() {
       _selectedMajor = major;
       _selectedClass = null;
+      _selectedClassIds.clear();
     });
     if (_selectedGrade != null && major != null) {
       final repo = ref.read(studentRepositoryProvider);
@@ -76,21 +91,36 @@ class _SelectionPageState extends ConsumerState<SelectionPage> {
   }
 
   void _startTask() {
-    if (_selectedClass == null) return;
-    context.push(
-      '/roll-call/execute',
-      extra: {
-        'classId': _selectedClass!.id,
-        'gradeId': _selectedGrade!.id,
-        'majorId': _selectedMajor!.id,
-        'className': _selectedClass!.displayName,
-      },
-    );
+    if (!_canStart) return;
+
+    if (_isNameCheck) {
+      final selectedClasses =
+          _classes.where((c) => _selectedClassIds.contains(c.id)).toList();
+      context.push(
+        '/name-check/execute',
+        extra: {
+          'classIds': selectedClasses.map((c) => c.id).toList(),
+          'classNames': selectedClasses.map((c) => c.displayName).toList(),
+          'gradeId': _selectedGrade!.id,
+          'majorId': _selectedMajor!.id,
+        },
+      );
+    } else {
+      context.push(
+        '/roll-call/execute',
+        extra: {
+          'classId': _selectedClass!.id,
+          'gradeId': _selectedGrade!.id,
+          'majorId': _selectedMajor!.id,
+          'className': _selectedClass!.displayName,
+        },
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final title = widget.taskType == TaskType.rollCall ? '点名' : '记名';
+    final title = _isNameCheck ? '记名' : '点名';
 
     if (_loading) {
       return Scaffold(
@@ -156,24 +186,39 @@ class _SelectionPageState extends ConsumerState<SelectionPage> {
             ),
             const SizedBox(height: 16),
 
-            // 班级
-            DropdownButtonFormField<ClassInfo>(
-              decoration: const InputDecoration(
-                labelText: '班级',
-                border: OutlineInputBorder(),
+            // 班级：点名单选 / 记名多选
+            if (_isNameCheck)
+              _buildMultiSelectClasses()
+            else
+              DropdownButtonFormField<ClassInfo>(
+                decoration: const InputDecoration(
+                  labelText: '班级',
+                  border: OutlineInputBorder(),
+                ),
+                initialValue: _selectedClass,
+                items: _classes
+                    .map((c) =>
+                        DropdownMenuItem(value: c, child: Text(c.displayName)))
+                    .toList(),
+                onChanged: (c) => setState(() => _selectedClass = c),
               ),
-              initialValue: _selectedClass,
-              items: _classes
-                  .map((c) => DropdownMenuItem(value: c, child: Text(c.displayName)))
-                  .toList(),
-              onChanged: (c) => setState(() => _selectedClass = c),
-            ),
 
             const Spacer(),
 
+            // 选中数量提示（记名模式）
+            if (_isNameCheck && _selectedClassIds.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Text(
+                  '已选 ${_selectedClassIds.length} 个班级',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodyLarge,
+                ),
+              ),
+
             // 开始按钮
             FilledButton.icon(
-              onPressed: _selectedClass != null ? _startTask : null,
+              onPressed: _canStart ? _startTask : null,
               icon: const Icon(Icons.play_arrow),
               label: Text('开始$title'),
               style: FilledButton.styleFrom(
@@ -182,6 +227,49 @@ class _SelectionPageState extends ConsumerState<SelectionPage> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildMultiSelectClasses() {
+    if (_classes.isEmpty) {
+      return InputDecorator(
+        decoration: const InputDecoration(
+          labelText: '班级（多选）',
+          border: OutlineInputBorder(),
+        ),
+        child: Text(
+          _selectedMajor == null ? '请先选择专业' : '该专业暂无班级',
+          style: TextStyle(color: Colors.grey[500]),
+        ),
+      );
+    }
+
+    return InputDecorator(
+      decoration: const InputDecoration(
+        labelText: '班级（多选）',
+        border: OutlineInputBorder(),
+        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      ),
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 4,
+        children: _classes.map((c) {
+          final selected = _selectedClassIds.contains(c.id);
+          return FilterChip(
+            label: Text(c.displayName),
+            selected: selected,
+            onSelected: (val) {
+              setState(() {
+                if (val) {
+                  _selectedClassIds.add(c.id);
+                } else {
+                  _selectedClassIds.remove(c.id);
+                }
+              });
+            },
+          );
+        }).toList(),
       ),
     );
   }
