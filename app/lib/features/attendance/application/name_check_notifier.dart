@@ -246,19 +246,37 @@ class NameCheckNotifier extends StateNotifier<NameCheckState> {
     state = state.copyWith(studentsByClass: updatedMap);
   }
 
-  /// 结束记名
+  /// 结束记名（批量标记未处理学生为已到）
   Future<void> finishNameCheck() async {
     final task = state.task;
     if (task == null) return;
 
-    // 所有未处理的学生标记为 present（已到）
+    // 收集所有未处理的学生，批量写入
+    final pendingItems = <({int studentId, int classId, AttendanceStatus status})>[];
+    final updatedMap = Map<int, List<StudentWithStatus>>.from(state.studentsByClass);
+
     for (final entry in state.studentsByClass.entries) {
       final classId = entry.key;
-      for (var i = 0; i < entry.value.length; i++) {
-        if (entry.value[i].status == AttendanceStatus.pending) {
-          await markStudent(classId, i, AttendanceStatus.present);
+      final students = List<StudentWithStatus>.from(entry.value);
+      for (var i = 0; i < students.length; i++) {
+        if (students[i].status == AttendanceStatus.pending) {
+          pendingItems.add((
+            studentId: students[i].student.id,
+            classId: classId,
+            status: AttendanceStatus.present,
+          ));
+          students[i] = students[i].copyWith(status: AttendanceStatus.present);
         }
       }
+      updatedMap[classId] = students;
+    }
+
+    // 批量写入 DB + SyncQueue（一个事务）
+    if (pendingItems.isNotEmpty) {
+      await _attendanceRepo.createRecordsBatch(
+        taskId: task.id,
+        items: pendingItems,
+      );
     }
 
     await _attendanceRepo.updateTaskStatus(
@@ -267,7 +285,7 @@ class NameCheckNotifier extends StateNotifier<NameCheckState> {
       phase: TaskPhase.confirming,
     );
 
-    state = state.copyWith(isFinished: true);
+    state = state.copyWith(studentsByClass: updatedMap, isFinished: true);
   }
 
   /// 放弃任务（删除任务和记录）
