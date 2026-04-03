@@ -11,6 +11,7 @@ class NameCheckPage extends ConsumerStatefulWidget {
   final List<String> classNames;
   final int gradeId;
   final int majorId;
+  final String? resumeTaskId;
 
   const NameCheckPage({
     super.key,
@@ -18,6 +19,7 @@ class NameCheckPage extends ConsumerStatefulWidget {
     required this.classNames,
     required this.gradeId,
     required this.majorId,
+    this.resumeTaskId,
   });
 
   @override
@@ -31,11 +33,15 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
   void initState() {
     super.initState();
     Future.microtask(() {
-      ref.read(nameCheckProvider.notifier).startNameCheck(
-            classIds: widget.classIds,
-            gradeId: widget.gradeId,
-            majorId: widget.majorId,
-          );
+      if (widget.resumeTaskId != null) {
+        ref.read(nameCheckProvider.notifier).resumeTask(widget.resumeTaskId!);
+      } else {
+        ref.read(nameCheckProvider.notifier).startNameCheck(
+              classIds: widget.classIds,
+              gradeId: widget.gradeId,
+              majorId: widget.majorId,
+            );
+      }
     });
   }
 
@@ -58,10 +64,6 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
     }
 
     if (state.isFinished) {
-      // 完成后跳转到确认页
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) context.push('/confirmation');
-      });
       return Scaffold(
         appBar: AppBar(title: const Text('记名')),
         body: const Center(child: CircularProgressIndicator()),
@@ -300,6 +302,7 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
     );
     if (confirm == true) {
       await ref.read(nameCheckProvider.notifier).finishNameCheck();
+      if (mounted) context.push('/confirmation');
     }
   }
 }

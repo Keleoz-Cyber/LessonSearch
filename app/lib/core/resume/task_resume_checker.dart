@@ -5,23 +5,27 @@ import 'package:go_router/go_router.dart';
 import '../../features/attendance/domain/models.dart';
 import '../../shared/providers.dart';
 
-/// 启动时检查未完成任务，提示用户继续或放弃
+/// 启动时检查未完成的记名任务（executing 阶段），提示用户继续或放弃
 class TaskResumeChecker {
   static Future<void> check(BuildContext context, WidgetRef ref) async {
     final repo = ref.read(attendanceRepositoryProvider);
     final tasks = await repo.getInProgressTasks();
 
-    if (tasks.isEmpty || !context.mounted) return;
+    // 只恢复记名任务 + executing 阶段
+    final resumable = tasks.where((t) =>
+        t.type == TaskType.nameCheck &&
+        t.phase == TaskPhase.executing).toList();
 
-    final task = tasks.first;
-    final typeLabel = task.type == TaskType.rollCall ? '点名' : '记名';
+    if (resumable.isEmpty || !context.mounted) return;
+
+    final task = resumable.first;
 
     final result = await showDialog<String>(
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
         title: const Text('发现未完成任务'),
-        content: Text('上次的$typeLabel任务尚未完成，是否继续？'),
+        content: const Text('上次的记名任务尚未完成，是否继续？'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, 'abandon'),
@@ -40,12 +44,27 @@ class TaskResumeChecker {
     if (result == 'abandon') {
       await repo.updateTaskStatus(task, status: TaskStatus.abandoned);
     } else if (result == 'resume') {
-      // 简化版恢复：导航到选择页让用户重新选择
-      // 完整版应恢复到精确的执行页面和位置
-      final route = task.type == TaskType.rollCall
-          ? '/roll-call/select'
-          : '/name-check/select';
-      context.push(route);
+      // 获取班级名称
+      final studentRepo = ref.read(studentRepositoryProvider);
+      final allClasses = await studentRepo.getClasses();
+      final classNames = task.classIds
+          .map((id) {
+            final cls = allClasses.where((c) => c.id == id);
+            return cls.isNotEmpty ? cls.first.displayName : '未知班级';
+          })
+          .toList();
+
+      if (!context.mounted) return;
+      context.push(
+        '/name-check/execute',
+        extra: {
+          'classIds': task.classIds,
+          'classNames': classNames,
+          'gradeId': task.selectedGradeId ?? 0,
+          'majorId': task.selectedMajorId ?? 0,
+          'resumeTaskId': task.id, // 标记为恢复模式
+        },
+      );
     }
   }
 }

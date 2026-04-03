@@ -102,6 +102,62 @@ class NameCheckNotifier extends StateNotifier<NameCheckState> {
   NameCheckNotifier(this._attendanceRepo, this._studentRepo)
       : super(const NameCheckState());
 
+  /// 恢复未完成的记名任务
+  Future<void> resumeTask(String taskId) async {
+    state = const NameCheckState(isLoading: true);
+
+    try {
+      final task = await _attendanceRepo.getTask(taskId);
+      if (task == null) {
+        state = state.copyWith(isLoading: false, error: '任务不存在');
+        return;
+      }
+
+      // 加载班级和学生
+      final allClasses = <ClassInfo>[];
+      final studentsByClass = <int, List<StudentWithStatus>>{};
+
+      // 加载已有记录
+      final existingRecords = await _attendanceRepo.getRecordsByTask(taskId);
+      final recordMap = <int, AttendanceRecord>{}; // studentId → record
+      for (final r in existingRecords) {
+        recordMap[r.studentId] = r;
+      }
+
+      final allClassInfos = await _studentRepo.getClasses();
+
+      for (final classId in task.classIds) {
+        await _studentRepo.ensureStudentsForClass(classId);
+        final students = await _studentRepo.getStudentsByClass(classId);
+
+        final classInfo = allClassInfos.firstWhere((c) => c.id == classId);
+        allClasses.add(classInfo);
+
+        studentsByClass[classId] = students.map((s) {
+          final record = recordMap[s.id];
+          return StudentWithStatus(
+            student: s,
+            status: record != null
+                ? AttendanceStatus.fromString(record.status.value)
+                : AttendanceStatus.pending,
+            remark: record?.remark,
+            recordId: record?.id,
+          );
+        }).toList();
+      }
+
+      state = state.copyWith(
+        task: task,
+        classes: allClasses,
+        currentClassIndex: 0,
+        studentsByClass: studentsByClass,
+        isLoading: false,
+      );
+    } catch (e) {
+      state = state.copyWith(isLoading: false, error: '恢复失败: $e');
+    }
+  }
+
   /// 初始化记名
   Future<void> startNameCheck({
     required List<int> classIds,
