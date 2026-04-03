@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../shared/providers.dart';
+import '../../../../shared/widgets/loading_overlay.dart';
 import '../../../attendance/application/name_check_notifier.dart';
 import '../../../attendance/domain/models.dart';
 
@@ -52,7 +53,11 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
     if (state.isLoading) {
       return Scaffold(
         appBar: AppBar(title: const Text('记名')),
-        body: const Center(child: CircularProgressIndicator()),
+        body: const LoadingOverlay(
+          isLoading: true,
+          message: '加载学生数据...',
+          child: SizedBox.expand(),
+        ),
       );
     }
 

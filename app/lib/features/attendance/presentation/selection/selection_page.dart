@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../shared/providers.dart';
+import '../../../../shared/widgets/loading_overlay.dart';
 import '../../../attendance/domain/models.dart';
 
 class SelectionPage extends ConsumerStatefulWidget {
@@ -101,13 +102,6 @@ class _SelectionPageState extends ConsumerState<SelectionPage> {
   Widget build(BuildContext context) {
     final title = _isNameCheck ? '记名' : '点名';
 
-    if (_loading) {
-      return Scaffold(
-        appBar: AppBar(title: Text('$title - 选择班级')),
-        body: const Center(child: CircularProgressIndicator()),
-      );
-    }
-
     if (_error != null) {
       return Scaffold(
         appBar: AppBar(title: Text('$title - 选择班级')),
@@ -132,7 +126,10 @@ class _SelectionPageState extends ConsumerState<SelectionPage> {
 
     return Scaffold(
       appBar: AppBar(title: Text('$title - 选择班级')),
-      body: Padding(
+      body: LoadingOverlay(
+        isLoading: _loading,
+        message: '加载数据中...',
+        child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -192,6 +189,7 @@ class _SelectionPageState extends ConsumerState<SelectionPage> {
             ),
           ],
         ),
+      ),
       ),
     );
   }

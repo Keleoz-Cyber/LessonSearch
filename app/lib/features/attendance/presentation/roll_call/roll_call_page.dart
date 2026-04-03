@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../shared/providers.dart';
+import '../../../../shared/widgets/loading_overlay.dart';
 
 class RollCallPage extends ConsumerStatefulWidget {
   final List<int> classIds;
@@ -42,7 +43,11 @@ class _RollCallPageState extends ConsumerState<RollCallPage> {
     if (state.isLoading) {
       return Scaffold(
         appBar: AppBar(title: const Text('点名')),
-        body: const Center(child: CircularProgressIndicator()),
+        body: const LoadingOverlay(
+          isLoading: true,
+          message: '准备中...',
+          child: SizedBox.expand(),
+        ),
       );
     }
 

@@ -22,7 +22,7 @@ class SettingsPage extends StatelessWidget {
           const ListTile(
             leading: Icon(Icons.tag),
             title: Text('版本号'),
-            subtitle: Text('0.2.1'),
+            subtitle: Text('0.2.2'),
           ),
 
           const Divider(),
@@ -72,7 +72,28 @@ class SettingsPage extends StatelessWidget {
       builder: (ctx) => AlertDialog(
         title: const Text(announcementTitle),
         content: SingleChildScrollView(
-          child: Text(announcementContent, style: const TextStyle(height: 1.6)),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(announcementContent.trim(), style: const TextStyle(height: 1.6)),
+              const SizedBox(height: 16),
+              const Divider(),
+              const SizedBox(height: 8),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.blue.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  updateNotes.trim(),
+                  style: const TextStyle(fontSize: 13, height: 1.5),
+                ),
+              ),
+            ],
+          ),
         ),
         actions: [
           FilledButton(
@@ -165,7 +186,7 @@ class AboutPage extends StatelessWidget {
 
           Center(
             child: Text(
-              '查课 App v0.2.1',
+              '查课 App v0.2.2',
               style: TextStyle(color: Colors.grey[400], fontSize: 13),
             ),
           ),

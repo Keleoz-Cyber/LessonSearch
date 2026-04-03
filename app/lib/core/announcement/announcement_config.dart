@@ -4,7 +4,7 @@
 
 /// 公告版本号：每次修改公告内容后 +1，用户才会再次看到
 /// 例如：第一次公告是 1，修改后改成 2，用户就会重新看到
-const int announcementVersion = 3;
+const int announcementVersion = 4;
 
 /// 公告标题
 const String announcementTitle = '欢迎使用便捷查课 App';
@@ -32,6 +32,12 @@ iOS端由于技术原因正在适配中，请耐心等待！
 
 /// v0.2.0 更新内容
 const String updateNotes = '''
+v0.2.2 更新内容：
+• 加载页面改为遮罩形式，体验更流畅
+• 批量数据库操作优化，减少卡顿
+• 设置页查看公告现已显示更新内容
+• 修复确认页重新编辑无响应的问题
+
 v0.2.0 更新内容：
 • 新增"迟到"考勤状态
 • 新增"其他"状态自定义备注
