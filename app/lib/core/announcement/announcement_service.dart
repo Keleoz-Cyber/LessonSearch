@@ -20,7 +20,28 @@ class AnnouncementService {
       builder: (ctx) => AlertDialog(
         title: Text(announcementTitle),
         content: SingleChildScrollView(
-          child: Text(announcementContent, style: const TextStyle(height: 1.6)),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(announcementContent.trim(), style: const TextStyle(height: 1.6)),
+              const SizedBox(height: 16),
+              const Divider(),
+              const SizedBox(height: 8),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.blue.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  updateNotes.trim(),
+                  style: const TextStyle(fontSize: 13, height: 1.5),
+                ),
+              ),
+            ],
+          ),
         ),
         actions: [
           TextButton(

@@ -39,6 +39,7 @@ const defaultCommitteeReportTemplate = '''
 迟到（{late}人）：{late_names}
 请假（{leave}人）：{leave_names}
 其他（{other}人）：{other_names}
+请学委未到的确认下发到场证明，请假发一下假条
 ''';
 
 /// 考勤统计数据
