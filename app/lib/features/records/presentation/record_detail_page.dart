@@ -61,6 +61,7 @@ class _RecordDetailPageState extends ConsumerState<RecordDetailPage> {
 
     final classStatsList = <ClassStats>[];
     final allAbsent = <StudentRecord>[];
+    final allLate = <StudentRecord>[];
     final allLeave = <StudentRecord>[];
     final allOther = <StudentRecord>[];
     final classNames = <String>[];
@@ -69,6 +70,7 @@ class _RecordDetailPageState extends ConsumerState<RecordDetailPage> {
       classNames.add(entry.key);
       final students = entry.value;
       final absent = students.where((s) => s.status == AttendanceStatus.absent).toList();
+      final late_ = students.where((s) => s.status == AttendanceStatus.late_).toList();
       final leave = students.where((s) => s.status == AttendanceStatus.leave).toList();
       final other = students.where((s) => s.status == AttendanceStatus.other).toList();
       final present = students.length - absent.length - leave.length - other.length;
@@ -81,6 +83,7 @@ class _RecordDetailPageState extends ConsumerState<RecordDetailPage> {
           );
 
       allAbsent.addAll(absent.map(toRecord));
+      allLate.addAll(late_.map(toRecord));
       allLeave.addAll(leave.map(toRecord));
       allOther.addAll(other.map(toRecord));
 
@@ -89,9 +92,11 @@ class _RecordDetailPageState extends ConsumerState<RecordDetailPage> {
         total: students.length,
         present: present,
         absent: absent.length,
+        late_: late_.length,
         leave: leave.length,
         other: other.length,
         absentStudents: absent.map(toRecord).toList(),
+        lateStudents: late_.map(toRecord).toList(),
         leaveStudents: leave.map(toRecord).toList(),
         otherStudents: other.map(toRecord).toList(),
       ));
@@ -103,9 +108,11 @@ class _RecordDetailPageState extends ConsumerState<RecordDetailPage> {
       total: _entries.length,
       present: _entries.length - allAbsent.length - allLeave.length - allOther.length,
       absent: allAbsent.length,
+      late_: allLate.length,
       leave: allLeave.length,
       other: allOther.length,
       absentStudents: allAbsent,
+      lateStudents: allLate,
       leaveStudents: allLeave,
       otherStudents: allOther,
     );
@@ -211,6 +218,7 @@ class _RecordRow extends StatelessWidget {
   Color get _color => switch (entry.status) {
         AttendanceStatus.present => Colors.green,
         AttendanceStatus.absent => Colors.red,
+        AttendanceStatus.late_ => Colors.amber.shade700,
         AttendanceStatus.leave => Colors.orange,
         AttendanceStatus.other => Colors.purple,
         AttendanceStatus.pending => Colors.grey,
@@ -219,6 +227,7 @@ class _RecordRow extends StatelessWidget {
   String get _label => switch (entry.status) {
         AttendanceStatus.present => '到',
         AttendanceStatus.absent => '缺勤',
+        AttendanceStatus.late_ => '迟到',
         AttendanceStatus.leave => '请假',
         AttendanceStatus.other => entry.remark ?? '其他',
         AttendanceStatus.pending => '待查',
@@ -248,6 +257,7 @@ class _RecordRow extends StatelessWidget {
               itemBuilder: (ctx) => [
                 const PopupMenuItem(value: AttendanceStatus.present, child: Text('到课')),
                 const PopupMenuItem(value: AttendanceStatus.absent, child: Text('缺勤')),
+                const PopupMenuItem(value: AttendanceStatus.late_, child: Text('迟到')),
                 const PopupMenuItem(value: AttendanceStatus.leave, child: Text('请假')),
                 const PopupMenuItem(value: AttendanceStatus.other, child: Text('其他...')),
               ],

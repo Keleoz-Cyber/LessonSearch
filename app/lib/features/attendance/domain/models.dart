@@ -46,6 +46,7 @@ enum AttendanceStatus {
   pending('pending'),
   present('present'),
   absent('absent'),
+  late_('late'),
   leave('leave'),
   other('other');
 

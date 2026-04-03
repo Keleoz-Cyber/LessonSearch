@@ -103,7 +103,10 @@ class ConfirmationPage extends ConsumerWidget {
               children: [
                 Expanded(
                   child: OutlinedButton(
-                    onPressed: () => context.pop(),
+                    onPressed: () {
+                      ref.read(nameCheckProvider.notifier).resumeEditing();
+                      context.pop();
+                    },
                     style: OutlinedButton.styleFrom(
                       minimumSize: const Size.fromHeight(48),
                     ),
@@ -147,6 +150,7 @@ class _AbnormalEntry {
 
   String get statusLabel => switch (status) {
         AttendanceStatus.absent => '缺勤',
+        AttendanceStatus.late_ => '迟到',
         AttendanceStatus.leave => '请假',
         AttendanceStatus.other => remark ?? '其他',
         _ => '',
@@ -154,6 +158,7 @@ class _AbnormalEntry {
 
   Color get statusColor => switch (status) {
         AttendanceStatus.absent => Colors.red,
+        AttendanceStatus.late_ => Colors.amber.shade700,
         AttendanceStatus.leave => Colors.orange,
         AttendanceStatus.other => Colors.purple,
         _ => Colors.grey,

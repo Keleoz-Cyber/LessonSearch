@@ -158,7 +158,7 @@ class _TaskCard extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                '共${summary.totalStudents}人 · 到${summary.presentCount} 缺${summary.absentCount} 假${summary.leaveCount} 他${summary.otherCount}',
+                '共${summary.totalStudents}人 · 到${summary.presentCount} 缺${summary.absentCount} 迟${summary.lateCount} 假${summary.leaveCount} 他${summary.otherCount}',
                 style: TextStyle(fontSize: 13, color: Colors.grey[600]),
               ),
               const SizedBox(height: 4),

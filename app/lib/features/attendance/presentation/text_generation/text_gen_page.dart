@@ -39,10 +39,10 @@ class _TextGenPageState extends ConsumerState<TextGenPage> with SingleTickerProv
   void _generateTexts() {
     final state = ref.read(nameCheckProvider);
     final taskTime = state.task?.createdAt ?? DateTime.now();
-    final date = '${taskTime.toString().substring(0, 16)}';
+    final date = taskTime.toString().substring(0, 16);
 
-    // 收集全局统计
     final allAbsent = <StudentRecord>[];
+    final allLate = <StudentRecord>[];
     final allLeave = <StudentRecord>[];
     final allOther = <StudentRecord>[];
     final classStatsList = <ClassStats>[];
@@ -56,6 +56,7 @@ class _TextGenPageState extends ConsumerState<TextGenPage> with SingleTickerProv
       classNames.add(cls.displayName);
 
       final classAbsent = <StudentRecord>[];
+      final classLate = <StudentRecord>[];
       final classLeave = <StudentRecord>[];
       final classOther = <StudentRecord>[];
       var classPresent = 0;
@@ -74,6 +75,10 @@ class _TextGenPageState extends ConsumerState<TextGenPage> with SingleTickerProv
           case AttendanceStatus.absent:
             classAbsent.add(record);
             allAbsent.add(record);
+          case AttendanceStatus.late_:
+            classLate.add(record);
+            allLate.add(record);
+            classPresent++; // 迟到算实到
           case AttendanceStatus.leave:
             classLeave.add(record);
             allLeave.add(record);
@@ -81,7 +86,7 @@ class _TextGenPageState extends ConsumerState<TextGenPage> with SingleTickerProv
             classOther.add(record);
             allOther.add(record);
           case AttendanceStatus.pending:
-            classPresent++; // 未处理视为已到
+            classPresent++;
         }
       }
 
@@ -93,9 +98,11 @@ class _TextGenPageState extends ConsumerState<TextGenPage> with SingleTickerProv
         total: students.length,
         present: classPresent,
         absent: classAbsent.length,
+        late_: classLate.length,
         leave: classLeave.length,
         other: classOther.length,
         absentStudents: classAbsent,
+        lateStudents: classLate,
         leaveStudents: classLeave,
         otherStudents: classOther,
       ));
@@ -107,9 +114,11 @@ class _TextGenPageState extends ConsumerState<TextGenPage> with SingleTickerProv
       total: totalAll,
       present: presentAll,
       absent: allAbsent.length,
+      late_: allLate.length,
       leave: allLeave.length,
       other: allOther.length,
       absentStudents: allAbsent,
+      lateStudents: allLate,
       leaveStudents: allLeave,
       otherStudents: allOther,
     );

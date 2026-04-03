@@ -241,6 +241,14 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: _ActionButton(
+                    label: '迟到',
+                    color: Colors.amber.shade700,
+                    onPressed: _focusedIndex != null ? () => mark(AttendanceStatus.late_) : null,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _ActionButton(
                     label: '请假',
                     color: Colors.orange,
                     onPressed: _focusedIndex != null ? () => mark(AttendanceStatus.leave) : null,
@@ -354,6 +362,7 @@ class _StudentCard extends StatelessWidget {
         AttendanceStatus.pending => Colors.grey.shade200,
         AttendanceStatus.present => Colors.green.shade100,
         AttendanceStatus.absent => Colors.red.shade100,
+        AttendanceStatus.late_ => Colors.amber.shade100,
         AttendanceStatus.leave => Colors.orange.shade100,
         AttendanceStatus.other => Colors.purple.shade100,
       };
@@ -362,6 +371,7 @@ class _StudentCard extends StatelessWidget {
         AttendanceStatus.pending => '',
         AttendanceStatus.present => '到',
         AttendanceStatus.absent => '缺',
+        AttendanceStatus.late_ => '迟',
         AttendanceStatus.leave => '假',
         AttendanceStatus.other => remark ?? '他',
       };

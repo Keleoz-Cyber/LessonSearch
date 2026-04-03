@@ -282,4 +282,9 @@ class NameCheckNotifier extends StateNotifier<NameCheckState> {
 
     state = const NameCheckState();
   }
+
+  /// 从确认页返回继续编辑
+  void resumeEditing() {
+    state = state.copyWith(isFinished: false);
+  }
 }

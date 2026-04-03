@@ -6,9 +6,11 @@
 //   {total}        — 应到人数
 //   {present}      — 实到人数
 //   {absent}       — 缺勤人数
+//   {late}         — 迟到人数
 //   {leave}        — 请假人数
 //   {other}        — 其他人数
 //   {absent_list}  — 缺勤名单（姓名 学号）
+//   {late_list}    — 迟到名单（姓名 学号）
 //   {leave_list}   — 请假名单（姓名 学号）
 //   {other_list}   — 其他名单（姓名 学号 备注）
 
@@ -17,10 +19,12 @@ const defaultGroupReportTemplate = '''
 {date} 考勤汇报
 班级：{class_names}
 应到：{total}人，实到：{present}人
-缺勤：{absent}人，请假：{leave}人，其他：{other}人
+缺勤：{absent}人，迟到：{late}人，请假：{leave}人，其他：{other}人
 ---
 缺勤名单：
 {absent_list}
+迟到名单：
+{late_list}
 请假名单：
 {leave_list}
 其他：
@@ -32,6 +36,7 @@ const defaultCommitteeReportTemplate = '''
 {date} {class_name} 考勤
 应到 {total} 人，实到 {present} 人
 缺勤（{absent}人）：{absent_names}
+迟到（{late}人）：{late_names}
 请假（{leave}人）：{leave_names}
 其他（{other}人）：{other_names}
 ''';
@@ -43,9 +48,11 @@ class AttendanceStats {
   final int total;
   final int present;
   final int absent;
+  final int late_;
   final int leave;
   final int other;
   final List<StudentRecord> absentStudents;
+  final List<StudentRecord> lateStudents;
   final List<StudentRecord> leaveStudents;
   final List<StudentRecord> otherStudents;
 
@@ -55,9 +62,11 @@ class AttendanceStats {
     required this.total,
     required this.present,
     required this.absent,
+    required this.late_,
     required this.leave,
     required this.other,
     required this.absentStudents,
+    required this.lateStudents,
     required this.leaveStudents,
     required this.otherStudents,
   });
@@ -83,9 +92,11 @@ class ClassStats {
   final int total;
   final int present;
   final int absent;
+  final int late_;
   final int leave;
   final int other;
   final List<StudentRecord> absentStudents;
+  final List<StudentRecord> lateStudents;
   final List<StudentRecord> leaveStudents;
   final List<StudentRecord> otherStudents;
 
@@ -94,9 +105,11 @@ class ClassStats {
     required this.total,
     required this.present,
     required this.absent,
+    required this.late_,
     required this.leave,
     required this.other,
     required this.absentStudents,
+    required this.lateStudents,
     required this.leaveStudents,
     required this.otherStudents,
   });
@@ -110,9 +123,11 @@ String generateGroupReport(AttendanceStats stats, {String template = defaultGrou
       .replaceAll('{total}', '${stats.total}')
       .replaceAll('{present}', '${stats.present}')
       .replaceAll('{absent}', '${stats.absent}')
+      .replaceAll('{late}', '${stats.late_}')
       .replaceAll('{leave}', '${stats.leave}')
       .replaceAll('{other}', '${stats.other}')
       .replaceAll('{absent_list}', _formatStudentList(stats.absentStudents))
+      .replaceAll('{late_list}', _formatStudentList(stats.lateStudents))
       .replaceAll('{leave_list}', _formatStudentList(stats.leaveStudents))
       .replaceAll('{other_list}', _formatStudentListWithRemark(stats.otherStudents))
       .trim();
@@ -129,9 +144,11 @@ String generateCommitteeReport(List<ClassStats> classStatsList, String date,
         .replaceAll('{total}', '${cs.total}')
         .replaceAll('{present}', '${cs.present}')
         .replaceAll('{absent}', '${cs.absent}')
+        .replaceAll('{late}', '${cs.late_}')
         .replaceAll('{leave}', '${cs.leave}')
         .replaceAll('{other}', '${cs.other}')
         .replaceAll('{absent_names}', _formatNames(cs.absentStudents))
+        .replaceAll('{late_names}', _formatNames(cs.lateStudents))
         .replaceAll('{leave_names}', _formatNames(cs.leaveStudents))
         .replaceAll('{other_names}', _formatNamesWithRemark(cs.otherStudents))
         .trim();
