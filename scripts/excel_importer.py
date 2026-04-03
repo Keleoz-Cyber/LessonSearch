@@ -96,9 +96,13 @@ def get_or_create_major(session, short_name: str, full_name: str) -> Major:
 
 
 def get_or_create_class(session, grade: Grade, major: Major, class_code: str) -> Class:
-    """获取或创建班级"""
+    """获取或创建班级（按 grade_id + major_id + class_code 唯一）"""
     cls = session.execute(
-        select(Class).where(Class.class_code == class_code)
+        select(Class).where(
+            Class.grade_id == grade.id,
+            Class.major_id == major.id,
+            Class.class_code == class_code,
+        )
     ).scalar_one_or_none()
     if not cls:
         display_name = f"{major.short_name}{class_code}班"

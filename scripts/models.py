@@ -40,12 +40,16 @@ class Class(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     grade_id = Column(Integer, ForeignKey("grades.id"), nullable=False)
     major_id = Column(Integer, ForeignKey("majors.id"), nullable=False)
-    class_code = Column(String(20), unique=True, nullable=False)  # "2201"
+    class_code = Column(String(20), nullable=False)  # "2201"（年级内+专业内唯一）
     display_name = Column(String(50), nullable=False)  # "电信2201班"
 
     grade = relationship("Grade", back_populates="classes")
     major = relationship("Major", back_populates="classes")
     students = relationship("Student", back_populates="class_")
+
+    __table_args__ = (
+        UniqueConstraint("grade_id", "major_id", "class_code", name="uq_class_grade_major_code"),
+    )
 
     def __repr__(self):
         return f"<Class {self.display_name}>"

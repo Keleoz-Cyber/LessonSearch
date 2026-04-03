@@ -20,7 +20,7 @@ class Classes extends Table {
   IntColumn get id => integer().autoIncrement()();
   IntColumn get gradeId => integer().references(Grades, #id)();
   IntColumn get majorId => integer().references(Majors, #id)();
-  TextColumn get classCode => text().withLength(max: 20).unique()();
+  TextColumn get classCode => text().withLength(max: 20)();
   TextColumn get displayName => text().withLength(max: 50)();
 }
 

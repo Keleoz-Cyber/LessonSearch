@@ -545,7 +545,6 @@ class $ClassesTable extends Classes with TableInfo<$ClassesTable, ClassesData> {
     additionalChecks: GeneratedColumn.checkTextLength(maxTextLength: 20),
     type: DriftSqlType.string,
     requiredDuringInsert: true,
-    defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'),
   );
   static const VerificationMeta _displayNameMeta = const VerificationMeta(
     'displayName',
