@@ -117,43 +117,51 @@ class _RollCallPageState extends ConsumerState<RollCallPage> {
           ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          children: [
-            const Spacer(flex: 2),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          child: Column(
+            children: [
+              const Spacer(flex: 2),
 
-            // 学生姓名
-            Text(
-              student.name,
-              style: Theme.of(context).textTheme.displayMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-            ),
-            const SizedBox(height: 12),
+              // 学生姓名
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  student.name,
+                  style: Theme.of(context).textTheme.displayMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                ),
+              ),
+              const SizedBox(height: 12),
 
-            // 拼音
-            Text(
-              student.pinyin ?? '',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    color: Colors.grey[500],
-                    letterSpacing: 2,
-                  ),
-            ),
-            const SizedBox(height: 24),
+              // 拼音
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  student.pinyin ?? '',
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                        color: Colors.grey[500],
+                        letterSpacing: 2,
+                      ),
+                ),
+              ),
+              const SizedBox(height: 24),
 
-            // 班级 + 学号
-            Text(
-              '${state.currentClassName} · ${student.studentNo}',
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: Colors.grey[400],
-                    fontFamily: 'monospace',
-                  ),
-            ),
+              // 班级 + 学号
+              Text(
+                '${state.currentClassName} · ${student.studentNo}',
+                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                      color: Colors.grey[400],
+                      fontFamily: 'monospace',
+                    ),
+                textAlign: TextAlign.center,
+              ),
 
-            const Spacer(flex: 3),
+              const Spacer(flex: 3),
 
-            // 操作按钮
+              // 操作按钮
             Row(
               children: [
                 Expanded(
@@ -184,6 +192,7 @@ class _RollCallPageState extends ConsumerState<RollCallPage> {
             ),
           ],
         ),
+      ),
       ),
     );
   }

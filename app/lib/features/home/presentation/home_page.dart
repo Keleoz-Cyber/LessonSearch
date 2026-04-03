@@ -64,36 +64,40 @@ class _HomePageState extends ConsumerState<HomePage> {
           ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _EntryCard(
-              icon: Icons.record_voice_over,
-              title: '点名',
-              subtitle: '按学号依次点名',
-              color: Colors.blue,
-              onTap: () => context.push('/roll-call/select'),
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _EntryCard(
+                  icon: Icons.record_voice_over,
+                  title: '点名',
+                  subtitle: '按学号依次点名',
+                  color: Colors.blue,
+                  onTap: () => context.push('/roll-call/select'),
+                ),
+                const SizedBox(height: 16),
+                _EntryCard(
+                  icon: Icons.checklist,
+                  title: '记名',
+                  subtitle: '逐人记录考勤状态',
+                  color: Colors.green,
+                  onTap: () => context.push('/name-check/select'),
+                ),
+                const SizedBox(height: 16),
+                _EntryCard(
+                  icon: Icons.history,
+                  title: '查课记录',
+                  subtitle: '查看与编辑历史记录',
+                  color: Colors.orange,
+                  onTap: () => context.push('/records'),
+                ),
+              ],
             ),
-            const SizedBox(height: 16),
-            _EntryCard(
-              icon: Icons.checklist,
-              title: '记名',
-              subtitle: '逐人记录考勤状态',
-              color: Colors.green,
-              onTap: () => context.push('/name-check/select'),
-            ),
-            const SizedBox(height: 16),
-            _EntryCard(
-              icon: Icons.history,
-              title: '查课记录',
-              subtitle: '查看与编辑历史记录',
-              color: Colors.orange,
-              onTap: () => context.push('/records'),
-            ),
-          ],
+          ),
         ),
       ),
     );

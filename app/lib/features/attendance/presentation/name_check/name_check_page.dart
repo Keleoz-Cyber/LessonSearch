@@ -129,14 +129,19 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
 
           // 学生列表
           Expanded(
-            child: GridView.builder(
-              padding: const EdgeInsets.all(12),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                mainAxisSpacing: 8,
-                crossAxisSpacing: 8,
-                childAspectRatio: 2.5,
-              ),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final crossAxisCount = constraints.maxWidth > 400 ? 2 : 1;
+                final itemWidth = (constraints.maxWidth - 12 * 2 - 8 * (crossAxisCount - 1)) / crossAxisCount;
+                final itemHeight = 56.0;
+                return GridView.builder(
+                  padding: const EdgeInsets.all(12),
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: crossAxisCount,
+                    mainAxisSpacing: 8,
+                    crossAxisSpacing: 8,
+                    childAspectRatio: itemWidth / itemHeight,
+                  ),
               itemCount: students.length,
               itemBuilder: (context, index) {
                 final sw = students[index];
@@ -149,6 +154,8 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
                   remark: sw.remark,
                   isFocused: isFocused,
                   onTap: () => setState(() => _focusedIndex = index),
+                );
+              },
                 );
               },
             ),
@@ -217,34 +224,49 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
         color: Theme.of(context).colorScheme.surface,
         boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4, offset: const Offset(0, -1))],
       ),
-      child: Row(
-        children: [
-          _ActionButton(
-            label: '缺勤',
-            color: Colors.red,
-            onPressed: _focusedIndex != null ? () => mark(AttendanceStatus.absent) : null,
-          ),
-          const SizedBox(width: 8),
-          _ActionButton(
-            label: '请假',
-            color: Colors.orange,
-            onPressed: _focusedIndex != null ? () => mark(AttendanceStatus.leave) : null,
-          ),
-          const SizedBox(width: 8),
-          _ActionButton(
-            label: '其他',
-            color: Colors.grey,
-            onPressed: _focusedIndex != null ? () => markOther() : null,
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: FilledButton(
-              onPressed: _focusedIndex != null ? () => mark(AttendanceStatus.present) : null,
-              style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(44)),
-              child: const Text('到课（下一位）'),
+      child: SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: _ActionButton(
+                    label: '缺勤',
+                    color: Colors.red,
+                    onPressed: _focusedIndex != null ? () => mark(AttendanceStatus.absent) : null,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _ActionButton(
+                    label: '请假',
+                    color: Colors.orange,
+                    onPressed: _focusedIndex != null ? () => mark(AttendanceStatus.leave) : null,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _ActionButton(
+                    label: '其他',
+                    color: Colors.grey,
+                    onPressed: _focusedIndex != null ? () => markOther() : null,
+                  ),
+                ),
+              ],
             ),
-          ),
-        ],
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: _focusedIndex != null ? () => mark(AttendanceStatus.present) : null,
+                style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(44)),
+                child: const Text('到课（下一位）'),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -367,7 +389,7 @@ class _StudentCard extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(name, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
+                    Text(name, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500), overflow: TextOverflow.ellipsis),
                     Text(
                       studentNo.length > 6 ? studentNo.substring(studentNo.length - 6) : studentNo,
                       style: TextStyle(fontSize: 11, color: Colors.grey[600]),
