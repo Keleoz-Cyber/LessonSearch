@@ -122,7 +122,7 @@ class AboutPage extends StatelessWidget {
           const _InfoSection(
             title: '开发者',
             children: [
-              _PersonTile(name: '你的名字', role: '开发者', icon: Icons.code),
+              _PersonTile(name: 'keleoz', role: '开发者', icon: Icons.code),
               // 添加更多开发者：
               // _PersonTile(name: '张三', role: 'UI 设计', icon: Icons.design_services),
             ],
@@ -134,7 +134,7 @@ class AboutPage extends StatelessWidget {
           const _InfoSection(
             title: '致谢',
             children: [
-              _PersonTile(name: 'Claude', role: 'AI 编程助手', icon: Icons.smart_toy),
+              _PersonTile(name: '暂未设置', role: '暂未设置', icon: Icons.smart_toy),
               // 添加更多致谢：
               // _PersonTile(name: '李四', role: '测试支持', icon: Icons.bug_report),
             ],
