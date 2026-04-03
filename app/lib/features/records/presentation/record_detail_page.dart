@@ -18,6 +18,7 @@ class RecordDetailPage extends ConsumerStatefulWidget {
 
 class _RecordDetailPageState extends ConsumerState<RecordDetailPage> {
   List<RecordEntry> _entries = [];
+  String? _taskDate;
   bool _loading = true;
   bool _editing = false;
 
@@ -31,8 +32,14 @@ class _RecordDetailPageState extends ConsumerState<RecordDetailPage> {
     setState(() => _loading = true);
     final repo = ref.read(recordsRepositoryProvider);
     final entries = await repo.getRecordEntries(widget.taskId);
+    // 获取任务创建时间
+    final attendanceRepo = ref.read(attendanceRepositoryProvider);
+    final task = await attendanceRepo.getTask(widget.taskId);
     setState(() {
       _entries = entries;
+      _taskDate = task != null
+          ? task.createdAt.toString().substring(0, 16)
+          : DateTime.now().toString().substring(0, 16);
       _loading = false;
     });
   }
@@ -44,7 +51,7 @@ class _RecordDetailPageState extends ConsumerState<RecordDetailPage> {
   }
 
   void _generateText() {
-    final date = DateTime.now().toString().substring(0, 10);
+    final date = _taskDate ?? DateTime.now().toString().substring(0, 16);
 
     // 按班级分组
     final byClass = <String, List<RecordEntry>>{};

@@ -38,7 +38,8 @@ class _TextGenPageState extends ConsumerState<TextGenPage> with SingleTickerProv
 
   void _generateTexts() {
     final state = ref.read(nameCheckProvider);
-    final date = DateTime.now().toString().substring(0, 10);
+    final taskTime = state.task?.createdAt ?? DateTime.now();
+    final date = '${taskTime.toString().substring(0, 16)}';
 
     // 收集全局统计
     final allAbsent = <StudentRecord>[];
