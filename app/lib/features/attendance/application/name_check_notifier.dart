@@ -9,7 +9,9 @@ class NameCheckState {
   final AttendanceTask? task;
   final List<ClassInfo> classes;
   final int currentClassIndex;
-  final Map<int, List<StudentWithStatus>> studentsByClass; // classId → students
+  final Map<int, List<StudentWithStatus>> studentsByClass;
+  final int totalStudents;
+  final int processedStudents;
   final bool isLoading;
   final bool isFinished;
   final String? error;
@@ -19,6 +21,8 @@ class NameCheckState {
     this.classes = const [],
     this.currentClassIndex = 0,
     this.studentsByClass = const {},
+    this.totalStudents = 0,
+    this.processedStudents = 0,
     this.isLoading = false,
     this.isFinished = false,
     this.error,
@@ -33,17 +37,17 @@ class NameCheckState {
     return studentsByClass[cls.id] ?? [];
   }
 
-  int get totalStudents {
+  static int _calcTotal(Map<int, List<StudentWithStatus>> map) {
     var count = 0;
-    for (final list in studentsByClass.values) {
+    for (final list in map.values) {
       count += list.length;
     }
     return count;
   }
 
-  int get processedStudents {
+  static int _calcProcessed(Map<int, List<StudentWithStatus>> map) {
     var count = 0;
-    for (final list in studentsByClass.values) {
+    for (final list in map.values) {
       count += list.where((s) => s.status != AttendanceStatus.pending).length;
     }
     return count;
@@ -58,11 +62,18 @@ class NameCheckState {
     bool? isFinished,
     String? error,
   }) {
+    final newStudentsByClass = studentsByClass ?? this.studentsByClass;
     return NameCheckState(
       task: task ?? this.task,
       classes: classes ?? this.classes,
       currentClassIndex: currentClassIndex ?? this.currentClassIndex,
-      studentsByClass: studentsByClass ?? this.studentsByClass,
+      studentsByClass: newStudentsByClass,
+      totalStudents: studentsByClass != null
+          ? _calcTotal(newStudentsByClass)
+          : totalStudents,
+      processedStudents: studentsByClass != null
+          ? _calcProcessed(newStudentsByClass)
+          : processedStudents,
       isLoading: isLoading ?? this.isLoading,
       isFinished: isFinished ?? this.isFinished,
       error: error,

@@ -1,0 +1,43 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pip install:*)",
+      "Bash(python3:*)",
+      "Bash(python:*)",
+      "Bash(uvicorn main:app --host 0.0.0.0 --port 8000)",
+      "Bash(curl -s http://localhost:8000/health)",
+      "Bash(curl -s http://localhost:8000/api/grades)",
+      "Bash(curl -s http://localhost:8000/api/majors)",
+      "Bash(curl -s \"http://localhost:8000/api/classes?grade_id=3&major_id=1\")",
+      "Bash(curl -s \"http://localhost:8000/api/students?keyword=zhang&class_id=1\")",
+      "Bash(pkill -f \"uvicorn main:app\")",
+      "Bash(flutter --version)",
+      "Bash(flutter create:*)",
+      "Bash(flutter pub:*)",
+      "Bash(dart run:*)",
+      "Bash(dart:*)",
+      "Bash(flutter analyze:*)",
+      "Bash(flutter test:*)",
+      "Bash(curl -s -X POST http://localhost:8000/api/tasks -H 'Content-Type: application/json' -d '{\"id\":\"test-001\",\"type\":\"roll_call\",\"class_ids\":[1,2],\"selected_grade_id\":1}')",
+      "Bash(curl -s -X PUT http://localhost:8000/api/tasks/test-001 -H 'Content-Type: application/json' -d '{\"status\":\"in_progress\",\"phase\":\"executing\",\"current_student_index\":3}')",
+      "Bash(curl -s -X POST http://localhost:8000/api/tasks/test-001/records -H 'Content-Type: application/json' -d '[{\"student_id\":1,\"class_id\":1,\"status\":\"present\"},{\"student_id\":2,\"class_id\":1,\"status\":\"absent\"}]')",
+      "Bash(curl -s -X PUT http://localhost:8000/api/records/1 -H 'Content-Type: application/json' -d '{\"status\":\"leave\"}')",
+      "Bash(curl -s http://localhost:8000/api/tasks/test-001)",
+      "Bash(curl -s http://localhost:8000/api/tasks/test-001/records)",
+      "Bash(2>&1)",
+      "Bash(curl -s -X POST http://localhost:8000/api/tasks -H 'Content-Type: application/json' -d '{\"id\":\"test-002\",\"type\":\"roll_call\",\"class_ids\":[1,2],\"selected_grade_id\":1}')",
+      "Bash(curl -s -X PUT http://localhost:8000/api/tasks/test-002 -H 'Content-Type: application/json' -d '{\"status\":\"in_progress\",\"phase\":\"executing\",\"current_student_index\":3}')",
+      "Bash(curl -s -X POST http://localhost:8000/api/tasks/test-002/records -H 'Content-Type: application/json' -d '[{\"student_id\":1,\"class_id\":1,\"status\":\"present\"},{\"student_id\":2,\"class_id\":1,\"status\":\"absent\"}]')",
+      "Bash(curl -s http://localhost:8000/api/tasks/test-002)",
+      "Bash(curl -s http://localhost:8000/api/tasks/test-002/records)",
+      "Bash(taskkill //F //IM uvicorn.exe)",
+      "Bash(taskkill //F //IM python.exe)",
+      "Bash(curl -s http://localhost:8001/health)",
+      "Bash(curl -s -X POST http://localhost:8001/api/tasks -H 'Content-Type: application/json' -d '{\"id\":\"t-003\",\"type\":\"roll_call\",\"class_ids\":[1,2],\"selected_grade_id\":1}')",
+      "Bash(curl -s -X PUT http://localhost:8001/api/tasks/t-003 -H 'Content-Type: application/json' -d '{\"status\":\"in_progress\",\"phase\":\"executing\"}')",
+      "Bash(scp -r data/ root@36.150.231.151:/opt/lesson-search/data/)",
+      "Bash(curl.exe:*)",
+      "Bash(flutter build:*)"
+    ]
+  }
+}

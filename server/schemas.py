@@ -13,6 +13,11 @@ class SendCodeRequest(BaseModel):
 class LoginRequest(BaseModel):
     email: EmailStr
     code: str
+
+
+class RegisterRequest(BaseModel):
+    email: EmailStr
+    code: str
     invitation_code: str
 
 

@@ -5,16 +5,17 @@ import 'package:go_router/go_router.dart';
 import '../../../shared/providers.dart';
 import '../data/auth_service.dart';
 
-class LoginPage extends ConsumerStatefulWidget {
-  const LoginPage({super.key});
+class RegisterPage extends ConsumerStatefulWidget {
+  const RegisterPage({super.key});
 
   @override
-  ConsumerState<LoginPage> createState() => _LoginPageState();
+  ConsumerState<RegisterPage> createState() => _RegisterPageState();
 }
 
-class _LoginPageState extends ConsumerState<LoginPage> {
+class _RegisterPageState extends ConsumerState<RegisterPage> {
   final _emailController = TextEditingController();
   final _codeController = TextEditingController();
+  final _invitationCodeController = TextEditingController();
 
   bool _isLoading = false;
   bool _isSendingCode = false;
@@ -24,6 +25,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   void dispose() {
     _emailController.dispose();
     _codeController.dispose();
+    _invitationCodeController.dispose();
     super.dispose();
   }
 
@@ -66,11 +68,12 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     }
   }
 
-  Future<void> _login() async {
+  Future<void> _register() async {
     final email = _emailController.text.trim();
     final code = _codeController.text.trim();
+    final invitationCode = _invitationCodeController.text.trim();
 
-    if (email.isEmpty || code.isEmpty) {
+    if (email.isEmpty || code.isEmpty || invitationCode.isEmpty) {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('请填写所有字段')));
@@ -83,7 +86,11 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       final apiClient = ref.read(apiClientProvider);
       final authService = ref.read(authServiceProvider);
 
-      final response = await apiClient.login(email: email, code: code);
+      final response = await apiClient.register(
+        email: email,
+        code: code,
+        invitationCode: invitationCode,
+      );
 
       await authService.saveAuth(
         token: response['token'],
@@ -93,13 +100,17 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       );
 
       if (mounted) {
-        context.pop();
+        _showSuccessDialog();
       }
     } on Exception catch (e) {
       final msg = e.toString();
-      String hint = '登录失败';
-      if (msg.contains('账户不存在')) {
-        hint = '账户不存在，请先注册';
+      String hint = '注册失败';
+      if (msg.contains('邀请码无效')) {
+        hint = '邀请码无效';
+      } else if (msg.contains('已被使用')) {
+        hint = '邀请码已被使用';
+      } else if (msg.contains('已注册')) {
+        hint = '该邮箱已注册，请直接登录';
       } else if (msg.contains('验证码')) {
         hint = '验证码无效或已过期';
       }
@@ -109,16 +120,37 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     }
   }
 
+  void _showSuccessDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('注册成功'),
+        content: const Text(
+          '首次登录后，新创建的查课记录将仅属于当前账户。\n\n历史本地数据将继续在此设备上展示，但不会同步到服务器。',
+        ),
+        actions: [
+          FilledButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              context.pop();
+            },
+            child: const Text('我知道了'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('登录')),
+      appBar: AppBar(title: const Text('注册')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('使用邮箱验证码登录', style: Theme.of(context).textTheme.titleMedium),
+            Text('创建新账户', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 24),
 
             TextField(
@@ -159,17 +191,27 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 ),
               ],
             ),
+            const SizedBox(height: 16),
+
+            TextField(
+              controller: _invitationCodeController,
+              decoration: const InputDecoration(
+                labelText: '邀请码',
+                hintText: '请输入邀请码',
+                prefixIcon: Icon(Icons.vpn_key_outlined),
+              ),
+            ),
             const SizedBox(height: 32),
 
             FilledButton(
-              onPressed: _isLoading ? null : _login,
+              onPressed: _isLoading ? null : _register,
               child: _isLoading
                   ? const SizedBox(
                       width: 20,
                       height: 20,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : const Text('登录'),
+                  : const Text('注册'),
             ),
             const SizedBox(height: 16),
 
@@ -177,14 +219,14 @@ class _LoginPageState extends ConsumerState<LoginPage> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
-                  '没有账户？',
+                  '已有账户？',
                   style: TextStyle(
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ),
                 TextButton(
-                  onPressed: () => context.push('/register'),
-                  child: const Text('去注册'),
+                  onPressed: () => context.push('/login'),
+                  child: const Text('去登录'),
                 ),
               ],
             ),

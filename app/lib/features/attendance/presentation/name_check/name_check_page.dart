@@ -165,6 +165,7 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
                     final isFocused = _focusedIndex == index;
 
                     return _StudentCard(
+                      key: ValueKey('${sw.student.id}-${sw.status}'),
                       name: sw.student.name,
                       studentNo: sw.student.studentNo,
                       status: sw.status,
@@ -397,6 +398,7 @@ class _StudentCard extends StatelessWidget {
   final VoidCallback onTap;
 
   const _StudentCard({
+    super.key,
     required this.name,
     required this.studentNo,
     required this.status,

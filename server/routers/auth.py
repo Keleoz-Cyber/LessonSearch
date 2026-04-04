@@ -8,7 +8,7 @@ import jwt
 
 from database import get_db
 from models import User, VerificationCode, InvitationCode
-from schemas import SendCodeRequest, LoginRequest, LoginResponse, UserOut
+from schemas import SendCodeRequest, LoginRequest, RegisterRequest, LoginResponse, UserOut
 from config import (
     JWT_SECRET,
     JWT_EXPIRE_HOURS,
@@ -107,7 +107,9 @@ def send_code(body: SendCodeRequest, db: Session = Depends(get_db)):
 
 @router.post("/login", response_model=LoginResponse)
 def login(body: LoginRequest, db: Session = Depends(get_db)):
-    # 检查验证码
+    import sys
+    print(f"[DEBUG] login body: {body}", file=sys.stderr)
+    
     vc = db.query(VerificationCode).filter(
         VerificationCode.email == body.email,
         VerificationCode.code == body.code,
@@ -118,33 +120,12 @@ def login(body: LoginRequest, db: Session = Depends(get_db)):
     if not vc:
         raise HTTPException(status_code=400, detail="验证码无效或已过期")
 
-    vc.used = True
-
     user = db.query(User).filter(User.email == body.email).first()
-    is_new_user = False
-
+    
     if not user:
-        # 新用户需要验证邀请码
-        inv_code = db.query(InvitationCode).filter(
-            InvitationCode.code == body.invitation_code,
-        ).first()
-        
-        if not inv_code:
-            raise HTTPException(status_code=400, detail="邀请码无效")
-        
-        if inv_code.used:
-            raise HTTPException(status_code=400, detail="邀请码已被使用")
-        
-        user = User(email=body.email)
-        db.add(user)
-        db.flush()
-        is_new_user = True
-        
-        # 标记邀请码已使用
-        inv_code.used = True
-        inv_code.used_by = user.id
-        inv_code.used_at = datetime.now()
+        raise HTTPException(status_code=400, detail="账户不存在，请先注册")
 
+    vc.used = True
     user.last_login_at = datetime.now()
     db.commit()
     db.refresh(user)
@@ -153,7 +134,55 @@ def login(body: LoginRequest, db: Session = Depends(get_db)):
 
     return LoginResponse(
         token=token,
-        user=UserOut(id=user.id, email=user.email, nickname=user.nickname, is_new_user=is_new_user),
+        user=UserOut(id=user.id, email=user.email, nickname=user.nickname, is_new_user=False),
+    )
+
+
+@router.post("/register", response_model=LoginResponse)
+def register(body: RegisterRequest, db: Session = Depends(get_db)):
+    vc = db.query(VerificationCode).filter(
+        VerificationCode.email == body.email,
+        VerificationCode.code == body.code,
+        VerificationCode.used == False,
+        VerificationCode.expires_at > datetime.now(),
+    ).first()
+
+    if not vc:
+        raise HTTPException(status_code=400, detail="验证码无效或已过期")
+
+    existing_user = db.query(User).filter(User.email == body.email).first()
+    if existing_user:
+        raise HTTPException(status_code=400, detail="该邮箱已注册，请直接登录")
+
+    inv_code = db.query(InvitationCode).filter(
+        InvitationCode.code == body.invitation_code,
+    ).first()
+    
+    if not inv_code:
+        raise HTTPException(status_code=400, detail="邀请码无效")
+    
+    if inv_code.used:
+        raise HTTPException(status_code=400, detail="邀请码已被使用")
+
+    vc.used = True
+    
+    user = User(email=body.email)
+    db.add(user)
+    db.flush()
+    
+    inv_code.used = True
+    inv_code.used_by = user.id
+    inv_code.used_at = datetime.now()
+    
+    user.last_login_at = datetime.now()
+    db.commit()
+    db.refresh(user)
+
+    token = _create_token(user.id)
+
+    return LoginResponse(
+        token=token,
+        user=UserOut(id=user.id, email=user.email, nickname=user.nickname, is_new_user=True),
     )
 
 
