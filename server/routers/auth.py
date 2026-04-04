@@ -47,7 +47,7 @@ def _send_email(to: str, code: str):
 def _create_token(user_id: int) -> str:
     payload = {
         "user_id": user_id,
-        "exp": datetime.utcnow() + timedelta(hours=JWT_EXPIRE_HOURS),
+        "exp": datetime.now() + timedelta(hours=JWT_EXPIRE_HOURS),
     }
     return jwt.encode(payload, JWT_SECRET, algorithm="HS256")
 
@@ -84,14 +84,14 @@ def send_code(body: SendCodeRequest, db: Session = Depends(get_db)):
     existing = db.query(VerificationCode).filter(
         VerificationCode.email == body.email,
         VerificationCode.used == False,
-        VerificationCode.expires_at > datetime.utcnow(),
+        VerificationCode.expires_at > datetime.now(),
     ).first()
 
-    if existing and existing.created_at > datetime.utcnow() - timedelta(seconds=60):
+    if existing and existing.created_at > datetime.now() - timedelta(seconds=60):
         raise HTTPException(status_code=429, detail="请等待 60 秒后再发送")
 
     code = str(random.randint(100000, 999999))
-    expires_at = datetime.utcnow() + timedelta(minutes=5)
+    expires_at = datetime.now() + timedelta(minutes=5)
 
     vc = VerificationCode(
         email=body.email,
@@ -115,7 +115,7 @@ def login(body: LoginRequest, db: Session = Depends(get_db)):
         VerificationCode.email == body.email,
         VerificationCode.code == body.code,
         VerificationCode.used == False,
-        VerificationCode.expires_at > datetime.utcnow(),
+        VerificationCode.expires_at > datetime.now(),
     ).first()
 
     if not vc:
@@ -132,7 +132,7 @@ def login(body: LoginRequest, db: Session = Depends(get_db)):
         db.flush()
         is_new_user = True
 
-    user.last_login_at = datetime.utcnow()
+    user.last_login_at = datetime.now()
     db.commit()
     db.refresh(user)
 
