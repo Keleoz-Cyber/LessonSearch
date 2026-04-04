@@ -29,6 +29,17 @@ class VerificationCode(Base):
     created_at = Column(DateTime, server_default=func.now())
 
 
+class InvitationCode(Base):
+    __tablename__ = "invitation_codes"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    code = Column(String(20), unique=True, nullable=False)
+    used = Column(Boolean, default=False)
+    used_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    used_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, server_default=func.now())
+
+
 # ============================================================
 # 基础数据表
 # ============================================================

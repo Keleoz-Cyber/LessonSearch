@@ -26,9 +26,6 @@ DATABASE_URL = (
 # 用户认证配置
 # ============================================================
 
-# 固定邀请码（可多个，用逗号分隔）
-INVITATION_CODES = os.getenv("INVITATION_CODES", "lesson2026,keleoz").split(",")
-
 # JWT 配置
 JWT_SECRET = os.getenv("JWT_SECRET", "your-secret-key-change-in-production")
 JWT_EXPIRE_HOURS = int(os.getenv("JWT_EXPIRE_HOURS", "168"))  # 7天

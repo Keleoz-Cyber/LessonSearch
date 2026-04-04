@@ -7,10 +7,9 @@ from sqlalchemy.orm import Session
 import jwt
 
 from database import get_db
-from models import User, VerificationCode, AttendanceTask
+from models import User, VerificationCode, InvitationCode
 from schemas import SendCodeRequest, LoginRequest, LoginResponse, UserOut
 from config import (
-    INVITATION_CODES,
     JWT_SECRET,
     JWT_EXPIRE_HOURS,
     SMTP_HOST,
@@ -108,9 +107,18 @@ def send_code(body: SendCodeRequest, db: Session = Depends(get_db)):
 
 @router.post("/login", response_model=LoginResponse)
 def login(body: LoginRequest, db: Session = Depends(get_db)):
-    if body.invitation_code not in INVITATION_CODES:
+    # 检查邀请码
+    inv_code = db.query(InvitationCode).filter(
+        InvitationCode.code == body.invitation_code,
+    ).first()
+    
+    if not inv_code:
         raise HTTPException(status_code=400, detail="邀请码无效")
+    
+    if inv_code.used:
+        raise HTTPException(status_code=400, detail="邀请码已被使用")
 
+    # 检查验证码
     vc = db.query(VerificationCode).filter(
         VerificationCode.email == body.email,
         VerificationCode.code == body.code,
@@ -131,6 +139,11 @@ def login(body: LoginRequest, db: Session = Depends(get_db)):
         db.add(user)
         db.flush()
         is_new_user = True
+        
+        # 新用户才标记邀请码已使用
+        inv_code.used = True
+        inv_code.used_by = user.id
+        inv_code.used_at = datetime.now()
 
     user.last_login_at = datetime.now()
     db.commit()
