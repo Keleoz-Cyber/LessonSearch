@@ -7,6 +7,7 @@ import '../../features/attendance/presentation/name_check/name_check_page.dart';
 import '../../features/attendance/presentation/confirmation/confirmation_page.dart';
 import '../../features/attendance/presentation/text_generation/text_gen_page.dart';
 import '../../features/auth/presentation/login_page.dart';
+import '../../features/extension/presentation/extension_page.dart';
 import '../../features/records/presentation/records_list_page.dart';
 import '../../features/records/presentation/record_detail_page.dart';
 import '../../features/settings/presentation/settings_page.dart';
@@ -27,6 +28,13 @@ final appRouter = GoRouter(
       path: '/login',
       name: 'login',
       builder: (context, state) => const LoginPage(),
+    ),
+
+    // 扩展功能
+    GoRoute(
+      path: '/extension',
+      name: 'extension',
+      builder: (context, state) => const ExtensionPage(),
     ),
 
     // 点名

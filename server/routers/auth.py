@@ -36,7 +36,7 @@ def _send_email(to: str, code: str):
 
     msg = MIMEText(body, "html", "utf-8")
     msg["Subject"] = subject
-    msg["From"] = f"{SMTP_FROM_NAME} <{SMTP_USER}>"
+    msg["From"] = SMTP_USER
     msg["To"] = to
 
     with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT) as server:

@@ -100,13 +100,9 @@ class _HomePageState extends ConsumerState<HomePage> {
                 _EntryCard(
                   icon: Icons.extension,
                   title: '扩展功能',
-                  subtitle: '更多功能敬请期待',
+                  subtitle: '导入、提交、汇总、排行',
                   color: Colors.purple,
-                  onTap: () {
-                    ScaffoldMessenger.of(
-                      context,
-                    ).showSnackBar(const SnackBar(content: Text('暂未开发')));
-                  },
+                  onTap: () => context.push('/extension'),
                 ),
               ],
             ),

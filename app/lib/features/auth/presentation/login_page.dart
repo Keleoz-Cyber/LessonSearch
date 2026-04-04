@@ -54,10 +54,15 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         if (!mounted) break;
         setState(() => _countdown--);
       }
-    } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('发送失败: $e')));
+    } on Exception catch (e) {
+      final msg = e.toString();
+      String hint = '发送失败';
+      if (msg.contains('429')) {
+        hint = '请求过于频繁，请稍后再试';
+      } else if (msg.contains('500')) {
+        hint = '服务器错误，请检查SMTP配置';
+      }
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(hint)));
     } finally {
       if (mounted) setState(() => _isSendingCode = false);
     }
@@ -101,10 +106,15 @@ class _LoginPageState extends ConsumerState<LoginPage> {
           context.pop();
         }
       }
-    } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('登录失败: $e')));
+    } on Exception catch (e) {
+      final msg = e.toString();
+      String hint = '登录失败';
+      if (msg.contains('400')) {
+        hint = '验证码或邀请码错误';
+      } else if (msg.contains('401')) {
+        hint = '验证码已过期';
+      }
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(hint)));
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }

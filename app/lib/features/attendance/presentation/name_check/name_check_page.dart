@@ -405,14 +405,33 @@ class _StudentCard extends StatelessWidget {
     required this.onTap,
   });
 
-  Color get _statusColor => switch (status) {
-    AttendanceStatus.pending => Colors.grey.shade200,
-    AttendanceStatus.present => Colors.green.shade100,
-    AttendanceStatus.absent => Colors.red.shade100,
-    AttendanceStatus.late_ => Colors.amber.shade100,
-    AttendanceStatus.leave => Colors.orange.shade100,
-    AttendanceStatus.other => Colors.purple.shade100,
-  };
+  Color _statusColor(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return switch (status) {
+      AttendanceStatus.pending =>
+        isDark ? Colors.grey.shade800 : Colors.grey.shade200,
+      AttendanceStatus.present =>
+        isDark ? Colors.green.shade900 : Colors.green.shade100,
+      AttendanceStatus.absent =>
+        isDark ? Colors.red.shade900 : Colors.red.shade100,
+      AttendanceStatus.late_ =>
+        isDark ? Colors.amber.shade900 : Colors.amber.shade100,
+      AttendanceStatus.leave =>
+        isDark ? Colors.orange.shade900 : Colors.orange.shade100,
+      AttendanceStatus.other =>
+        isDark ? Colors.purple.shade900 : Colors.purple.shade100,
+    };
+  }
+
+  Color _textColor(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return isDark ? Colors.white : Colors.black87;
+  }
+
+  Color _subtextColor(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return isDark ? Colors.grey.shade400 : Colors.grey.shade600;
+  }
 
   String get _statusLabel => switch (status) {
     AttendanceStatus.pending => '',
@@ -426,7 +445,7 @@ class _StudentCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: _statusColor,
+      color: _statusColor(context),
       borderRadius: BorderRadius.circular(8),
       child: InkWell(
         onTap: onTap,
@@ -451,17 +470,19 @@ class _StudentCard extends StatelessWidget {
                   children: [
                     Text(
                       name,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w500,
+                        color: _textColor(context),
                       ),
                       overflow: TextOverflow.ellipsis,
                     ),
                     Text(
-                      studentNo.length > 6
-                          ? studentNo.substring(studentNo.length - 6)
-                          : studentNo,
-                      style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                      studentNo,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: _subtextColor(context),
+                      ),
                     ),
                   ],
                 ),
@@ -469,9 +490,10 @@ class _StudentCard extends StatelessWidget {
               if (_statusLabel.isNotEmpty)
                 Text(
                   _statusLabel,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.bold,
+                    color: _textColor(context),
                   ),
                 ),
             ],
