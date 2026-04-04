@@ -40,7 +40,7 @@ class SettingsPage extends ConsumerWidget {
           const ListTile(
             leading: Icon(Icons.tag),
             title: Text('版本号'),
-            subtitle: Text('0.3.1'),
+            subtitle: Text('0.3.2'),
           ),
 
           const Divider(),
@@ -338,7 +338,7 @@ class AboutPage extends StatelessWidget {
 
           Center(
             child: Text(
-              '查课 App v0.3.1',
+              '查课 App v0.3.2',
               style: TextStyle(
                 color: Theme.of(
                   context,
