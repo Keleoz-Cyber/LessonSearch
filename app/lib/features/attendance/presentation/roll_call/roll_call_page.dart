@@ -233,7 +233,12 @@ class _RollCallPageState extends ConsumerState<RollCallPage> {
     if (!mounted) return;
     switch (result) {
       case 'save':
-        context.pop();
+        // 保存当前进度到数据库
+        final s = ref.read(rollCallProvider);
+        if (s.task != null) {
+          await ref.read(rollCallProvider.notifier).saveProgress();
+        }
+        if (mounted) context.pop();
       case 'abandon':
         await ref.read(rollCallProvider.notifier).abandonTask();
         if (mounted) context.pop();

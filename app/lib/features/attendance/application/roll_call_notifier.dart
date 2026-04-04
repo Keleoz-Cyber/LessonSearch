@@ -186,6 +186,16 @@ class RollCallNotifier extends StateNotifier<RollCallState> {
     }
   }
 
+  /// 保存当前进度（保存退出时调用）
+  Future<void> saveProgress() async {
+    final task = state.task;
+    if (task == null) return;
+    await _attendanceRepo.updateTaskStatus(
+      task,
+      currentStudentIndex: state.currentIndex,
+    );
+  }
+
   /// 结束点名（提前结束时记录实际已点人数）
   Future<void> finishRollCall() async {
     final task = state.task;
