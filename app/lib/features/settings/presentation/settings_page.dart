@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/announcement/announcement_config.dart';
 import '../../../shared/providers.dart';
+import '../../../shared/widgets/toast.dart';
 
 class SettingsPage extends ConsumerWidget {
   const SettingsPage({super.key});
@@ -117,9 +118,7 @@ class SettingsPage extends ConsumerWidget {
                 await ref.read(authServiceProvider).clearAuth();
                 if (context.mounted) {
                   Navigator.pop(ctx);
-                  ScaffoldMessenger.of(
-                    context,
-                  ).showSnackBar(const SnackBar(content: Text('已退出登录')));
+                  Toast.show(context, '已退出登录');
                 }
               },
               child: const Text('退出'),
@@ -246,9 +245,7 @@ class SettingsPage extends ConsumerWidget {
 
       if (latestVersion == currentVersion) {
         if (context.mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(const SnackBar(content: Text('当前已是最新版本')));
+          Toast.show(context, '当前已是最新版本');
         }
         return;
       }
@@ -285,9 +282,7 @@ class SettingsPage extends ConsumerWidget {
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('检查更新失败: $e')));
+        Toast.show(context, '检查更新失败');
       }
     }
   }

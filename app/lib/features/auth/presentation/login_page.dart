@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../shared/providers.dart';
+import '../../../shared/widgets/toast.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
@@ -30,9 +31,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   Future<void> _sendCode() async {
     final email = _emailController.text.trim();
     if (email.isEmpty || !email.contains('@')) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('请输入正确的邮箱地址')));
+      Toast.show(context, '请输入正确的邮箱地址');
       return;
     }
 
@@ -42,9 +41,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       final apiClient = ref.read(apiClientProvider);
       await apiClient.sendVerificationCode(email);
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('验证码已发送')));
+      Toast.show(context, '验证码已发送');
 
       setState(() => _countdown = 60);
       while (_countdown > 0) {
@@ -62,11 +59,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       } else {
         hint = e.response?.data['detail'] ?? '发送失败';
       }
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(hint)));
+      Toast.show(context, hint);
     } on Exception {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('网络错误，请稍后重试')));
+      Toast.show(context, '网络错误，请稍后重试');
     } finally {
       if (mounted) setState(() => _isSendingCode = false);
     }
@@ -77,9 +72,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     final code = _codeController.text.trim();
 
     if (email.isEmpty || code.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('请填写所有字段')));
+      Toast.show(context, '请填写所有字段');
       return;
     }
 
@@ -111,11 +104,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       } else if (detail.isNotEmpty) {
         hint = detail;
       }
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(hint)));
+      Toast.show(context, hint);
     } on Exception {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('网络错误，请稍后重试')));
+      Toast.show(context, '网络错误，请稍后重试');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }

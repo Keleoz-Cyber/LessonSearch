@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../shared/providers.dart';
-import '../../../attendance/application/name_check_notifier.dart';
+import '../../../../shared/widgets/toast.dart';
 import '../../../attendance/domain/models.dart';
 import '../../../attendance/domain/text_template.dart';
 
@@ -17,7 +17,8 @@ class TextGenPage extends ConsumerStatefulWidget {
   ConsumerState<TextGenPage> createState() => _TextGenPageState();
 }
 
-class _TextGenPageState extends ConsumerState<TextGenPage> with SingleTickerProviderStateMixin {
+class _TextGenPageState extends ConsumerState<TextGenPage>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
   String _groupReport = '';
   String _committeeReport = '';
@@ -93,19 +94,21 @@ class _TextGenPageState extends ConsumerState<TextGenPage> with SingleTickerProv
       totalAll += students.length;
       presentAll += classPresent;
 
-      classStatsList.add(ClassStats(
-        className: cls.displayName,
-        total: students.length,
-        present: classPresent,
-        absent: classAbsent.length,
-        late_: classLate.length,
-        leave: classLeave.length,
-        other: classOther.length,
-        absentStudents: classAbsent,
-        lateStudents: classLate,
-        leaveStudents: classLeave,
-        otherStudents: classOther,
-      ));
+      classStatsList.add(
+        ClassStats(
+          className: cls.displayName,
+          total: students.length,
+          present: classPresent,
+          absent: classAbsent.length,
+          late_: classLate.length,
+          leave: classLeave.length,
+          other: classOther.length,
+          absentStudents: classAbsent,
+          lateStudents: classLate,
+          leaveStudents: classLeave,
+          otherStudents: classOther,
+        ),
+      );
     }
 
     final stats = AttendanceStats(
@@ -132,9 +135,7 @@ class _TextGenPageState extends ConsumerState<TextGenPage> with SingleTickerProv
 
   void _copy(String text) {
     Clipboard.setData(ClipboardData(text: text));
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('已复制到剪贴板'), duration: Duration(seconds: 1)),
-    );
+    Toast.show(context, '已复制到剪贴板');
   }
 
   Future<void> _finish() async {
@@ -149,8 +150,14 @@ class _TextGenPageState extends ConsumerState<TextGenPage> with SingleTickerProv
         title: const Text('提示'),
         content: const Text('是否已复制所需文本？直接退出不会丢失数据。'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('返回复制')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('确认退出')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('返回复制'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('确认退出'),
+          ),
         ],
       ),
     );
@@ -188,7 +195,9 @@ class _TextGenPageState extends ConsumerState<TextGenPage> with SingleTickerProv
           padding: const EdgeInsets.all(16),
           child: FilledButton(
             onPressed: _finish,
-            style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+            style: FilledButton.styleFrom(
+              minimumSize: const Size.fromHeight(48),
+            ),
             child: const Text('完成'),
           ),
         ),
@@ -214,7 +223,9 @@ class _TextGenPageState extends ConsumerState<TextGenPage> with SingleTickerProv
             onPressed: () => _copy(text),
             icon: const Icon(Icons.copy),
             label: Text('复制$label'),
-            style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(44)),
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size.fromHeight(44),
+            ),
           ),
         ),
       ],

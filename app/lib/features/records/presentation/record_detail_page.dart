@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../shared/providers.dart';
+import '../../../shared/widgets/toast.dart';
 import '../data/records_repository.dart';
 import '../../attendance/domain/models.dart';
 import '../../attendance/domain/text_template.dart';
@@ -53,7 +54,12 @@ class _RecordDetailPageState extends ConsumerState<RecordDetailPage> {
     });
   }
 
-  Future<void> _updateStatus(int recordId, int index, AttendanceStatus newStatus, {String? remark}) async {
+  Future<void> _updateStatus(
+    int recordId,
+    int index,
+    AttendanceStatus newStatus, {
+    String? remark,
+  }) async {
     final repo = ref.read(recordsRepositoryProvider);
     await repo.updateRecord(recordId, newStatus, remark: remark);
     await _load();
@@ -77,44 +83,59 @@ class _RecordDetailPageState extends ConsumerState<RecordDetailPage> {
     for (final entry in byClass.entries) {
       classNames.add(entry.key);
       final students = entry.value;
-      final absent = students.where((s) => s.status == AttendanceStatus.absent).toList();
-      final late_ = students.where((s) => s.status == AttendanceStatus.late_).toList();
-      final leave = students.where((s) => s.status == AttendanceStatus.leave).toList();
-      final other = students.where((s) => s.status == AttendanceStatus.other).toList();
-      final present = students.length - absent.length - leave.length - other.length;
+      final absent = students
+          .where((s) => s.status == AttendanceStatus.absent)
+          .toList();
+      final late_ = students
+          .where((s) => s.status == AttendanceStatus.late_)
+          .toList();
+      final leave = students
+          .where((s) => s.status == AttendanceStatus.leave)
+          .toList();
+      final other = students
+          .where((s) => s.status == AttendanceStatus.other)
+          .toList();
+      final present =
+          students.length - absent.length - leave.length - other.length;
 
       toRecord(RecordEntry e) => StudentRecord(
-            name: e.studentName,
-            studentNo: e.studentNo,
-            className: e.className,
-            remark: e.remark,
-          );
+        name: e.studentName,
+        studentNo: e.studentNo,
+        className: e.className,
+        remark: e.remark,
+      );
 
       allAbsent.addAll(absent.map(toRecord));
       allLate.addAll(late_.map(toRecord));
       allLeave.addAll(leave.map(toRecord));
       allOther.addAll(other.map(toRecord));
 
-      classStatsList.add(ClassStats(
-        className: entry.key,
-        total: students.length,
-        present: present,
-        absent: absent.length,
-        late_: late_.length,
-        leave: leave.length,
-        other: other.length,
-        absentStudents: absent.map(toRecord).toList(),
-        lateStudents: late_.map(toRecord).toList(),
-        leaveStudents: leave.map(toRecord).toList(),
-        otherStudents: other.map(toRecord).toList(),
-      ));
+      classStatsList.add(
+        ClassStats(
+          className: entry.key,
+          total: students.length,
+          present: present,
+          absent: absent.length,
+          late_: late_.length,
+          leave: leave.length,
+          other: other.length,
+          absentStudents: absent.map(toRecord).toList(),
+          lateStudents: late_.map(toRecord).toList(),
+          leaveStudents: leave.map(toRecord).toList(),
+          otherStudents: other.map(toRecord).toList(),
+        ),
+      );
     }
 
     final stats = AttendanceStats(
       date: date,
       classNames: classNames,
       total: _entries.length,
-      present: _entries.length - allAbsent.length - allLeave.length - allOther.length,
+      present:
+          _entries.length -
+          allAbsent.length -
+          allLeave.length -
+          allOther.length,
       absent: allAbsent.length,
       late_: allLate.length,
       leave: allLeave.length,
@@ -158,7 +179,9 @@ class _RecordDetailPageState extends ConsumerState<RecordDetailPage> {
   // ============================================================
 
   Widget _buildRollCallView(BuildContext context) {
-    final calledEntries = _entries.where((e) => e.status == AttendanceStatus.present).toList();
+    final calledEntries = _entries
+        .where((e) => e.status == AttendanceStatus.present)
+        .toList();
     final notCalledCount = _entries.length - calledEntries.length;
 
     // 按班级分组
@@ -168,15 +191,15 @@ class _RecordDetailPageState extends ConsumerState<RecordDetailPage> {
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('点名记录'),
-      ),
+      appBar: AppBar(title: const Text('点名记录')),
       body: Column(
         children: [
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(16),
-            color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3),
+            color: Theme.of(
+              context,
+            ).colorScheme.primaryContainer.withValues(alpha: 0.3),
             child: Text(
               '共 ${_entries.length} 人，已点 ${calledEntries.length} 人，未点 $notCalledCount 人',
               style: Theme.of(context).textTheme.titleMedium,
@@ -194,7 +217,9 @@ class _RecordDetailPageState extends ConsumerState<RecordDetailPage> {
                       padding: const EdgeInsets.only(top: 8, bottom: 8),
                       child: Text(
                         entry.key,
-                        style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                     ...entry.value.map((record) {
@@ -206,17 +231,30 @@ class _RecordDetailPageState extends ConsumerState<RecordDetailPage> {
                             Expanded(flex: 2, child: Text(record.studentName)),
                             Expanded(
                               flex: 3,
-                              child: Text(record.studentNo, style: TextStyle(fontSize: 13, color: Colors.grey[600])),
+                              child: Text(
+                                record.studentNo,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
                             ),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 2,
+                              ),
                               decoration: BoxDecoration(
-                                color: (called ? Colors.green : Colors.grey).withValues(alpha: 0.15),
+                                color: (called ? Colors.green : Colors.grey)
+                                    .withValues(alpha: 0.15),
                                 borderRadius: BorderRadius.circular(4),
                               ),
                               child: Text(
                                 called ? '已点' : '未点',
-                                style: TextStyle(color: called ? Colors.green : Colors.grey, fontSize: 13),
+                                style: TextStyle(
+                                  color: called ? Colors.green : Colors.grey,
+                                  fontSize: 13,
+                                ),
                               ),
                             ),
                           ],
@@ -281,7 +319,9 @@ class _RecordDetailPageState extends ConsumerState<RecordDetailPage> {
                       padding: const EdgeInsets.only(top: 8, bottom: 8),
                       child: Text(
                         entry.key,
-                        style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                     ...entry.value.asMap().entries.map((e) {
@@ -290,8 +330,12 @@ class _RecordDetailPageState extends ConsumerState<RecordDetailPage> {
                       return _RecordRow(
                         entry: record,
                         editing: _editing,
-                        onStatusChanged: (status, {remark}) =>
-                            _updateStatus(record.recordId, idx, status, remark: remark),
+                        onStatusChanged: (status, {remark}) => _updateStatus(
+                          record.recordId,
+                          idx,
+                          status,
+                          remark: remark,
+                        ),
                       );
                     }),
                     const Divider(),
@@ -315,22 +359,22 @@ class _RecordRow extends StatelessWidget {
   });
 
   Color get _color => switch (entry.status) {
-        AttendanceStatus.present => Colors.green,
-        AttendanceStatus.absent => Colors.red,
-        AttendanceStatus.late_ => Colors.amber.shade700,
-        AttendanceStatus.leave => Colors.orange,
-        AttendanceStatus.other => Colors.purple,
-        AttendanceStatus.pending => Colors.grey,
-      };
+    AttendanceStatus.present => Colors.green,
+    AttendanceStatus.absent => Colors.red,
+    AttendanceStatus.late_ => Colors.amber.shade700,
+    AttendanceStatus.leave => Colors.orange,
+    AttendanceStatus.other => Colors.purple,
+    AttendanceStatus.pending => Colors.grey,
+  };
 
   String get _label => switch (entry.status) {
-        AttendanceStatus.present => '到',
-        AttendanceStatus.absent => '缺勤',
-        AttendanceStatus.late_ => '迟到',
-        AttendanceStatus.leave => '请假',
-        AttendanceStatus.other => entry.remark ?? '其他',
-        AttendanceStatus.pending => '待查',
-      };
+    AttendanceStatus.present => '到',
+    AttendanceStatus.absent => '缺勤',
+    AttendanceStatus.late_ => '迟到',
+    AttendanceStatus.leave => '请假',
+    AttendanceStatus.other => entry.remark ?? '其他',
+    AttendanceStatus.pending => '待查',
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -341,7 +385,10 @@ class _RecordRow extends StatelessWidget {
           Expanded(flex: 2, child: Text(entry.studentName)),
           Expanded(
             flex: 3,
-            child: Text(entry.studentNo, style: TextStyle(fontSize: 13, color: Colors.grey[600])),
+            child: Text(
+              entry.studentNo,
+              style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+            ),
           ),
           if (editing)
             PopupMenuButton<AttendanceStatus>(
@@ -354,14 +401,32 @@ class _RecordRow extends StatelessWidget {
                 }
               },
               itemBuilder: (ctx) => [
-                const PopupMenuItem(value: AttendanceStatus.present, child: Text('到课')),
-                const PopupMenuItem(value: AttendanceStatus.absent, child: Text('缺勤')),
-                const PopupMenuItem(value: AttendanceStatus.late_, child: Text('迟到')),
-                const PopupMenuItem(value: AttendanceStatus.leave, child: Text('请假')),
-                const PopupMenuItem(value: AttendanceStatus.other, child: Text('其他...')),
+                const PopupMenuItem(
+                  value: AttendanceStatus.present,
+                  child: Text('到课'),
+                ),
+                const PopupMenuItem(
+                  value: AttendanceStatus.absent,
+                  child: Text('缺勤'),
+                ),
+                const PopupMenuItem(
+                  value: AttendanceStatus.late_,
+                  child: Text('迟到'),
+                ),
+                const PopupMenuItem(
+                  value: AttendanceStatus.leave,
+                  child: Text('请假'),
+                ),
+                const PopupMenuItem(
+                  value: AttendanceStatus.other,
+                  child: Text('其他...'),
+                ),
               ],
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: _color.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(4),
@@ -383,7 +448,10 @@ class _RecordRow extends StatelessWidget {
                 color: _color.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(4),
               ),
-              child: Text(_label, style: TextStyle(color: _color, fontSize: 13)),
+              child: Text(
+                _label,
+                style: TextStyle(color: _color, fontSize: 13),
+              ),
             ),
         ],
       ),
@@ -405,11 +473,17 @@ class _RecordRow extends StatelessWidget {
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('取消')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('取消'),
+          ),
           FilledButton(
             onPressed: () {
               Navigator.pop(ctx);
-              onStatusChanged(AttendanceStatus.other, remark: controller.text.trim());
+              onStatusChanged(
+                AttendanceStatus.other,
+                remark: controller.text.trim(),
+              );
             },
             child: const Text('确认'),
           ),
@@ -437,7 +511,12 @@ class _TextSheet extends StatelessWidget {
           length: 2,
           child: Column(
             children: [
-              const TabBar(tabs: [Tab(text: '总群汇报'), Tab(text: '学委汇报')]),
+              const TabBar(
+                tabs: [
+                  Tab(text: '总群汇报'),
+                  Tab(text: '学委汇报'),
+                ],
+              ),
               Expanded(
                 child: TabBarView(
                   children: [
@@ -459,7 +538,10 @@ class _TextSheet extends StatelessWidget {
         Expanded(
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(16),
-            child: SelectableText(text, style: const TextStyle(fontSize: 14, height: 1.6)),
+            child: SelectableText(
+              text,
+              style: const TextStyle(fontSize: 14, height: 1.6),
+            ),
           ),
         ),
         Padding(
@@ -467,13 +549,13 @@ class _TextSheet extends StatelessWidget {
           child: OutlinedButton.icon(
             onPressed: () {
               Clipboard.setData(ClipboardData(text: text));
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('已复制$label'), duration: const Duration(seconds: 1)),
-              );
+              Toast.show(context, '已复制$label');
             },
             icon: const Icon(Icons.copy),
             label: Text('复制$label'),
-            style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(44)),
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size.fromHeight(44),
+            ),
           ),
         ),
       ],
