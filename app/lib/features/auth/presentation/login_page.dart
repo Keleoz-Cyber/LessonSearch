@@ -1,9 +1,9 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../shared/providers.dart';
-import '../data/auth_service.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
@@ -52,15 +52,21 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         if (!mounted) break;
         setState(() => _countdown--);
       }
-    } on Exception catch (e) {
-      final msg = e.toString();
+    } on DioException catch (e) {
+      final status = e.response?.statusCode;
       String hint = '发送失败';
-      if (msg.contains('429')) {
+      if (status == 429) {
         hint = '请求过于频繁，请稍后再试';
-      } else if (msg.contains('500')) {
+      } else if (status == 500) {
         hint = '服务器错误，请检查SMTP配置';
+      } else {
+        hint = e.response?.data['detail'] ?? '发送失败';
       }
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(hint)));
+    } on Exception {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('网络错误，请稍后重试')));
     } finally {
       if (mounted) setState(() => _isSendingCode = false);
     }
@@ -95,15 +101,21 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       if (mounted) {
         context.pop();
       }
-    } on Exception catch (e) {
-      final msg = e.toString();
+    } on DioException catch (e) {
+      final detail = e.response?.data['detail'] ?? '';
       String hint = '登录失败';
-      if (msg.contains('账户不存在')) {
+      if (detail.contains('账户不存在')) {
         hint = '账户不存在，请先注册';
-      } else if (msg.contains('验证码')) {
+      } else if (detail.contains('验证码')) {
         hint = '验证码无效或已过期';
+      } else if (detail.isNotEmpty) {
+        hint = detail;
       }
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(hint)));
+    } on Exception {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('网络错误，请稍后重试')));
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
