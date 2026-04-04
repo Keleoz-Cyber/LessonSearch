@@ -107,17 +107,6 @@ def send_code(body: SendCodeRequest, db: Session = Depends(get_db)):
 
 @router.post("/login", response_model=LoginResponse)
 def login(body: LoginRequest, db: Session = Depends(get_db)):
-    # 检查邀请码
-    inv_code = db.query(InvitationCode).filter(
-        InvitationCode.code == body.invitation_code,
-    ).first()
-    
-    if not inv_code:
-        raise HTTPException(status_code=400, detail="邀请码无效")
-    
-    if inv_code.used:
-        raise HTTPException(status_code=400, detail="邀请码已被使用")
-
     # 检查验证码
     vc = db.query(VerificationCode).filter(
         VerificationCode.email == body.email,
@@ -135,12 +124,23 @@ def login(body: LoginRequest, db: Session = Depends(get_db)):
     is_new_user = False
 
     if not user:
+        # 新用户需要验证邀请码
+        inv_code = db.query(InvitationCode).filter(
+            InvitationCode.code == body.invitation_code,
+        ).first()
+        
+        if not inv_code:
+            raise HTTPException(status_code=400, detail="邀请码无效")
+        
+        if inv_code.used:
+            raise HTTPException(status_code=400, detail="邀请码已被使用")
+        
         user = User(email=body.email)
         db.add(user)
         db.flush()
         is_new_user = True
         
-        # 新用户才标记邀请码已使用
+        # 标记邀请码已使用
         inv_code.used = True
         inv_code.used_by = user.id
         inv_code.used_at = datetime.now()
