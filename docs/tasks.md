@@ -1,7 +1,7 @@
 # 查课 App — 开发任务表
 
 > 更新日期：2026-04-04
-> 当前版本：0.3.0
+> 当前版本：0.3.1
 
 ---
 
@@ -71,12 +71,12 @@
 
 ### P11：邮箱验证码登录 ✅ (v0.3.0)
 - 服务端：users + verification_codes + invitation_codes 表
-- 服务端：/api/auth/send-code、/api/auth/login、/api/auth/me 接口
+- 服务端：/api/auth/send-code、/api/auth/login、/api/auth/register、/api/auth/me 接口
 - 服务端：SMTP 发送验证码（QQ邮箱）
 - 服务端：JWT token 认证（7天过期）
-- 客户端：登录页面、AuthService、token 管理
+- 客户端：登录页面、注册页面、AuthService、token 管理
 - 客户端：ApiClient 自动携带 token
-- 一人一码邀请机制（新用户注册需邀请码）
+- 一人一码邀请机制（仅注册时需要邀请码）
 - 数据隔离：登录后创建的任务绑定 user_id
 
 ### P12：暗色模式 ✅ (v0.3.0)
@@ -84,13 +84,24 @@
 - 主题持久化到 SharedPreferences
 - 记名名单暗色适配
 
-### P13：扩展功能入口 ✅ (v0.3.0)
+### P13：暗色模式 ✅ (v0.3.0)
+- 设置页主题切换：跟随系统/亮色/暗色
+- 主题持久化到 SharedPreferences
+- 记名名单暗色适配
+
+### P14：扩展功能入口 ✅ (v0.3.0)
 - 首页扩展功能入口
 - 扩展功能页：导入查课信息、名单提交、周名单汇总、排行榜（暂未实现）
 
----
+### P15：登录注册分离 ✅ (v0.3.1)
+- 登录页：只需邮箱+验证码
+- 注册页：邮箱+验证码+邀请码
+- 老用户登录无需邀请码
 
-## 待实施
+### P16：性能优化 ✅ (v0.3.1)
+- NameCheckState 缓存计算字段
+- GridView 添加 key 减少 Widget 重建
+- SyncService 增加同步间隔和批量限制
 
 | 项目 | 说明 | 优先级 |
 |------|------|--------|

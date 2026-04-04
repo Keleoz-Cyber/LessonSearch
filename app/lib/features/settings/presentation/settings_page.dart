@@ -40,7 +40,7 @@ class SettingsPage extends ConsumerWidget {
           const ListTile(
             leading: Icon(Icons.tag),
             title: Text('版本号'),
-            subtitle: Text('0.3.0'),
+            subtitle: Text('0.3.1'),
           ),
 
           const Divider(),
@@ -53,6 +53,13 @@ class SettingsPage extends ConsumerWidget {
             subtitle: const Text('查看最新公告信息'),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => _showAnnouncement(context),
+          ),
+          ListTile(
+            leading: const Icon(Icons.history),
+            title: const Text('更新日志'),
+            subtitle: const Text('查看历史版本更新内容'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => _showUpdateNotes(context),
           ),
           ListTile(
             leading: const Icon(Icons.system_update),
@@ -193,32 +200,30 @@ class SettingsPage extends ConsumerWidget {
       builder: (ctx) => AlertDialog(
         title: const Text(announcementTitle),
         content: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                announcementContent.trim(),
-                style: const TextStyle(height: 1.6),
-              ),
-              const SizedBox(height: 16),
-              const Divider(),
-              const SizedBox(height: 8),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Theme.of(
-                    ctx,
-                  ).colorScheme.primary.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  updateNotes.trim(),
-                  style: const TextStyle(fontSize: 13, height: 1.5),
-                ),
-              ),
-            ],
+          child: Text(
+            announcementContent.trim(),
+            style: const TextStyle(height: 1.6),
+          ),
+        ),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('关闭'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showUpdateNotes(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('更新日志'),
+        content: SingleChildScrollView(
+          child: Text(
+            updateNotes.trim(),
+            style: const TextStyle(fontSize: 13, height: 1.6),
           ),
         ),
         actions: [
@@ -333,7 +338,7 @@ class AboutPage extends StatelessWidget {
 
           Center(
             child: Text(
-              '查课 App v0.3.0',
+              '查课 App v0.3.1',
               style: TextStyle(
                 color: Theme.of(
                   context,

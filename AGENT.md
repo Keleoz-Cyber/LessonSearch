@@ -1,7 +1,7 @@
 # AGENT.md — AI Agent 协作指南
 
 > 本文档面向接手此项目的 AI Agent。请在开始任何工作前完整阅读此文件。
-> 最后更新：2026-04-04 · 当前版本：0.3.0
+> 最后更新：2026-04-04 · 当前版本：0.3.1
 
 ---
 
@@ -115,7 +115,9 @@ app/lib/
 │   │
 │   ├── auth/                          # ★ 用户认证（v0.3.0 新增）
 │   │   ├── data/auth_service.dart     # token 管理、登录状态
-│   │   └── presentation/login_page.dart
+│   │   └── presentation/
+│   │       ├── login_page.dart        # 登录页
+│   │       └── register_page.dart     # 注册页
 │   │
 │   ├── extension/                     # ★ 扩展功能（v0.3.0 新增）
 │   │   └── presentation/extension_page.dart
@@ -243,20 +245,20 @@ SyncService(每10秒)
 
 ### 登录流程（v0.3.0）
 ```
-设置页 → 登录页
-  输入邮箱 → 发送验证码 → SMTP 发送邮件（5分钟有效）
-  输入验证码 + 邀请码 → 验证
-    → 新用户：检查邀请码有效性 → 创建账户 → 标记邀请码已使用
-    → 老用户：忽略邀请码
-  → 返回 JWT token（7天有效）
-  → AuthService 保存到 SharedPreferences
-  → ApiClient 自动携带 Authorization: Bearer <token>
-  → 后续请求按 user_id 过滤数据
+设置页 → 登录页 → 输入邮箱 → 发送验证码（SMTP）
+→ 输入验证码 → 验证成功 → 返回 JWT token
+→ AuthService 保存到 SharedPreferences
+→ ApiClient 自动携带 Authorization: Bearer <token>
+→ 后续请求按 user_id 过滤数据
+
+注册页 → 输入邮箱 → 发送验证码
+→ 输入验证码 + 邀请码 → 验证成功 → 创建账户 → 返回 JWT token
 ```
 
 ### 邀请码机制
 - **一人一码**：每个邀请码只能注册一个新用户
-- **老用户登录**：不需要邀请码
+- **注册时需要**：新用户注册必须提供有效邀请码
+- **登录时不需要**：老用户登录只需邮箱+验证码
 - **管理**：`docs/invitation-codes.md`
 
 ---
@@ -360,6 +362,7 @@ syncStateProvider (SyncState) — 供 UI 监听同步状态
 10. **服务端时间用 datetime.now()** — 不用 utcnow()，否则时区不一致导致验证码验证失败
 11. **登录后任务带 userId** — 创建任务时传入 `authService.userId`，否则数据不会隔离
 12. **userId=NULL 的任务不同步** — 本地历史数据（登录前）不会被同步到服务端
+13. **登录和注册分离** — 登录只需邮箱+验证码，注册需要额外提供邀请码
 
 ---
 

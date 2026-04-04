@@ -1,6 +1,6 @@
 # 查课 App 开发文档
 
-> 版本：0.3.0 | 更新日期：2026-04-04 | 仓库：https://github.com/Keleoz-Cyber/LessonSearch
+> 版本：0.3.1 | 更新日期：2026-04-04 | 仓库：https://github.com/Keleoz-Cyber/LessonSearch
 
 ---
 
@@ -101,7 +101,8 @@ LessonSearch/
 │   │   │   │   ├── data/
 │   │   │   │   │   └── auth_service.dart    # token 管理
 │   │   │   │   └── presentation/
-│   │   │   │       └── login_page.dart      # 登录页
+│   │   │   │       ├── login_page.dart      # 登录页
+│   │   │   │       └── register_page.dart   # 注册页
 │   │   │   ├── extension/                 # 扩展功能（v0.3.0 新增）
 │   │   │   │   └── presentation/
 │   │   │   │       └── extension_page.dart  # 扩展功能页
@@ -285,7 +286,8 @@ Swagger 文档：`https://api.keleoz.cn/docs`
 | 方法 | 路径 | 说明 |
 |------|------|------|
 | POST | `/api/auth/send-code` | 发送邮箱验证码 |
-| POST | `/api/auth/login` | 验证码登录（自动注册） |
+| POST | `/api/auth/login` | 登录（邮箱+验证码） |
+| POST | `/api/auth/register` | 注册（邮箱+验证码+邀请码） |
 | GET | `/api/auth/me` | 获取当前用户信息（需 token） |
 
 **发送验证码：**
@@ -297,6 +299,26 @@ POST /api/auth/send-code
 **登录：**
 ```json
 POST /api/auth/login
+{
+  "email": "user@example.com",
+  "code": "123456"
+}
+
+// 响应
+{
+  "token": "eyJ...",
+  "user": {
+    "id": 1,
+    "email": "user@example.com",
+    "nickname": null,
+    "is_new_user": false
+  }
+}
+```
+
+**注册：**
+```json
+POST /api/auth/register
 {
   "email": "user@example.com",
   "code": "123456",
