@@ -81,19 +81,24 @@ class RollCallNotifier extends StateNotifier<RollCallState> {
         return;
       }
 
+      await _studentRepo.ensureStudentsBatch(task.classIds);
+      final classMap = await _studentRepo.getClassMap();
+      final studentsMap = await _studentRepo.getStudentsByClasses(
+        task.classIds,
+      );
+
       final allStudents = <StudentInfo>[];
       final classNameMap = <int, String>{};
-      final allClasses = await _studentRepo.getClasses();
 
       for (final classId in task.classIds) {
-        await _studentRepo.ensureStudentsForClass(classId);
-        final students = await _studentRepo.getStudentsByClass(classId);
+        final students = studentsMap[classId] ?? [];
         allStudents.addAll(students);
-        final classInfo = allClasses.firstWhere((c) => c.id == classId);
-        classNameMap[classId] = classInfo.displayName;
+        final classInfo = classMap[classId];
+        if (classInfo != null) {
+          classNameMap[classId] = classInfo.displayName;
+        }
       }
 
-      // 从上次的位置继续
       final resumeIndex = task.currentStudentIndex;
 
       state = state.copyWith(
@@ -118,17 +123,20 @@ class RollCallNotifier extends StateNotifier<RollCallState> {
     state = const RollCallState(isLoading: true);
 
     try {
+      await _studentRepo.ensureStudentsBatch(classIds);
+      final classMap = await _studentRepo.getClassMap();
+      final studentsMap = await _studentRepo.getStudentsByClasses(classIds);
+
       final allStudents = <StudentInfo>[];
       final classNameMap = <int, String>{};
 
-      final allClasses = await _studentRepo.getClasses();
       for (final classId in classIds) {
-        await _studentRepo.ensureStudentsForClass(classId);
-        final students = await _studentRepo.getStudentsByClass(classId);
+        final students = studentsMap[classId] ?? [];
         allStudents.addAll(students);
-
-        final classInfo = allClasses.firstWhere((c) => c.id == classId);
-        classNameMap[classId] = classInfo.displayName;
+        final classInfo = classMap[classId];
+        if (classInfo != null) {
+          classNameMap[classId] = classInfo.displayName;
+        }
       }
 
       if (allStudents.isEmpty) {

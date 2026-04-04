@@ -60,6 +60,7 @@ final studentRepositoryProvider = Provider<StudentRepository>((ref) {
   return StudentRepository(
     ref.watch(databaseProvider),
     ref.watch(apiClientProvider),
+    ref.watch(sharedPreferencesProvider),
   );
 });
 

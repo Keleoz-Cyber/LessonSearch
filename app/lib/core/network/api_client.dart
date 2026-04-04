@@ -109,6 +109,12 @@ class ApiClient {
     return res.data as List;
   }
 
+  // 数据版本（用于增量更新）
+  Future<Map<String, dynamic>> getSyncVersion() async {
+    final res = await dio.get('/sync/version');
+    return res.data as Map<String, dynamic>;
+  }
+
   // === 任务 ===
 
   Future<Map<String, dynamic>> createTask(Map<String, dynamic> body) async {

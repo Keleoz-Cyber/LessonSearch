@@ -128,26 +128,27 @@ class NameCheckNotifier extends StateNotifier<NameCheckState> {
         return;
       }
 
-      // 加载班级和学生
-      final allClasses = <ClassInfo>[];
-      final studentsByClass = <int, List<StudentWithStatus>>{};
-
-      // 加载已有记录
       final existingRecords = await _attendanceRepo.getRecordsByTask(taskId);
-      final recordMap = <int, AttendanceRecord>{}; // studentId → record
+      final recordMap = <int, AttendanceRecord>{};
       for (final r in existingRecords) {
         recordMap[r.studentId] = r;
       }
 
-      final allClassInfos = await _studentRepo.getClasses();
+      await _studentRepo.ensureStudentsBatch(task.classIds);
+      final classMap = await _studentRepo.getClassMap();
+      final studentsMap = await _studentRepo.getStudentsByClasses(
+        task.classIds,
+      );
+
+      final allClasses = <ClassInfo>[];
+      final studentsByClass = <int, List<StudentWithStatus>>{};
 
       for (final classId in task.classIds) {
-        await _studentRepo.ensureStudentsForClass(classId);
-        final students = await _studentRepo.getStudentsByClass(classId);
-
-        final classInfo = allClassInfos.firstWhere((c) => c.id == classId);
+        final classInfo = classMap[classId];
+        if (classInfo == null) continue;
         allClasses.add(classInfo);
 
+        final students = studentsMap[classId] ?? [];
         studentsByClass[classId] = students.map((s) {
           final record = recordMap[s.id];
           return StudentWithStatus(
@@ -183,25 +184,24 @@ class NameCheckNotifier extends StateNotifier<NameCheckState> {
     state = const NameCheckState(isLoading: true);
 
     try {
-      // 加载所有班级信息和学生
+      await _studentRepo.ensureStudentsBatch(classIds);
+      final classMap = await _studentRepo.getClassMap();
+      final studentsMap = await _studentRepo.getStudentsByClasses(classIds);
+
       final allClasses = <ClassInfo>[];
       final studentsByClass = <int, List<StudentWithStatus>>{};
 
       for (final classId in classIds) {
-        await _studentRepo.ensureStudentsForClass(classId);
-        final students = await _studentRepo.getStudentsByClass(classId);
-
-        // 获取班级信息
-        final classes = await _studentRepo.getClasses();
-        final classInfo = classes.firstWhere((c) => c.id == classId);
+        final classInfo = classMap[classId];
+        if (classInfo == null) continue;
         allClasses.add(classInfo);
 
+        final students = studentsMap[classId] ?? [];
         studentsByClass[classId] = students
             .map((s) => StudentWithStatus(student: s))
             .toList();
       }
 
-      // 创建任务
       final task = await _attendanceRepo.createTask(
         type: TaskType.nameCheck,
         classIds: classIds,
