@@ -11,6 +11,8 @@
 - **查课记录** — 查看、编辑历史记录，继续未完成任务
 - **中断恢复** — 记名任务异常退出后恢复进度
 - **数据同步** — 本地优先离线可用，后台异步同步服务器
+- **邮箱登录** — 邮箱验证码登录，一人一码邀请机制
+- **暗色模式** — 支持跟随系统/亮色/暗色三种主题
 - **公告系统** — 版本更新自动弹出
 
 ## 技术栈
@@ -18,7 +20,7 @@
 | 端 | 技术 |
 |----|------|
 | 客户端 | Flutter · Riverpod · go_router · Dio · Drift (SQLite) |
-| 服务端 | FastAPI · SQLAlchemy · PyMySQL · MySQL 8 |
+| 服务端 | FastAPI · SQLAlchemy · PyJWT · MySQL 8 |
 | 数据导入 | Python · openpyxl · pypinyin |
 | 部署 | 1Panel · Nginx · systemd · HTTPS |
 
@@ -26,9 +28,9 @@
 
 ```
 LessonSearch/
-├── app/            Flutter 客户端（31 个 Dart 源文件）
-├── server/         FastAPI 服务端（12 个 Python 文件）
-├── scripts/        Excel 导入脚本
+├── app/            Flutter 客户端
+├── server/         FastAPI 服务端
+├── scripts/        Excel 导入脚本 + 邀请码生成
 ├── docs/           文档
 └── AGENT.md        AI Agent 协作指南
 ```
@@ -54,9 +56,10 @@ python excel_importer.py --commit
 ## 文档
 
 - [AGENT.md](AGENT.md) — AI Agent 协作指南（接手必读）
+- [CLAUDE.md](CLAUDE.md) — 项目规范与约束
 - [docs/dev-guide.md](docs/dev-guide.md) — 开发文档
-- [docs/ios-guide.md](docs/ios-guide.md) — iOS 适配指南
 - [docs/tasks.md](docs/tasks.md) — 任务表
+- [docs/invitation-codes.md](docs/invitation-codes.md) — 邀请码管理指南
 
 ## API
 
