@@ -19,8 +19,11 @@ class RecordDetailPage extends ConsumerStatefulWidget {
 class _RecordDetailPageState extends ConsumerState<RecordDetailPage> {
   List<RecordEntry> _entries = [];
   String? _taskDate;
+  TaskType? _taskType;
   bool _loading = true;
   bool _editing = false;
+
+  bool get _isRollCall => _taskType == TaskType.rollCall;
 
   @override
   void initState() {
@@ -32,11 +35,11 @@ class _RecordDetailPageState extends ConsumerState<RecordDetailPage> {
     setState(() => _loading = true);
     final repo = ref.read(recordsRepositoryProvider);
     final entries = await repo.getRecordEntries(widget.taskId);
-    // 获取任务创建时间
     final attendanceRepo = ref.read(attendanceRepositoryProvider);
     final task = await attendanceRepo.getTask(widget.taskId);
     setState(() {
       _entries = entries;
+      _taskType = task?.type;
       _taskDate = task != null
           ? task.createdAt.toString().substring(0, 16)
           : DateTime.now().toString().substring(0, 16);
@@ -53,7 +56,6 @@ class _RecordDetailPageState extends ConsumerState<RecordDetailPage> {
   void _generateText() {
     final date = _taskDate ?? DateTime.now().toString().substring(0, 16);
 
-    // 按班级分组
     final byClass = <String, List<RecordEntry>>{};
     for (final e in _entries) {
       byClass.putIfAbsent(e.className, () => []).add(e);
@@ -139,7 +141,98 @@ class _RecordDetailPageState extends ConsumerState<RecordDetailPage> {
       );
     }
 
-    // 按班级分组，只显示异常
+    if (_isRollCall) {
+      return _buildRollCallView(context);
+    }
+    return _buildNameCheckView(context);
+  }
+
+  // ============================================================
+  // 点名记录：只读，显示已点/未点
+  // ============================================================
+
+  Widget _buildRollCallView(BuildContext context) {
+    final calledEntries = _entries.where((e) => e.status == AttendanceStatus.present).toList();
+    final notCalledCount = _entries.length - calledEntries.length;
+
+    // 按班级分组
+    final byClass = <String, List<RecordEntry>>{};
+    for (final e in _entries) {
+      byClass.putIfAbsent(e.className, () => []).add(e);
+    }
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('点名记录'),
+      ),
+      body: Column(
+        children: [
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3),
+            child: Text(
+              '共 ${_entries.length} 人，已点 ${calledEntries.length} 人，未点 $notCalledCount 人',
+              style: Theme.of(context).textTheme.titleMedium,
+              textAlign: TextAlign.center,
+            ),
+          ),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.all(12),
+              children: byClass.entries.map((entry) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8, bottom: 8),
+                      child: Text(
+                        entry.key,
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    ...entry.value.map((record) {
+                      final called = record.status == AttendanceStatus.present;
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: Row(
+                          children: [
+                            Expanded(flex: 2, child: Text(record.studentName)),
+                            Expanded(
+                              flex: 3,
+                              child: Text(record.studentNo, style: TextStyle(fontSize: 13, color: Colors.grey[600])),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: (called ? Colors.green : Colors.grey).withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                called ? '已点' : '未点',
+                                style: TextStyle(color: called ? Colors.green : Colors.grey, fontSize: 13),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
+                    const Divider(),
+                  ],
+                );
+              }).toList(),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ============================================================
+  // 记名记录：可编辑，详细状态
+  // ============================================================
+
+  Widget _buildNameCheckView(BuildContext context) {
     final abnormal = _editing
         ? _entries
         : _entries.where((e) => e.status != AttendanceStatus.present).toList();
@@ -151,7 +244,7 @@ class _RecordDetailPageState extends ConsumerState<RecordDetailPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('记录详情'),
+        title: const Text('记名详情'),
         actions: [
           TextButton.icon(
             icon: Icon(_editing ? Icons.check : Icons.edit),
