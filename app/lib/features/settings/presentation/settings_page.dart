@@ -242,7 +242,7 @@ class SettingsPage extends ConsumerWidget {
       final downloadUrl = response['download_url'] as String;
       final releaseNotes = response['release_notes'] as String;
 
-      const currentVersion = '0.3.2';
+      const currentVersion = '0.3.3';
 
       if (latestVersion == currentVersion) {
         if (context.mounted) {
