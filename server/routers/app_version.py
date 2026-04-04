@@ -28,17 +28,22 @@ async def get_latest_version():
     
     async with httpx.AsyncClient(timeout=10) as client:
         resp = await client.get(
-            "https://api.github.com/repos/Keleoz-Cyber/LessonSearch/releases/latest",
+            "https://api.github.com/repos/Keleoz-Cyber/LessonSearch/releases",
             headers={"Accept": "application/vnd.github.v3+json"},
         )
         resp.raise_for_status()
         data = resp.json()
     
-    version = data.get("tag_name", "").lstrip("v")
-    download_url = ""
-    release_notes = data.get("body", "")
+    if not data:
+        return VersionInfo(version="0.0.0", download_url="", release_notes="")
     
-    for asset in data.get("assets", []):
+    latest = data[0]
+    
+    version = latest.get("tag_name", "").lstrip("v")
+    download_url = ""
+    release_notes = latest.get("body", "")
+    
+    for asset in latest.get("assets", []):
         if asset.get("name", "").endswith(".apk"):
             download_url = asset.get("browser_download_url", "")
             break
