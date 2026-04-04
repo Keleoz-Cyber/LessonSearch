@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/announcement/announcement_config.dart';
-import '../../../core/announcement/announcement_service.dart';
+import '../../../shared/providers.dart';
 
-class SettingsPage extends StatelessWidget {
+class SettingsPage extends ConsumerWidget {
   const SettingsPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final themeMode = ref.watch(themeModeProvider);
+
     return Scaffold(
       appBar: AppBar(title: const Text('设置')),
       body: ListView(
@@ -22,7 +25,7 @@ class SettingsPage extends StatelessWidget {
           const ListTile(
             leading: Icon(Icons.tag),
             title: Text('版本号'),
-            subtitle: Text('0.2.4'),
+            subtitle: Text('0.2.5'),
           ),
 
           const Divider(),
@@ -42,10 +45,22 @@ class SettingsPage extends StatelessWidget {
             subtitle: const Text('当前已是最新版本'),
             trailing: const Icon(Icons.chevron_right),
             onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('当前已是最新版本')),
-              );
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(const SnackBar(content: Text('当前已是最新版本')));
             },
+          ),
+
+          const Divider(),
+
+          // --- 显示 ---
+          const _SectionHeader(title: '显示'),
+          ListTile(
+            leading: const Icon(Icons.dark_mode_outlined),
+            title: const Text('暗色模式'),
+            subtitle: Text(_themeModeLabel(themeMode)),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => _showThemeDialog(context, ref, themeMode),
           ),
 
           const Divider(),
@@ -66,6 +81,65 @@ class SettingsPage extends StatelessWidget {
     );
   }
 
+  String _themeModeLabel(ThemeMode mode) {
+    switch (mode) {
+      case ThemeMode.system:
+        return '跟随系统';
+      case ThemeMode.light:
+        return '亮色模式';
+      case ThemeMode.dark:
+        return '暗色模式';
+    }
+  }
+
+  void _showThemeDialog(
+    BuildContext context,
+    WidgetRef ref,
+    ThemeMode currentMode,
+  ) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('选择主题'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _ThemeOption(
+              label: '跟随系统',
+              selected: currentMode == ThemeMode.system,
+              onTap: () {
+                ref
+                    .read(themeModeProvider.notifier)
+                    .setThemeMode(ThemeMode.system);
+                Navigator.pop(ctx);
+              },
+            ),
+            _ThemeOption(
+              label: '亮色模式',
+              selected: currentMode == ThemeMode.light,
+              onTap: () {
+                ref
+                    .read(themeModeProvider.notifier)
+                    .setThemeMode(ThemeMode.light);
+                Navigator.pop(ctx);
+              },
+            ),
+            _ThemeOption(
+              label: '暗色模式',
+              selected: currentMode == ThemeMode.dark,
+              onTap: () {
+                ref
+                    .read(themeModeProvider.notifier)
+                    .setThemeMode(ThemeMode.dark);
+                Navigator.pop(ctx);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _showAnnouncement(BuildContext context) {
     showDialog(
       context: context,
@@ -76,7 +150,10 @@ class SettingsPage extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(announcementContent.trim(), style: const TextStyle(height: 1.6)),
+              Text(
+                announcementContent.trim(),
+                style: const TextStyle(height: 1.6),
+              ),
               const SizedBox(height: 16),
               const Divider(),
               const SizedBox(height: 8),
@@ -84,7 +161,9 @@ class SettingsPage extends StatelessWidget {
                 width: double.infinity,
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.blue.withValues(alpha: 0.08),
+                  color: Theme.of(
+                    ctx,
+                  ).colorScheme.primary.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
@@ -106,6 +185,27 @@ class SettingsPage extends StatelessWidget {
   }
 }
 
+class _ThemeOption extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _ThemeOption({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      title: Text(label),
+      trailing: selected ? const Icon(Icons.check) : null,
+      onTap: onTap,
+    );
+  }
+}
+
 class _SectionHeader extends StatelessWidget {
   final String title;
   const _SectionHeader({required this.title});
@@ -117,8 +217,8 @@ class _SectionHeader extends StatelessWidget {
       child: Text(
         title,
         style: Theme.of(context).textTheme.labelLarge?.copyWith(
-              color: Theme.of(context).colorScheme.primary,
-            ),
+          color: Theme.of(context).colorScheme.primary,
+        ),
       ),
     );
   }
@@ -186,8 +286,13 @@ class AboutPage extends StatelessWidget {
 
           Center(
             child: Text(
-              '查课 App v0.2.4',
-              style: TextStyle(color: Colors.grey[400], fontSize: 13),
+              '查课 App v0.2.5',
+              style: TextStyle(
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+                fontSize: 13,
+              ),
             ),
           ),
         ],
@@ -209,14 +314,12 @@ class _InfoSection extends StatelessWidget {
       children: [
         Text(
           title,
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+          style: Theme.of(
+            context,
+          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
-        Card(
-          child: Column(children: children),
-        ),
+        Card(child: Column(children: children)),
       ],
     );
   }

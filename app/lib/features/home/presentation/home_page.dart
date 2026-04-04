@@ -43,7 +43,8 @@ class _HomePageState extends ConsumerState<HomePage> {
             const Padding(
               padding: EdgeInsets.only(right: 12),
               child: SizedBox(
-                width: 20, height: 20,
+                width: 20,
+                height: 20,
                 child: CircularProgressIndicator(strokeWidth: 2),
               ),
             )
@@ -94,6 +95,18 @@ class _HomePageState extends ConsumerState<HomePage> {
                   subtitle: '查看与编辑历史记录',
                   color: Colors.orange,
                   onTap: () => context.push('/records'),
+                ),
+                const SizedBox(height: 16),
+                _EntryCard(
+                  icon: Icons.extension,
+                  title: '扩展功能',
+                  subtitle: '更多功能敬请期待',
+                  color: Colors.purple,
+                  onTap: () {
+                    ScaffoldMessenger.of(
+                      context,
+                    ).showSnackBar(const SnackBar(content: Text('暂未开发')));
+                  },
                 ),
               ],
             ),
@@ -148,20 +161,25 @@ class _EntryCard extends StatelessWidget {
                     Text(
                       title,
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       subtitle,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: Colors.grey[500],
-                          ),
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
                     ),
                   ],
                 ),
               ),
-              Icon(Icons.chevron_right, color: Colors.grey[300]),
+              Icon(
+                Icons.chevron_right,
+                color: Theme.of(
+                  context,
+                ).colorScheme.outline.withValues(alpha: 0.5),
+              ),
             ],
           ),
         ),

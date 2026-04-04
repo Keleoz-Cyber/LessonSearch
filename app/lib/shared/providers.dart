@@ -1,4 +1,6 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/database/app_database.dart';
 import '../core/network/api_client.dart';
@@ -67,24 +69,61 @@ final syncStateProvider = Provider<SyncState>((ref) {
 });
 
 /// 点名流程状态管理
-final rollCallProvider =
-    StateNotifierProvider<RollCallNotifier, RollCallState>((ref) {
-  return RollCallNotifier(
-    ref.watch(attendanceRepositoryProvider),
-    ref.watch(studentRepositoryProvider),
-  );
-});
+final rollCallProvider = StateNotifierProvider<RollCallNotifier, RollCallState>(
+  (ref) {
+    return RollCallNotifier(
+      ref.watch(attendanceRepositoryProvider),
+      ref.watch(studentRepositoryProvider),
+    );
+  },
+);
 
 /// 记名流程状态管理
 final nameCheckProvider =
     StateNotifierProvider<NameCheckNotifier, NameCheckState>((ref) {
-  return NameCheckNotifier(
-    ref.watch(attendanceRepositoryProvider),
-    ref.watch(studentRepositoryProvider),
-  );
-});
+      return NameCheckNotifier(
+        ref.watch(attendanceRepositoryProvider),
+        ref.watch(studentRepositoryProvider),
+      );
+    });
 
 /// 查课记录仓库
 final recordsRepositoryProvider = Provider<RecordsRepository>((ref) {
   return RecordsRepository(ref.watch(databaseProvider));
 });
+
+/// SharedPreferences
+final sharedPreferencesProvider = Provider<SharedPreferences>((ref) {
+  throw UnimplementedError('需要在 main.dart 中初始化');
+});
+
+/// 主题模式（暗色/亮色/跟随系统）
+final themeModeProvider = StateNotifierProvider<ThemeModeNotifier, ThemeMode>((
+  ref,
+) {
+  return ThemeModeNotifier(ref.watch(sharedPreferencesProvider));
+});
+
+class ThemeModeNotifier extends StateNotifier<ThemeMode> {
+  final SharedPreferences _prefs;
+  static const _key = 'theme_mode';
+
+  ThemeModeNotifier(this._prefs) : super(_loadThemeMode(_prefs));
+
+  static ThemeMode _loadThemeMode(SharedPreferences prefs) {
+    final value = prefs.getString(_key);
+    if (value == 'dark') return ThemeMode.dark;
+    if (value == 'light') return ThemeMode.light;
+    return ThemeMode.system;
+  }
+
+  void setThemeMode(ThemeMode mode) {
+    state = mode;
+    final value = mode == ThemeMode.dark
+        ? 'dark'
+        : mode == ThemeMode.light
+        ? 'light'
+        : 'system';
+    _prefs.setString(_key, value);
+  }
+}
