@@ -141,6 +141,17 @@ class _TaskCard extends StatelessWidget {
                       child: const Text('已放弃', style: TextStyle(fontSize: 12, color: Colors.red)),
                     ),
                   ],
+                  if (summary.status == TaskStatus.inProgress) ...[
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: const Text('进行中', style: TextStyle(fontSize: 12, color: Colors.blue)),
+                    ),
+                  ],
                   const Spacer(),
                   IconButton(
                     icon: const Icon(Icons.delete_outline, size: 20),
