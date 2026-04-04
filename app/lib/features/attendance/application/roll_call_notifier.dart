@@ -7,9 +7,10 @@ import '../../student/data/student_repository.dart';
 /// 点名流程状态
 class RollCallState {
   final AttendanceTask? task;
-  final List<StudentInfo> students; // 所有班级的学生按学号排序
-  final Map<int, String> classNameMap; // classId → displayName
+  final List<StudentInfo> students;
+  final Map<int, String> classNameMap;
   final int currentIndex;
+  final int? finalCount; // 提前结束时记录实际已点人数
   final bool isLoading;
   final bool isFinished;
   final String? error;
@@ -19,6 +20,7 @@ class RollCallState {
     this.students = const [],
     this.classNameMap = const {},
     this.currentIndex = 0,
+    this.finalCount,
     this.isLoading = false,
     this.isFinished = false,
     this.error,
@@ -34,7 +36,7 @@ class RollCallState {
   }
 
   int get totalCount => students.length;
-  int get processedCount => isFinished ? totalCount : currentIndex;
+  int get processedCount => finalCount ?? currentIndex;
   bool get hasNext => currentIndex < students.length - 1;
 
   RollCallState copyWith({
@@ -42,6 +44,7 @@ class RollCallState {
     List<StudentInfo>? students,
     Map<int, String>? classNameMap,
     int? currentIndex,
+    int? finalCount,
     bool? isLoading,
     bool? isFinished,
     String? error,
@@ -51,6 +54,7 @@ class RollCallState {
       students: students ?? this.students,
       classNameMap: classNameMap ?? this.classNameMap,
       currentIndex: currentIndex ?? this.currentIndex,
+      finalCount: finalCount ?? this.finalCount,
       isLoading: isLoading ?? this.isLoading,
       isFinished: isFinished ?? this.isFinished,
       error: error,
@@ -66,7 +70,7 @@ class RollCallNotifier extends StateNotifier<RollCallState> {
   RollCallNotifier(this._attendanceRepo, this._studentRepo)
       : super(const RollCallState());
 
-  /// 初始化点名：创建任务 + 加载学生（多班级按学号排序）
+  /// 初始化点名
   Future<void> startRollCall({
     required List<int> classIds,
     required int gradeId,
@@ -78,12 +82,11 @@ class RollCallNotifier extends StateNotifier<RollCallState> {
       final allStudents = <StudentInfo>[];
       final classNameMap = <int, String>{};
 
-      // 按班级顺序加载学生
       final allClasses = await _studentRepo.getClasses();
       for (final classId in classIds) {
         await _studentRepo.ensureStudentsForClass(classId);
         final students = await _studentRepo.getStudentsByClass(classId);
-        allStudents.addAll(students); // 已按学号排序
+        allStudents.addAll(students);
 
         final classInfo = allClasses.firstWhere((c) => c.id == classId);
         classNameMap[classId] = classInfo.displayName;
@@ -94,7 +97,6 @@ class RollCallNotifier extends StateNotifier<RollCallState> {
         return;
       }
 
-      // 创建任务
       final task = await _attendanceRepo.createTask(
         type: TaskType.rollCall,
         classIds: classIds,
@@ -119,7 +121,7 @@ class RollCallNotifier extends StateNotifier<RollCallState> {
     }
   }
 
-  /// 下一位（标记当前学生为已到）
+  /// 下一位（记录当前学生为已点）
   Future<void> nextStudent() async {
     final student = state.currentStudent;
     final task = state.task;
@@ -140,14 +142,19 @@ class RollCallNotifier extends StateNotifier<RollCallState> {
       );
       state = state.copyWith(task: updated, currentIndex: newIndex);
     } else {
+      // 最后一个学生，已点人数 = currentIndex + 1
+      state = state.copyWith(finalCount: state.currentIndex + 1);
       await finishRollCall();
     }
   }
 
-  /// 结束点名
+  /// 结束点名（提前结束时记录实际已点人数）
   Future<void> finishRollCall() async {
     final task = state.task;
     if (task == null) return;
+
+    // 如果是提前结束（不是通过 nextStudent 最后一个触发的），记录当前已点数
+    final count = state.finalCount ?? state.currentIndex;
 
     await _attendanceRepo.updateTaskStatus(
       task,
@@ -155,7 +162,7 @@ class RollCallNotifier extends StateNotifier<RollCallState> {
       phase: TaskPhase.confirming,
     );
 
-    state = state.copyWith(isFinished: true);
+    state = state.copyWith(finalCount: count, isFinished: true);
   }
 
   /// 放弃任务
