@@ -1,6 +1,6 @@
 # 查课 App 开发文档
 
-> 版本：0.3.1 | 更新日期：2026-04-04 | 仓库：https://github.com/Keleoz-Cyber/LessonSearch
+> 版本：0.3.3 | 更新日期：2026-04-04 | 仓库：https://github.com/Keleoz-Cyber/LessonSearch
 
 ---
 
