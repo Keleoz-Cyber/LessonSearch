@@ -1,5 +1,5 @@
 # === Excel / 原始数据 ===
-data/
+/data/
 
 # === Python ===
 __pycache__/
