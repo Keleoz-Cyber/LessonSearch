@@ -26,6 +26,38 @@ class _HomePageState extends ConsumerState<HomePage> {
     });
   }
 
+  void _checkLoginAndNavigate(String route) {
+    final authService = ref.read(authServiceProvider);
+    if (authService.isLoggedIn) {
+      context.push(route);
+    } else {
+      _showLoginRequiredDialog();
+    }
+  }
+
+  void _showLoginRequiredDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('请先登录'),
+        content: const Text('为保护学生隐私数据安全，使用查课功能前需要先登录账户。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              context.push('/login');
+            },
+            child: const Text('去登录'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final syncState = ref.watch(syncStateProvider);
@@ -38,7 +70,6 @@ class _HomePageState extends ConsumerState<HomePage> {
         ),
         centerTitle: true,
         actions: [
-          // 同步状态指示器
           if (syncState == SyncState.syncing)
             const Padding(
               padding: EdgeInsets.only(right: 12),
@@ -50,14 +81,13 @@ class _HomePageState extends ConsumerState<HomePage> {
             )
           else if (syncState == SyncState.error)
             Padding(
-              padding: const EdgeInsets.only(right: 12),
+              padding: EdgeInsets.only(right: 12),
               child: IconButton(
                 icon: const Icon(Icons.sync_problem, color: Colors.red),
                 tooltip: '同步异常，点击重试',
                 onPressed: () => ref.read(syncServiceProvider).syncNow(),
               ),
             ),
-          // 设置
           IconButton(
             icon: const Icon(Icons.settings_outlined),
             tooltip: '设置',
@@ -78,7 +108,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                   title: '点名',
                   subtitle: '按学号依次点名',
                   color: Colors.blue,
-                  onTap: () => context.push('/roll-call/select'),
+                  onTap: () => _checkLoginAndNavigate('/roll-call/select'),
                 ),
                 const SizedBox(height: 16),
                 _EntryCard(
@@ -86,7 +116,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                   title: '记名',
                   subtitle: '逐人记录考勤状态',
                   color: Colors.green,
-                  onTap: () => context.push('/name-check/select'),
+                  onTap: () => _checkLoginAndNavigate('/name-check/select'),
                 ),
                 const SizedBox(height: 16),
                 _EntryCard(
@@ -94,7 +124,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                   title: '查课记录',
                   subtitle: '查看与编辑历史记录',
                   color: Colors.orange,
-                  onTap: () => context.push('/records'),
+                  onTap: () => _checkLoginAndNavigate('/records'),
                 ),
                 const SizedBox(height: 16),
                 _EntryCard(
@@ -102,7 +132,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                   title: '扩展功能',
                   subtitle: '导入、提交、汇总、排行',
                   color: Colors.purple,
-                  onTap: () => context.push('/extension'),
+                  onTap: () => _checkLoginAndNavigate('/extension'),
                 ),
               ],
             ),
