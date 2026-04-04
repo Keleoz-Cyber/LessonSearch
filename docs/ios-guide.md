@@ -2,7 +2,7 @@
 
 > 本文档面向负责 iOS 适配的开发者，基于当前 Android 版本的代码进行适配。
 > 仓库地址：https://github.com/Keleoz-Cyber/LessonSearch
-> 当前版本：0.2.2
+> 当前版本：0.3.0
 
 ---
 
@@ -13,12 +13,14 @@
 所有业务逻辑、UI 页面、数据层代码均使用 Dart/Flutter 编写，天然跨平台：
 
 - 首页、选择页、点名页、记名页、确认页、文本生成页、查课记录页、设置页
-- Drift (SQLite) 本地数据库
+- 登录页、扩展功能页
+- Drift (SQLite) 本地数据库（9 张表）
 - Dio 网络请求（已使用 HTTPS）
 - Riverpod 状态管理
 - go_router 路由
 - SyncService 同步服务
 - shared_preferences 本地存储
+- 暗色模式（自动适配 iOS 外观）
 
 ### 需要做的 iOS 适配工作
 
@@ -255,10 +257,10 @@ flutter build ipa
 ```
 app/lib/
 ├── main.dart                    # 入口
-├── app.dart                     # MaterialApp + 主题
+├── app.dart                     # MaterialApp + 主题 + 暗色模式
 ├── core/
-│   ├── database/tables.dart     # 8 张本地表定义
-│   ├── network/api_client.dart  # 所有 API 调用
+│   ├── database/tables.dart     # 9 张本地表定义
+│   ├── network/api_client.dart  # 所有 API 调用（含 token）
 │   ├── sync/sync_service.dart   # 后台同步
 │   ├── resume/                  # 中断恢复
 │   └── announcement/            # 公告系统
@@ -271,7 +273,9 @@ app/lib/
 │   │   └── presentation/        # 页面 UI
 │   ├── student/                 # 学生数据
 │   ├── records/                 # 查课记录
-│   └── settings/                # 设置页
+│   ├── auth/                    # 用户认证（登录、token）
+│   ├── extension/               # 扩展功能
+│   └── settings/                # 设置页 + 主题切换
 └── shared/
     ├── providers.dart           # 全局 Provider
     └── widgets/                 # 通用组件
@@ -282,6 +286,7 @@ app/lib/
 - 数据库表：`core/database/tables.dart`
 - 公告内容：`core/announcement/announcement_config.dart`
 - 文本模板：`features/attendance/domain/text_template.dart`
+- 认证服务：`features/auth/data/auth_service.dart`
 
 ---
 
@@ -289,7 +294,8 @@ app/lib/
 
 - 仓库：https://github.com/Keleoz-Cyber/LessonSearch
 - 开发文档：`docs/dev-guide.md`
-- 部署文档：`docs/deploy-guide.md`
+- 任务表：`docs/tasks.md`
+- 邀请码管理：`docs/invitation-codes.md`
 - 服务端 API 文档：https://api.keleoz.cn/docs
 
 有问题直接在仓库提 Issue 或联系项目负责人。
