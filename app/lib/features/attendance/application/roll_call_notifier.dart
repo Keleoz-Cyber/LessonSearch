@@ -70,6 +70,44 @@ class RollCallNotifier extends StateNotifier<RollCallState> {
   RollCallNotifier(this._attendanceRepo, this._studentRepo)
       : super(const RollCallState());
 
+  /// 恢复未完成的点名任务
+  Future<void> resumeTask(String taskId) async {
+    state = const RollCallState(isLoading: true);
+
+    try {
+      final task = await _attendanceRepo.getTask(taskId);
+      if (task == null) {
+        state = state.copyWith(isLoading: false, error: '任务不存在');
+        return;
+      }
+
+      final allStudents = <StudentInfo>[];
+      final classNameMap = <int, String>{};
+      final allClasses = await _studentRepo.getClasses();
+
+      for (final classId in task.classIds) {
+        await _studentRepo.ensureStudentsForClass(classId);
+        final students = await _studentRepo.getStudentsByClass(classId);
+        allStudents.addAll(students);
+        final classInfo = allClasses.firstWhere((c) => c.id == classId);
+        classNameMap[classId] = classInfo.displayName;
+      }
+
+      // 从上次的位置继续
+      final resumeIndex = task.currentStudentIndex;
+
+      state = state.copyWith(
+        task: task,
+        students: allStudents,
+        classNameMap: classNameMap,
+        currentIndex: resumeIndex < allStudents.length ? resumeIndex : 0,
+        isLoading: false,
+      );
+    } catch (e) {
+      state = state.copyWith(isLoading: false, error: '恢复失败: $e');
+    }
+  }
+
   /// 初始化点名
   Future<void> startRollCall({
     required List<int> classIds,

@@ -38,6 +38,7 @@ final appRouter = GoRouter(
           classNames: (extra['classNames'] as List).cast<String>(),
           gradeId: extra['gradeId'] as int,
           majorId: extra['majorId'] as int,
+          resumeTaskId: extra['resumeTaskId'] as String?,
         );
       },
     ),

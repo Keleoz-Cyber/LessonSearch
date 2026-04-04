@@ -10,6 +10,7 @@ class RollCallPage extends ConsumerStatefulWidget {
   final List<String> classNames;
   final int gradeId;
   final int majorId;
+  final String? resumeTaskId;
 
   const RollCallPage({
     super.key,
@@ -17,6 +18,7 @@ class RollCallPage extends ConsumerStatefulWidget {
     required this.classNames,
     required this.gradeId,
     required this.majorId,
+    this.resumeTaskId,
   });
 
   @override
@@ -28,11 +30,15 @@ class _RollCallPageState extends ConsumerState<RollCallPage> {
   void initState() {
     super.initState();
     Future.microtask(() {
-      ref.read(rollCallProvider.notifier).startRollCall(
-            classIds: widget.classIds,
-            gradeId: widget.gradeId,
-            majorId: widget.majorId,
-          );
+      if (widget.resumeTaskId != null) {
+        ref.read(rollCallProvider.notifier).resumeTask(widget.resumeTaskId!);
+      } else {
+        ref.read(rollCallProvider.notifier).startRollCall(
+              classIds: widget.classIds,
+              gradeId: widget.gradeId,
+              majorId: widget.majorId,
+            );
+      }
     });
   }
 

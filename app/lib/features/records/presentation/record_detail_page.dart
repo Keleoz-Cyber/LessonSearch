@@ -34,9 +34,15 @@ class _RecordDetailPageState extends ConsumerState<RecordDetailPage> {
   Future<void> _load() async {
     setState(() => _loading = true);
     final repo = ref.read(recordsRepositoryProvider);
-    final entries = await repo.getRecordEntries(widget.taskId);
     final attendanceRepo = ref.read(attendanceRepositoryProvider);
     final task = await attendanceRepo.getTask(widget.taskId);
+
+    // 点名用全员列表，记名用记录列表
+    final isRollCall = task?.type == TaskType.rollCall;
+    final entries = isRollCall
+        ? await repo.getFullRollCallEntries(widget.taskId)
+        : await repo.getRecordEntries(widget.taskId);
+
     setState(() {
       _entries = entries;
       _taskType = task?.type;

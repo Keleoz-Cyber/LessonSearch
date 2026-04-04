@@ -52,14 +52,47 @@ class _RecordsListPageState extends ConsumerState<RecordsListPage> {
                         summary: s,
                         onTap: () async {
                           await context.push('/records/${s.id}');
-                          _load(); // 返回时刷新
+                          _load();
                         },
                         onDelete: () => _confirmDelete(s),
+                        onResume: s.status == TaskStatus.inProgress
+                            ? () => _resumeTask(s)
+                            : null,
                       );
                     },
                   ),
                 ),
     );
+  }
+
+  Future<void> _resumeTask(TaskSummary summary) async {
+    final attendanceRepo = ref.read(attendanceRepositoryProvider);
+    final task = await attendanceRepo.getTask(summary.id);
+    if (task == null || !mounted) return;
+
+    final studentRepo = ref.read(studentRepositoryProvider);
+    final allClasses = await studentRepo.getClasses();
+    final classNames = task.classIds
+        .map((id) {
+          final cls = allClasses.where((c) => c.id == id);
+          return cls.isNotEmpty ? cls.first.displayName : '未知';
+        })
+        .toList();
+
+    if (!mounted) return;
+
+    final route = task.type == TaskType.rollCall
+        ? '/roll-call/execute'
+        : '/name-check/execute';
+
+    await context.push(route, extra: {
+      'classIds': task.classIds,
+      'classNames': classNames,
+      'gradeId': task.selectedGradeId ?? 0,
+      'majorId': task.selectedMajorId ?? 0,
+      'resumeTaskId': task.id,
+    });
+    _load();
   }
 
   Future<void> _confirmDelete(TaskSummary summary) async {
@@ -89,11 +122,13 @@ class _TaskCard extends StatelessWidget {
   final TaskSummary summary;
   final VoidCallback onTap;
   final VoidCallback onDelete;
+  final VoidCallback? onResume;
 
   const _TaskCard({
     required this.summary,
     required this.onTap,
     required this.onDelete,
+    this.onResume,
   });
 
   @override
@@ -180,6 +215,16 @@ class _TaskCard extends StatelessWidget {
                 date,
                 style: TextStyle(fontSize: 12, color: Colors.grey[400]),
               ),
+              if (onResume != null) ...[
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.tonal(
+                    onPressed: onResume,
+                    child: const Text('继续'),
+                  ),
+                ),
+              ],
             ],
           ),
         ),
