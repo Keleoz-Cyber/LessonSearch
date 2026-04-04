@@ -1,21 +1,21 @@
+# 查课 App — 开发任务表
 
-
-# 查课 App — 重构后开发任务表
-
-> 基于 P0/P1/P2 审计结果，优先打通客户端-服务器联动链路。
-> 更新日期：2026-04-01
+> 更新日期：2026-04-04
+> 当前版本：0.2.3
 
 ---
 
 ## 已完成
 
 ### P0：Excel 导入 + MySQL 初始化 ✅
-- scripts/config.py, models.py, init_db.py, excel_analyzer.py, excel_importer.py
+- scripts/ 目录：config.py, models.py, init_db.py, excel_analyzer.py, excel_importer.py
 - MySQL 基础 4 表：grades, majors, classes, students
+- 支持两种 Excel 格式自动识别（考勤表 + 名单格式）
+- 拼音带声调生成（pypinyin TONE）
 - 3036 名学生数据已入库
 
 ### P1：FastAPI 基础 API ✅
-- server/ 目录结构，GET 接口：grades, majors, classes, students
+- server/ 目录：GET 接口（grades, majors, classes, students）
 - 支持筛选和搜索
 
 ### P2：Flutter 项目骨架 ✅
@@ -23,123 +23,80 @@
 - Riverpod + go_router + Dio 骨架
 - 首页 3 入口
 
----
+### P3：服务端任务系统接口 ✅
+- server/models.py：AttendanceTask / TaskClass / AttendanceRecord
+- server/routers/tasks.py：POST/GET/PUT 任务
+- server/routers/records.py：POST/GET/PUT 记录
+- Flutter ApiClient：createTask/getTask/updateTask/createRecords/updateRecord
+- Drift AttendanceTasks 加 syncStatus 字段
 
-## 待实施
+### P4：Flutter Domain 模型 + Repository + DataSource ✅
+- attendance/domain/models.dart：5 枚举 + 领域模型
+- attendance/data/local/attendance_local_ds.dart：Drift 操作封装 + 批量操作
+- attendance/data/remote/attendance_remote_ds.dart：API 调用封装
+- attendance/data/attendance_repository.dart：统一仓库（写本地→入队同步）
+- student/data/student_repository.dart：学生数据（含远程拉取+批量事务）
+- shared/providers.dart：全局 Provider 注册
 
-### P3：服务端任务系统接口
-**目标：** 让服务端具备任务 CRUD 能力
+### P5：SyncService 最小闭环 ✅
+- core/sync/sync_service.dart：消费 SyncQueue + 自动重试 + 网络异常检测
+- features/debug/sync_test_page.dart：联调测试页
+- 端到端联调验证通过（Flutter → Drift → SyncQueue → HTTPS → FastAPI → MySQL）
 
-| 序号 | 任务 | 文件 | 操作 |
-|------|------|------|------|
-| 3.1 | MySQL 新增任务系统表 | server/models.py | 追加 AttendanceTask / TaskClass / AttendanceRecord |
-| 3.2 | 新增请求/响应 Schema | server/schemas.py | 追加 TaskCreate / TaskOut / RecordCreate / RecordUpdate / RecordOut |
-| 3.3 | 新增任务 CRUD 路由 | server/routers/tasks.py | 新建：POST/GET/PUT |
-| 3.4 | 新增记录 CRUD 路由 | server/routers/records.py | 新建：POST/PUT/GET |
-| 3.5 | 注册新路由 | server/main.py | 追加 2 行 |
-| 3.6 | Flutter ApiClient 增加写方法 | app/lib/core/network/api_client.dart | 追加 POST/PUT |
-| 3.7 | Drift 表补 syncStatus | app/lib/core/database/tables.dart | 改 1 行 + 重新生成 |
+### P6：选择页 + 最小点名流程 ✅
+- 选择页（年级→专业→班级多选，全选/取消全选）
+- 点名执行页（按学号顺序，多班级支持，班级信息实时切换）
+- 退出弹窗：继续/放弃/保存退出
 
-**验收：**
-- curl POST /api/tasks 创建任务 → MySQL 可见
-- curl POST /api/tasks/{id}/records 创建记录 → MySQL 可见
-- curl PUT /api/tasks/{id} 更新状态 → MySQL 更新
-- Flutter ApiClient 方法可编译
+### P7：最小记名流程 ✅
+- 记名选择页（班级多选 FilterChip）
+- 记名执行页（多班切换、状态网格、自适应列数）
+- 底部栏：缺勤/迟到/请假/其他/到课
+- "其他"状态自定义备注输入
+- 确认弹窗：未处理的自动标记为已到
 
----
+### P8：确认页 + 文本生成 + 中断恢复 ✅
+- 确认页：异常名单按班级分组（缺勤/迟到/请假/其他）
+- 文本生成：总群汇报 + 学委汇报，可配置模板，复制到剪贴板
+- 汇报文本包含查课时间（精确到分钟）
+- 学委汇报附带到场证明和假条提醒
+- 中断恢复：仅记名任务 executing 阶段，恢复到执行页（含已标记状态）
+- 退出弹窗：继续/放弃/保存退出
 
-### P4：Flutter Domain 模型 + Repository + DataSource
-**目标：** 建立正确分层，数据访问通过 Repository
+### P9：查课记录系统 ✅
+- 记录列表：按时间倒序，卡片显示类型/班级/统计/日期/状态标签
+- 点名记录：只读查看（已点/未点），标题"点名记录"
+- 记名记录：可编辑状态，生成文本，标题"记名详情"
+- 保存退出的任务显示"进行中"标签
+- 删除记录确认
 
-| 序号 | 任务 | 文件 |
-|------|------|------|
-| 4.1 | 创建 domain 模型（freezed） | features/attendance/domain/models.dart |
-| 4.2 | 本地数据源 | features/attendance/data/local/attendance_local_ds.dart |
-| 4.3 | 远程数据源 | features/attendance/data/remote/attendance_remote_ds.dart |
-| 4.4 | AttendanceRepository | features/attendance/data/attendance_repository.dart |
-| 4.5 | StudentRepository | features/student/data/student_repository.dart |
-| 4.6 | Provider 注册 | shared/providers.dart 扩展 |
+### P10：UI 优化 + 异常处理 ✅
+- 首页：同步状态指示器，调试入口隐藏（长按标题）
+- 加载遮罩：半透明背景 + 转圈 + 提示文字
+- 响应式布局：自适应列数、FittedBox、SafeArea、ScrollView
+- 批量 DB 操作优化（事务写入，减少掉帧）
+- 网络异常友好处理（跳过剩余队列）
+- 学生卡片文字溢出保护
 
-**验收：**
-- Repository.createTask() → 写 Drift + 入队 SyncQueue
-- Repository.updateRecordStatus() → 写 Drift + 入队 SyncQueue
-- 页面层不直接操作 DB
-
----
-
-### P5：SyncService 最小闭环
-**目标：** SyncQueue 记录被消费并发送到服务端
-
-| 序号 | 任务 | 文件 |
-|------|------|------|
-| 5.1 | SyncService 实现 | core/sync/sync_service.dart |
-| 5.2 | 启动时自动扫描 pending 队列 | main.dart 或 Provider 初始化 |
-| 5.3 | 失败重试逻辑（retryCount） | sync_service.dart |
-| 5.4 | 联调测试页（临时） | features/debug/sync_test_page.dart |
-
-**验收（最小联调闭环）：**
-1. Flutter 创建 AttendanceTask → Drift 写入 → SyncQueue 入队
-2. SyncService 消费 → POST /api/tasks → MySQL 出现记录
-3. Flutter 更新学生状态 → Drift 写入 → SyncQueue 入队
-4. SyncService 消费 → POST /api/tasks/{id}/records → MySQL 出现记录
-5. 断网操作不报错，恢复后自动同步
-
----
-
-### P6：首页 + 选择页 + 最小点名流程
-**目标：** 第一个真实业务闭环
-
-| 序号 | 任务 |
-|------|------|
-| 6.1 | 选择页（年级→专业→班级，数据来自 Repository） |
-| 6.2 | 点名执行页（当前学生/拼音/班级，下一位，结束） |
-| 6.3 | Controller/Notifier 管理任务状态 |
-| 6.4 | 创建→点名→结束 全程同步服务端 |
-
-**验收：** 从选择到结束，服务端能看到完整任务和记录
+### 其他已完成功能
+- 设置页：应用信息、版本号、查看公告、检查更新（占位）、开发者与致谢
+- 公告系统：首次进入弹出，版本号控制重新弹出，含更新内容栏
+- iOS 适配指南：docs/ios-guide.md
+- 开发文档：docs/dev-guide.md
+- 服务端部署完成：https://api.keleoz.cn（1Panel + HTTPS）
+- Gradle 阿里云镜像配置
 
 ---
 
-### P7：最小记名流程
-**目标：** 记名流程联调闭环
+## 待实施 / 后续可做
 
-| 序号 | 任务 |
-|------|------|
-| 7.1 | 记名选择页（班级多选） |
-| 7.2 | 记名执行页（多班切换、状态标记） |
-| 7.3 | 进度显示 |
-
-**验收：** 多班记名全程同步到服务端
-
----
-
-### P8：确认页 + 文本生成 + 中断恢复
-**目标：** 补全流程尾部 + 基础恢复
-
-| 序号 | 任务 |
-|------|------|
-| 8.1 | 记名确认页（异常名单按班分组） |
-| 8.2 | 文本生成（可配置模板） |
-| 8.3 | 启动时检查未完成任务 → 弹窗继续/放弃 |
-
----
-
-### P9：记录系统 + 编辑 + 重同步
-
-| 序号 | 任务 |
-|------|------|
-| 9.1 | 记录列表页 |
-| 9.2 | 记录详情/编辑页 |
-| 9.3 | 编辑后更新 updatedAt + 重新同步 |
-| 9.4 | 文本重新生成 |
-
----
-
-### P10：UI 优化 + 异常处理 + 恢复增强
-
-| 序号 | 任务 |
-|------|------|
-| 10.1 | 主题/配色/动画优化 |
-| 10.2 | 错误提示 UI |
-| 10.3 | 完整恢复体验（恢复到精确页面和状态） |
-| 10.4 | 边界情况处理 |
+| 项目 | 说明 | 优先级 |
+|------|------|--------|
+| Drift schema migration | 避免每次表结构变更需要卸载重装 | 高 |
+| 检查更新功能 | 目前为占位 | 中 |
+| 文本模板数据库配置化 | 目前是代码常量 | 中 |
+| 数据导出 | Excel/PDF 导出 | 中 |
+| 统计分析 | 缺勤趋势、班级对比 | 低 |
+| 多用户 + 登录系统 | 权限控制 | 低 |
+| iOS 适配 | 已有指南，待执行 | 进行中 |
+| UI 主题美化 | 配色/动画/图标 | 低 |
