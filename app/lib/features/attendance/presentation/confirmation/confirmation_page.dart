@@ -27,13 +27,19 @@ class ConfirmationPage extends ConsumerWidget {
     for (final cls in state.classes) {
       final students = state.studentsByClass[cls.id] ?? [];
       final abnormals = students
-          .where((s) => s.status != AttendanceStatus.present && s.status != AttendanceStatus.pending)
-          .map((s) => _AbnormalEntry(
-                name: s.student.name,
-                studentNo: s.student.studentNo,
-                status: s.status,
-                remark: s.remark,
-              ))
+          .where(
+            (s) =>
+                s.status != AttendanceStatus.present &&
+                s.status != AttendanceStatus.pending,
+          )
+          .map(
+            (s) => _AbnormalEntry(
+              name: s.student.name,
+              studentNo: s.student.studentNo,
+              status: s.status,
+              remark: s.remark,
+            ),
+          )
           .toList();
       if (abnormals.isNotEmpty) {
         abnormalByClass[cls.displayName] = abnormals;
@@ -41,7 +47,10 @@ class ConfirmationPage extends ConsumerWidget {
     }
 
     final totalStudents = state.totalStudents;
-    final abnormalCount = abnormalByClass.values.fold<int>(0, (sum, list) => sum + list.length);
+    final abnormalCount = abnormalByClass.values.fold<int>(
+      0,
+      (sum, list) => sum + list.length,
+    );
 
     return Scaffold(
       appBar: AppBar(title: const Text('确认名单')),
@@ -51,7 +60,9 @@ class ConfirmationPage extends ConsumerWidget {
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(16),
-            color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3),
+            color: Theme.of(
+              context,
+            ).colorScheme.primaryContainer.withValues(alpha: 0.3),
             child: Text(
               '共 $totalStudents 人，异常 $abnormalCount 人'
               '${abnormalCount == 0 ? "（全部到齐）" : ""}',
@@ -83,9 +94,8 @@ class ConfirmationPage extends ConsumerWidget {
                             padding: const EdgeInsets.only(top: 8, bottom: 8),
                             child: Text(
                               entry.key,
-                              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                              style: Theme.of(context).textTheme.titleSmall
+                                  ?.copyWith(fontWeight: FontWeight.bold),
                             ),
                           ),
                           ...entry.value.map((e) => _AbnormalRow(entry: e)),
@@ -149,20 +159,20 @@ class _AbnormalEntry {
   });
 
   String get statusLabel => switch (status) {
-        AttendanceStatus.absent => '缺勤',
-        AttendanceStatus.late_ => '迟到',
-        AttendanceStatus.leave => '请假',
-        AttendanceStatus.other => remark ?? '其他',
-        _ => '',
-      };
+    AttendanceStatus.absent => '缺勤',
+    AttendanceStatus.late_ => '迟到',
+    AttendanceStatus.leave => '请假',
+    AttendanceStatus.other => remark ?? '其他',
+    _ => '',
+  };
 
   Color get statusColor => switch (status) {
-        AttendanceStatus.absent => Colors.red,
-        AttendanceStatus.late_ => Colors.amber.shade700,
-        AttendanceStatus.leave => Colors.orange,
-        AttendanceStatus.other => Colors.purple,
-        _ => Colors.grey,
-      };
+    AttendanceStatus.absent => Colors.red,
+    AttendanceStatus.late_ => Colors.amber.shade700,
+    AttendanceStatus.leave => Colors.blue,
+    AttendanceStatus.other => Colors.purple,
+    _ => Colors.grey,
+  };
 }
 
 class _AbnormalRow extends StatelessWidget {
@@ -177,7 +187,13 @@ class _AbnormalRow extends StatelessWidget {
       child: Row(
         children: [
           Expanded(flex: 2, child: Text(entry.name)),
-          Expanded(flex: 3, child: Text(entry.studentNo, style: TextStyle(color: Colors.grey[600], fontSize: 13))),
+          Expanded(
+            flex: 3,
+            child: Text(
+              entry.studentNo,
+              style: TextStyle(color: Colors.grey[600], fontSize: 13),
+            ),
+          ),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
             decoration: BoxDecoration(

@@ -362,7 +362,7 @@ class _RecordRow extends StatelessWidget {
     AttendanceStatus.present => Colors.green,
     AttendanceStatus.absent => Colors.red,
     AttendanceStatus.late_ => Colors.amber.shade700,
-    AttendanceStatus.leave => Colors.orange,
+    AttendanceStatus.leave => Colors.blue,
     AttendanceStatus.other => Colors.purple,
     AttendanceStatus.pending => Colors.grey,
   };

@@ -283,7 +283,7 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
                 Expanded(
                   child: _ActionButton(
                     label: '请假',
-                    color: Colors.orange,
+                    color: Colors.blue,
                     onPressed: _focusedIndex != null
                         ? () => mark(AttendanceStatus.leave)
                         : null,
@@ -419,7 +419,7 @@ class _StudentCard extends StatelessWidget {
       AttendanceStatus.late_ =>
         isDark ? Colors.amber.shade900 : Colors.amber.shade100,
       AttendanceStatus.leave =>
-        isDark ? Colors.orange.shade900 : Colors.orange.shade100,
+        isDark ? Colors.blue.shade900 : Colors.blue.shade100,
       AttendanceStatus.other =>
         isDark ? Colors.purple.shade900 : Colors.purple.shade100,
     };
