@@ -187,6 +187,17 @@ class _TaskCard extends StatelessWidget {
                       child: const Text('进行中', style: TextStyle(fontSize: 12, color: Colors.blue)),
                     ),
                   ],
+                  if (summary.status == TaskStatus.completed && summary.type == TaskType.rollCall) ...[
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.green.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: const Text('已完成', style: TextStyle(fontSize: 12, color: Colors.green)),
+                    ),
+                  ],
                   const Spacer(),
                   IconButton(
                     icon: const Icon(Icons.delete_outline, size: 20),
