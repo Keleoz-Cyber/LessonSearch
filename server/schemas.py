@@ -1,5 +1,33 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 from datetime import datetime
+
+
+# ============================================================
+# 用户认证
+# ============================================================
+
+class SendCodeRequest(BaseModel):
+    email: EmailStr
+
+
+class LoginRequest(BaseModel):
+    email: EmailStr
+    code: str
+    invitation_code: str
+
+
+class UserOut(BaseModel):
+    id: int
+    email: str
+    nickname: str | None
+    is_new_user: bool = False
+
+    model_config = {"from_attributes": True}
+
+
+class LoginResponse(BaseModel):
+    token: str
+    user: UserOut
 
 
 class GradeOut(BaseModel):
@@ -60,6 +88,7 @@ class StudentDetail(StudentOut):
 
 class TaskCreate(BaseModel):
     id: str  # client-generated UUID
+    user_id: int | None = None  # 登录后的用户 ID
     type: str  # roll_call | name_check
     class_ids: list[int]
     selected_grade_id: int | None = None

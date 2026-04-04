@@ -68,7 +68,7 @@ class RollCallNotifier extends StateNotifier<RollCallState> {
   final StudentRepository _studentRepo;
 
   RollCallNotifier(this._attendanceRepo, this._studentRepo)
-      : super(const RollCallState());
+    : super(const RollCallState());
 
   /// 恢复未完成的点名任务
   Future<void> resumeTask(String taskId) async {
@@ -113,6 +113,7 @@ class RollCallNotifier extends StateNotifier<RollCallState> {
     required List<int> classIds,
     required int gradeId,
     required int majorId,
+    int? userId,
   }) async {
     state = const RollCallState(isLoading: true);
 
@@ -140,6 +141,7 @@ class RollCallNotifier extends StateNotifier<RollCallState> {
         classIds: classIds,
         selectedGradeId: gradeId,
         selectedMajorId: majorId,
+        userId: userId,
       );
 
       final updated = await _attendanceRepo.updateTaskStatus(
@@ -218,10 +220,7 @@ class RollCallNotifier extends StateNotifier<RollCallState> {
     final task = state.task;
     if (task == null) return;
 
-    await _attendanceRepo.updateTaskStatus(
-      task,
-      status: TaskStatus.abandoned,
-    );
+    await _attendanceRepo.updateTaskStatus(task, status: TaskStatus.abandoned);
 
     state = const RollCallState();
   }

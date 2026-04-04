@@ -1,6 +1,21 @@
 import 'package:drift/drift.dart';
 
 // ============================================================
+// 用户系统
+// ============================================================
+
+class Users extends Table {
+  IntColumn get id => integer()();
+  TextColumn get email => text().withLength(max: 100)();
+  TextColumn get nickname => text().withLength(max: 50).nullable()();
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get lastLoginAt => dateTime().nullable()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+// ============================================================
 // 表定义（镜像 MySQL 结构）
 // ============================================================
 
@@ -39,16 +54,19 @@ class Students extends Table {
 
 class AttendanceTasks extends Table {
   TextColumn get id => text()(); // UUID
+  IntColumn get userId => integer().nullable()(); // 登录后的用户 ID
   TextColumn get type => text()(); // roll_call | name_check
   TextColumn get status => text().withDefault(const Constant('in_progress'))();
   TextColumn get phase => text().withDefault(const Constant('selecting'))();
   IntColumn get selectedGradeId => integer().nullable()();
   IntColumn get selectedMajorId => integer().nullable()();
   IntColumn get currentClassIndex => integer().withDefault(const Constant(0))();
-  IntColumn get currentStudentIndex => integer().withDefault(const Constant(0))();
+  IntColumn get currentStudentIndex =>
+      integer().withDefault(const Constant(0))();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
-  TextColumn get syncStatus => text().withDefault(const Constant('pending'))(); // pending|synced|failed
+  TextColumn get syncStatus =>
+      text().withDefault(const Constant('pending'))(); // pending|synced|failed
 
   @override
   Set<Column> get primaryKey => {id};
@@ -66,8 +84,9 @@ class AttendanceRecords extends Table {
   TextColumn get taskId => text().references(AttendanceTasks, #id)();
   IntColumn get studentId => integer().references(Students, #id)();
   IntColumn get classId => integer().references(Classes, #id)();
-  TextColumn get status =>
-      text().withDefault(const Constant('pending'))(); // pending|present|absent|leave|other
+  TextColumn get status => text().withDefault(
+    const Constant('pending'),
+  )(); // pending|present|absent|leave|other
   TextColumn get remark => text().nullable()(); // "其他"状态的自定义说明
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
@@ -79,8 +98,9 @@ class SyncQueue extends Table {
   TextColumn get entityId => text()();
   TextColumn get action => text()();
   TextColumn get payload => text().nullable()();
-  TextColumn get syncStatus =>
-      text().withDefault(const Constant('pending'))(); // pending|syncing|synced|failed
+  TextColumn get syncStatus => text().withDefault(
+    const Constant('pending'),
+  )(); // pending|syncing|synced|failed
   IntColumn get retryCount => integer().withDefault(const Constant(0))();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get syncedAt => dateTime().nullable()();

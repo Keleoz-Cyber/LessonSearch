@@ -8,21 +8,24 @@ import 'tables.dart';
 
 part 'app_database.g.dart';
 
-@DriftDatabase(tables: [
-  Grades,
-  Majors,
-  Classes,
-  Students,
-  AttendanceTasks,
-  TaskClasses,
-  AttendanceRecords,
-  SyncQueue,
-])
+@DriftDatabase(
+  tables: [
+    Users,
+    Grades,
+    Majors,
+    Classes,
+    Students,
+    AttendanceTasks,
+    TaskClasses,
+    AttendanceRecords,
+    SyncQueue,
+  ],
+)
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 }
 
 LazyDatabase _openConnection() {

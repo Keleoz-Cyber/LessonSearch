@@ -75,6 +75,7 @@ enum SyncStatus {
 
 class AttendanceTask {
   final String id;
+  final int? userId;
   final TaskType type;
   final TaskStatus status;
   final TaskPhase phase;
@@ -89,6 +90,7 @@ class AttendanceTask {
 
   const AttendanceTask({
     required this.id,
+    this.userId,
     required this.type,
     this.status = TaskStatus.inProgress,
     this.phase = TaskPhase.selecting,
@@ -103,6 +105,7 @@ class AttendanceTask {
   });
 
   AttendanceTask copyWith({
+    int? userId,
     TaskStatus? status,
     TaskPhase? phase,
     int? selectedGradeId,
@@ -115,6 +118,7 @@ class AttendanceTask {
   }) {
     return AttendanceTask(
       id: id,
+      userId: userId ?? this.userId,
       type: type,
       status: status ?? this.status,
       phase: phase ?? this.phase,
@@ -217,5 +221,9 @@ class MajorInfo {
   final String name;
   final String shortName;
 
-  const MajorInfo({required this.id, required this.name, required this.shortName});
+  const MajorInfo({
+    required this.id,
+    required this.name,
+    required this.shortName,
+  });
 }

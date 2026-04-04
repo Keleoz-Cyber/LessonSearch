@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../core/database/app_database.dart';
 import '../core/network/api_client.dart';
 import '../core/sync/sync_service.dart';
+import '../features/auth/data/auth_service.dart';
 import '../features/attendance/application/roll_call_notifier.dart';
 import '../features/attendance/application/name_check_notifier.dart';
 import '../features/records/data/records_repository.dart';
@@ -20,9 +21,20 @@ final databaseProvider = Provider<AppDatabase>((ref) {
   return db;
 });
 
+/// SharedPreferences
+final sharedPreferencesProvider = Provider<SharedPreferences>((ref) {
+  throw UnimplementedError('需要在 main.dart 中初始化');
+});
+
+/// 认证服务
+final authServiceProvider = Provider<AuthService>((ref) {
+  return AuthService(ref.watch(sharedPreferencesProvider));
+});
+
 /// 全局 API 客户端
 final apiClientProvider = Provider<ApiClient>((ref) {
-  return ApiClient();
+  final authService = ref.watch(authServiceProvider);
+  return ApiClient(token: authService.token);
 });
 
 /// 本地数据源
@@ -90,11 +102,6 @@ final nameCheckProvider =
 /// 查课记录仓库
 final recordsRepositoryProvider = Provider<RecordsRepository>((ref) {
   return RecordsRepository(ref.watch(databaseProvider));
-});
-
-/// SharedPreferences
-final sharedPreferencesProvider = Provider<SharedPreferences>((ref) {
-  throw UnimplementedError('需要在 main.dart 中初始化');
 });
 
 /// 主题模式（暗色/亮色/跟随系统）

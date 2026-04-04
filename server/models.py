@@ -1,8 +1,37 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Text, func, UniqueConstraint
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Text, func, UniqueConstraint, Boolean
 from sqlalchemy.orm import declarative_base, relationship
 
 Base = declarative_base()
 
+
+# ============================================================
+# 用户系统
+# ============================================================
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    email = Column(String(100), unique=True, nullable=False)
+    nickname = Column(String(50), nullable=True)
+    created_at = Column(DateTime, server_default=func.now())
+    last_login_at = Column(DateTime, nullable=True)
+
+
+class VerificationCode(Base):
+    __tablename__ = "verification_codes"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    email = Column(String(100), nullable=False)
+    code = Column(String(6), nullable=False)
+    expires_at = Column(DateTime, nullable=False)
+    used = Column(Boolean, default=False)
+    created_at = Column(DateTime, server_default=func.now())
+
+
+# ============================================================
+# 基础数据表
+# ============================================================
 
 class Grade(Base):
     __tablename__ = "grades"
@@ -63,6 +92,7 @@ class AttendanceTask(Base):
     __tablename__ = "attendance_tasks"
 
     id = Column(String(36), primary_key=True)  # UUID from client
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)  # 登录后绑定
     type = Column(String(20), nullable=False)   # roll_call | name_check
     status = Column(String(20), nullable=False, default="in_progress")
     phase = Column(String(20), nullable=False, default="selecting")
@@ -73,6 +103,7 @@ class AttendanceTask(Base):
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
+    user = relationship("User")
     task_classes = relationship("TaskClass", back_populates="task", cascade="all, delete-orphan")
     records = relationship("AttendanceRecord", back_populates="task", cascade="all, delete-orphan")
 

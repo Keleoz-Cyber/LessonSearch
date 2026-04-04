@@ -34,13 +34,17 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
   void initState() {
     super.initState();
     Future.microtask(() {
+      final authService = ref.read(authServiceProvider);
       if (widget.resumeTaskId != null) {
         ref.read(nameCheckProvider.notifier).resumeTask(widget.resumeTaskId!);
       } else {
-        ref.read(nameCheckProvider.notifier).startNameCheck(
+        ref
+            .read(nameCheckProvider.notifier)
+            .startNameCheck(
               classIds: widget.classIds,
               gradeId: widget.gradeId,
               majorId: widget.majorId,
+              userId: authService.userId,
             );
       }
     });
@@ -64,7 +68,9 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
     if (state.error != null) {
       return Scaffold(
         appBar: AppBar(title: const Text('记名')),
-        body: Center(child: Text(state.error!, style: const TextStyle(color: Colors.red))),
+        body: Center(
+          child: Text(state.error!, style: const TextStyle(color: Colors.red)),
+        ),
       );
     }
 
@@ -120,12 +126,16 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
                   final cls = state.classes[index];
                   final isActive = index == state.currentClassIndex;
                   return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 4,
+                      vertical: 6,
+                    ),
                     child: ChoiceChip(
                       label: Text(cls.displayName),
                       selected: isActive,
-                      onSelected: (_) =>
-                          ref.read(nameCheckProvider.notifier).switchClass(index),
+                      onSelected: (_) => ref
+                          .read(nameCheckProvider.notifier)
+                          .switchClass(index),
                     ),
                   );
                 },
@@ -137,7 +147,9 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
             child: LayoutBuilder(
               builder: (context, constraints) {
                 final crossAxisCount = constraints.maxWidth > 400 ? 2 : 1;
-                final itemWidth = (constraints.maxWidth - 12 * 2 - 8 * (crossAxisCount - 1)) / crossAxisCount;
+                final itemWidth =
+                    (constraints.maxWidth - 12 * 2 - 8 * (crossAxisCount - 1)) /
+                    crossAxisCount;
                 final itemHeight = 56.0;
                 return GridView.builder(
                   padding: const EdgeInsets.all(12),
@@ -147,20 +159,20 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
                     crossAxisSpacing: 8,
                     childAspectRatio: itemWidth / itemHeight,
                   ),
-              itemCount: students.length,
-              itemBuilder: (context, index) {
-                final sw = students[index];
-                final isFocused = _focusedIndex == index;
+                  itemCount: students.length,
+                  itemBuilder: (context, index) {
+                    final sw = students[index];
+                    final isFocused = _focusedIndex == index;
 
-                return _StudentCard(
-                  name: sw.student.name,
-                  studentNo: sw.student.studentNo,
-                  status: sw.status,
-                  remark: sw.remark,
-                  isFocused: isFocused,
-                  onTap: () => setState(() => _focusedIndex = index),
-                );
-              },
+                    return _StudentCard(
+                      name: sw.student.name,
+                      studentNo: sw.student.studentNo,
+                      status: sw.status,
+                      remark: sw.remark,
+                      isFocused: isFocused,
+                      onTap: () => setState(() => _focusedIndex = index),
+                    );
+                  },
                 );
               },
             ),
@@ -183,7 +195,9 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
 
     void mark(AttendanceStatus status, {String? remark}) {
       if (_focusedIndex == null || _focusedIndex! >= students.length) return;
-      ref.read(nameCheckProvider.notifier).markStudent(classId, _focusedIndex!, status, remark: remark);
+      ref
+          .read(nameCheckProvider.notifier)
+          .markStudent(classId, _focusedIndex!, status, remark: remark);
       // 自动移到下一个未处理的学生
       final nextIndex = students.indexWhere(
         (s) => s.status == AttendanceStatus.pending,
@@ -210,7 +224,10 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('取消')),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('取消'),
+            ),
             FilledButton(
               onPressed: () => Navigator.pop(ctx, controller.text.trim()),
               child: const Text('确认'),
@@ -227,7 +244,13 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
-        boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4, offset: const Offset(0, -1))],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black12,
+            blurRadius: 4,
+            offset: const Offset(0, -1),
+          ),
+        ],
       ),
       child: SafeArea(
         top: false,
@@ -240,7 +263,9 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
                   child: _ActionButton(
                     label: '缺勤',
                     color: Colors.red,
-                    onPressed: _focusedIndex != null ? () => mark(AttendanceStatus.absent) : null,
+                    onPressed: _focusedIndex != null
+                        ? () => mark(AttendanceStatus.absent)
+                        : null,
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -248,7 +273,9 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
                   child: _ActionButton(
                     label: '迟到',
                     color: Colors.amber.shade700,
-                    onPressed: _focusedIndex != null ? () => mark(AttendanceStatus.late_) : null,
+                    onPressed: _focusedIndex != null
+                        ? () => mark(AttendanceStatus.late_)
+                        : null,
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -256,7 +283,9 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
                   child: _ActionButton(
                     label: '请假',
                     color: Colors.orange,
-                    onPressed: _focusedIndex != null ? () => mark(AttendanceStatus.leave) : null,
+                    onPressed: _focusedIndex != null
+                        ? () => mark(AttendanceStatus.leave)
+                        : null,
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -273,8 +302,12 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
             SizedBox(
               width: double.infinity,
               child: FilledButton(
-                onPressed: _focusedIndex != null ? () => mark(AttendanceStatus.present) : null,
-                style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(44)),
+                onPressed: _focusedIndex != null
+                    ? () => mark(AttendanceStatus.present)
+                    : null,
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size.fromHeight(44),
+                ),
                 child: const Text('到课（下一位）'),
               ),
             ),
@@ -318,7 +351,10 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
     }
   }
 
-  Future<void> _showFinishDialog(BuildContext context, NameCheckState state) async {
+  Future<void> _showFinishDialog(
+    BuildContext context,
+    NameCheckState state,
+  ) async {
     final pendingCount = state.totalStudents - state.processedStudents;
     final confirm = await showDialog<bool>(
       context: context,
@@ -330,8 +366,14 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
               : '所有学生已处理完毕，确认结束？',
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('取消')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('确认')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('确认'),
+          ),
         ],
       ),
     );
@@ -364,22 +406,22 @@ class _StudentCard extends StatelessWidget {
   });
 
   Color get _statusColor => switch (status) {
-        AttendanceStatus.pending => Colors.grey.shade200,
-        AttendanceStatus.present => Colors.green.shade100,
-        AttendanceStatus.absent => Colors.red.shade100,
-        AttendanceStatus.late_ => Colors.amber.shade100,
-        AttendanceStatus.leave => Colors.orange.shade100,
-        AttendanceStatus.other => Colors.purple.shade100,
-      };
+    AttendanceStatus.pending => Colors.grey.shade200,
+    AttendanceStatus.present => Colors.green.shade100,
+    AttendanceStatus.absent => Colors.red.shade100,
+    AttendanceStatus.late_ => Colors.amber.shade100,
+    AttendanceStatus.leave => Colors.orange.shade100,
+    AttendanceStatus.other => Colors.purple.shade100,
+  };
 
   String get _statusLabel => switch (status) {
-        AttendanceStatus.pending => '',
-        AttendanceStatus.present => '到',
-        AttendanceStatus.absent => '缺',
-        AttendanceStatus.late_ => '迟',
-        AttendanceStatus.leave => '假',
-        AttendanceStatus.other => remark ?? '他',
-      };
+    AttendanceStatus.pending => '',
+    AttendanceStatus.present => '到',
+    AttendanceStatus.absent => '缺',
+    AttendanceStatus.late_ => '迟',
+    AttendanceStatus.leave => '假',
+    AttendanceStatus.other => remark ?? '他',
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -393,7 +435,10 @@ class _StudentCard extends StatelessWidget {
           decoration: isFocused
               ? BoxDecoration(
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Theme.of(context).colorScheme.primary, width: 2),
+                  border: Border.all(
+                    color: Theme.of(context).colorScheme.primary,
+                    width: 2,
+                  ),
                 )
               : null,
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -404,16 +449,31 @@ class _StudentCard extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(name, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500), overflow: TextOverflow.ellipsis),
                     Text(
-                      studentNo.length > 6 ? studentNo.substring(studentNo.length - 6) : studentNo,
+                      name,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      studentNo.length > 6
+                          ? studentNo.substring(studentNo.length - 6)
+                          : studentNo,
                       style: TextStyle(fontSize: 11, color: Colors.grey[600]),
                     ),
                   ],
                 ),
               ),
               if (_statusLabel.isNotEmpty)
-                Text(_statusLabel, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                Text(
+                  _statusLabel,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
             ],
           ),
         ),
@@ -427,7 +487,11 @@ class _ActionButton extends StatelessWidget {
   final Color color;
   final VoidCallback? onPressed;
 
-  const _ActionButton({required this.label, required this.color, this.onPressed});
+  const _ActionButton({
+    required this.label,
+    required this.color,
+    this.onPressed,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -435,7 +499,9 @@ class _ActionButton extends StatelessWidget {
       onPressed: onPressed,
       style: OutlinedButton.styleFrom(
         foregroundColor: color,
-        side: BorderSide(color: onPressed != null ? color : Colors.grey.shade300),
+        side: BorderSide(
+          color: onPressed != null ? color : Colors.grey.shade300,
+        ),
         minimumSize: const Size(56, 44),
         padding: const EdgeInsets.symmetric(horizontal: 12),
       ),

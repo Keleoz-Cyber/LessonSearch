@@ -30,13 +30,17 @@ class _RollCallPageState extends ConsumerState<RollCallPage> {
   void initState() {
     super.initState();
     Future.microtask(() {
+      final authService = ref.read(authServiceProvider);
       if (widget.resumeTaskId != null) {
         ref.read(rollCallProvider.notifier).resumeTask(widget.resumeTaskId!);
       } else {
-        ref.read(rollCallProvider.notifier).startRollCall(
+        ref
+            .read(rollCallProvider.notifier)
+            .startRollCall(
               classIds: widget.classIds,
               gradeId: widget.gradeId,
               majorId: widget.majorId,
+              userId: authService.userId,
             );
       }
     });
@@ -91,9 +95,9 @@ class _RollCallPageState extends ConsumerState<RollCallPage> {
               const SizedBox(height: 8),
               Text(
                 '已点名 ${state.processedCount} / ${state.totalCount} 人',
-                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      color: Colors.grey[600],
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyLarge?.copyWith(color: Colors.grey[600]),
               ),
               const SizedBox(height: 32),
               FilledButton(
@@ -141,8 +145,8 @@ class _RollCallPageState extends ConsumerState<RollCallPage> {
                 child: Text(
                   student.name,
                   style: Theme.of(context).textTheme.displayMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
               const SizedBox(height: 12),
@@ -153,9 +157,9 @@ class _RollCallPageState extends ConsumerState<RollCallPage> {
                 child: Text(
                   student.pinyin ?? '',
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        color: Colors.grey[500],
-                        letterSpacing: 2,
-                      ),
+                    color: Colors.grey[500],
+                    letterSpacing: 2,
+                  ),
                 ),
               ),
               const SizedBox(height: 24),
@@ -164,46 +168,46 @@ class _RollCallPageState extends ConsumerState<RollCallPage> {
               Text(
                 '${state.currentClassName} · ${student.studentNo}',
                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      color: Colors.grey[400],
-                      fontFamily: 'monospace',
-                    ),
+                  color: Colors.grey[400],
+                  fontFamily: 'monospace',
+                ),
                 textAlign: TextAlign.center,
               ),
 
               const Spacer(flex: 3),
 
               // 操作按钮
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () => _showFinishDialog(),
-                    icon: const Icon(Icons.stop),
-                    label: const Text('结束查课'),
-                    style: OutlinedButton.styleFrom(
-                      minimumSize: const Size.fromHeight(52),
-                      foregroundColor: Colors.red,
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () => _showFinishDialog(),
+                      icon: const Icon(Icons.stop),
+                      label: const Text('结束查课'),
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size.fromHeight(52),
+                        foregroundColor: Colors.red,
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  flex: 2,
-                  child: FilledButton.icon(
-                    onPressed: () =>
-                        ref.read(rollCallProvider.notifier).nextStudent(),
-                    icon: const Icon(Icons.navigate_next),
-                    label: Text(state.hasNext ? '下一位' : '最后一位'),
-                    style: FilledButton.styleFrom(
-                      minimumSize: const Size.fromHeight(52),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    flex: 2,
+                    child: FilledButton.icon(
+                      onPressed: () =>
+                          ref.read(rollCallProvider.notifier).nextStudent(),
+                      icon: const Icon(Icons.navigate_next),
+                      label: Text(state.hasNext ? '下一位' : '最后一位'),
+                      style: FilledButton.styleFrom(
+                        minimumSize: const Size.fromHeight(52),
+                      ),
                     ),
                   ),
-                ),
-              ],
-            ),
-          ],
+                ],
+              ),
+            ],
+          ),
         ),
-      ),
       ),
     );
   }
@@ -253,10 +257,18 @@ class _RollCallPageState extends ConsumerState<RollCallPage> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('结束查课'),
-        content: Text('已点名 ${state.processedCount} / ${state.totalCount} 人，确认结束？'),
+        content: Text(
+          '已点名 ${state.processedCount} / ${state.totalCount} 人，确认结束？',
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('取消')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('确认结束')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('确认结束'),
+          ),
         ],
       ),
     );

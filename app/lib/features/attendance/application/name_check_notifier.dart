@@ -84,7 +84,11 @@ class StudentWithStatus {
     this.recordId,
   });
 
-  StudentWithStatus copyWith({AttendanceStatus? status, String? remark, int? recordId}) {
+  StudentWithStatus copyWith({
+    AttendanceStatus? status,
+    String? remark,
+    int? recordId,
+  }) {
     return StudentWithStatus(
       student: student,
       status: status ?? this.status,
@@ -100,7 +104,7 @@ class NameCheckNotifier extends StateNotifier<NameCheckState> {
   final StudentRepository _studentRepo;
 
   NameCheckNotifier(this._attendanceRepo, this._studentRepo)
-      : super(const NameCheckState());
+    : super(const NameCheckState());
 
   /// 恢复未完成的记名任务
   Future<void> resumeTask(String taskId) async {
@@ -163,6 +167,7 @@ class NameCheckNotifier extends StateNotifier<NameCheckState> {
     required List<int> classIds,
     required int gradeId,
     required int majorId,
+    int? userId,
   }) async {
     state = const NameCheckState(isLoading: true);
 
@@ -191,6 +196,7 @@ class NameCheckNotifier extends StateNotifier<NameCheckState> {
         classIds: classIds,
         selectedGradeId: gradeId,
         selectedMajorId: majorId,
+        userId: userId,
       );
 
       final updated = await _attendanceRepo.updateTaskStatus(
@@ -218,17 +224,28 @@ class NameCheckNotifier extends StateNotifier<NameCheckState> {
   }
 
   /// 标记学生状态
-  Future<void> markStudent(int classId, int studentIndex, AttendanceStatus status, {String? remark}) async {
+  Future<void> markStudent(
+    int classId,
+    int studentIndex,
+    AttendanceStatus status, {
+    String? remark,
+  }) async {
     final task = state.task;
     if (task == null) return;
 
-    final students = List<StudentWithStatus>.from(state.studentsByClass[classId] ?? []);
+    final students = List<StudentWithStatus>.from(
+      state.studentsByClass[classId] ?? [],
+    );
     if (studentIndex >= students.length) return;
 
     final student = students[studentIndex];
 
     if (student.recordId != null) {
-      await _attendanceRepo.updateRecordStatus(student.recordId!, status, remark: remark);
+      await _attendanceRepo.updateRecordStatus(
+        student.recordId!,
+        status,
+        remark: remark,
+      );
       students[studentIndex] = student.copyWith(status: status, remark: remark);
     } else {
       final record = await _attendanceRepo.createRecord(
@@ -238,10 +255,16 @@ class NameCheckNotifier extends StateNotifier<NameCheckState> {
         status: status,
         remark: remark,
       );
-      students[studentIndex] = student.copyWith(status: status, remark: remark, recordId: record.id);
+      students[studentIndex] = student.copyWith(
+        status: status,
+        remark: remark,
+        recordId: record.id,
+      );
     }
 
-    final updatedMap = Map<int, List<StudentWithStatus>>.from(state.studentsByClass);
+    final updatedMap = Map<int, List<StudentWithStatus>>.from(
+      state.studentsByClass,
+    );
     updatedMap[classId] = students;
     state = state.copyWith(studentsByClass: updatedMap);
   }
@@ -252,8 +275,11 @@ class NameCheckNotifier extends StateNotifier<NameCheckState> {
     if (task == null) return;
 
     // 收集所有未处理的学生，批量写入
-    final pendingItems = <({int studentId, int classId, AttendanceStatus status})>[];
-    final updatedMap = Map<int, List<StudentWithStatus>>.from(state.studentsByClass);
+    final pendingItems =
+        <({int studentId, int classId, AttendanceStatus status})>[];
+    final updatedMap = Map<int, List<StudentWithStatus>>.from(
+      state.studentsByClass,
+    );
 
     for (final entry in state.studentsByClass.entries) {
       final classId = entry.key;
@@ -293,10 +319,7 @@ class NameCheckNotifier extends StateNotifier<NameCheckState> {
     final task = state.task;
     if (task == null) return;
 
-    await _attendanceRepo.updateTaskStatus(
-      task,
-      status: TaskStatus.abandoned,
-    );
+    await _attendanceRepo.updateTaskStatus(task, status: TaskStatus.abandoned);
 
     state = const NameCheckState();
   }

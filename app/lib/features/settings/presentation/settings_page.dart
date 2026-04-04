@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/announcement/announcement_config.dart';
 import '../../../shared/providers.dart';
@@ -10,11 +11,25 @@ class SettingsPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final themeMode = ref.watch(themeModeProvider);
+    final authService = ref.watch(authServiceProvider);
+    final isLoggedIn = authService.isLoggedIn;
 
     return Scaffold(
       appBar: AppBar(title: const Text('设置')),
       body: ListView(
         children: [
+          // --- 账户 ---
+          const _SectionHeader(title: '账户'),
+          ListTile(
+            leading: Icon(isLoggedIn ? Icons.account_circle : Icons.login),
+            title: Text(isLoggedIn ? authService.userEmail ?? '已登录' : '登录'),
+            subtitle: Text(isLoggedIn ? '点击退出登录' : '使用邮箱验证码登录'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => _handleAuth(context, ref, isLoggedIn),
+          ),
+
+          const Divider(),
+
           // --- 应用信息 ---
           const _SectionHeader(title: '应用信息'),
           const ListTile(
@@ -79,6 +94,38 @@ class SettingsPage extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  void _handleAuth(BuildContext context, WidgetRef ref, bool isLoggedIn) {
+    if (isLoggedIn) {
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('退出登录'),
+          content: const Text('确定要退出登录吗？\n\n退出后本地数据仍会保留，但新记录将不再同步到服务器。'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('取消'),
+            ),
+            FilledButton(
+              onPressed: () async {
+                await ref.read(authServiceProvider).clearAuth();
+                if (context.mounted) {
+                  Navigator.pop(ctx);
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(const SnackBar(content: Text('已退出登录')));
+                }
+              },
+              child: const Text('退出'),
+            ),
+          ],
+        ),
+      );
+    } else {
+      context.push('/login');
+    }
   }
 
   String _themeModeLabel(ThemeMode mode) {

@@ -3,6 +3,360 @@
 part of 'app_database.dart';
 
 // ignore_for_file: type=lint
+class $UsersTable extends Users with TableInfo<$UsersTable, User> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $UsersTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _emailMeta = const VerificationMeta('email');
+  @override
+  late final GeneratedColumn<String> email = GeneratedColumn<String>(
+    'email',
+    aliasedName,
+    false,
+    additionalChecks: GeneratedColumn.checkTextLength(maxTextLength: 100),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _nicknameMeta = const VerificationMeta(
+    'nickname',
+  );
+  @override
+  late final GeneratedColumn<String> nickname = GeneratedColumn<String>(
+    'nickname',
+    aliasedName,
+    true,
+    additionalChecks: GeneratedColumn.checkTextLength(maxTextLength: 50),
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _lastLoginAtMeta = const VerificationMeta(
+    'lastLoginAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> lastLoginAt = GeneratedColumn<DateTime>(
+    'last_login_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    email,
+    nickname,
+    createdAt,
+    lastLoginAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'users';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<User> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('email')) {
+      context.handle(
+        _emailMeta,
+        email.isAcceptableOrUnknown(data['email']!, _emailMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_emailMeta);
+    }
+    if (data.containsKey('nickname')) {
+      context.handle(
+        _nicknameMeta,
+        nickname.isAcceptableOrUnknown(data['nickname']!, _nicknameMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('last_login_at')) {
+      context.handle(
+        _lastLoginAtMeta,
+        lastLoginAt.isAcceptableOrUnknown(
+          data['last_login_at']!,
+          _lastLoginAtMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  User map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return User(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      email: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}email'],
+      )!,
+      nickname: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}nickname'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      lastLoginAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}last_login_at'],
+      ),
+    );
+  }
+
+  @override
+  $UsersTable createAlias(String alias) {
+    return $UsersTable(attachedDatabase, alias);
+  }
+}
+
+class User extends DataClass implements Insertable<User> {
+  final int id;
+  final String email;
+  final String? nickname;
+  final DateTime createdAt;
+  final DateTime? lastLoginAt;
+  const User({
+    required this.id,
+    required this.email,
+    this.nickname,
+    required this.createdAt,
+    this.lastLoginAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['email'] = Variable<String>(email);
+    if (!nullToAbsent || nickname != null) {
+      map['nickname'] = Variable<String>(nickname);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    if (!nullToAbsent || lastLoginAt != null) {
+      map['last_login_at'] = Variable<DateTime>(lastLoginAt);
+    }
+    return map;
+  }
+
+  UsersCompanion toCompanion(bool nullToAbsent) {
+    return UsersCompanion(
+      id: Value(id),
+      email: Value(email),
+      nickname: nickname == null && nullToAbsent
+          ? const Value.absent()
+          : Value(nickname),
+      createdAt: Value(createdAt),
+      lastLoginAt: lastLoginAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastLoginAt),
+    );
+  }
+
+  factory User.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return User(
+      id: serializer.fromJson<int>(json['id']),
+      email: serializer.fromJson<String>(json['email']),
+      nickname: serializer.fromJson<String?>(json['nickname']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      lastLoginAt: serializer.fromJson<DateTime?>(json['lastLoginAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'email': serializer.toJson<String>(email),
+      'nickname': serializer.toJson<String?>(nickname),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'lastLoginAt': serializer.toJson<DateTime?>(lastLoginAt),
+    };
+  }
+
+  User copyWith({
+    int? id,
+    String? email,
+    Value<String?> nickname = const Value.absent(),
+    DateTime? createdAt,
+    Value<DateTime?> lastLoginAt = const Value.absent(),
+  }) => User(
+    id: id ?? this.id,
+    email: email ?? this.email,
+    nickname: nickname.present ? nickname.value : this.nickname,
+    createdAt: createdAt ?? this.createdAt,
+    lastLoginAt: lastLoginAt.present ? lastLoginAt.value : this.lastLoginAt,
+  );
+  User copyWithCompanion(UsersCompanion data) {
+    return User(
+      id: data.id.present ? data.id.value : this.id,
+      email: data.email.present ? data.email.value : this.email,
+      nickname: data.nickname.present ? data.nickname.value : this.nickname,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      lastLoginAt: data.lastLoginAt.present
+          ? data.lastLoginAt.value
+          : this.lastLoginAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('User(')
+          ..write('id: $id, ')
+          ..write('email: $email, ')
+          ..write('nickname: $nickname, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('lastLoginAt: $lastLoginAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, email, nickname, createdAt, lastLoginAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is User &&
+          other.id == this.id &&
+          other.email == this.email &&
+          other.nickname == this.nickname &&
+          other.createdAt == this.createdAt &&
+          other.lastLoginAt == this.lastLoginAt);
+}
+
+class UsersCompanion extends UpdateCompanion<User> {
+  final Value<int> id;
+  final Value<String> email;
+  final Value<String?> nickname;
+  final Value<DateTime> createdAt;
+  final Value<DateTime?> lastLoginAt;
+  const UsersCompanion({
+    this.id = const Value.absent(),
+    this.email = const Value.absent(),
+    this.nickname = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.lastLoginAt = const Value.absent(),
+  });
+  UsersCompanion.insert({
+    this.id = const Value.absent(),
+    required String email,
+    this.nickname = const Value.absent(),
+    required DateTime createdAt,
+    this.lastLoginAt = const Value.absent(),
+  }) : email = Value(email),
+       createdAt = Value(createdAt);
+  static Insertable<User> custom({
+    Expression<int>? id,
+    Expression<String>? email,
+    Expression<String>? nickname,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? lastLoginAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (email != null) 'email': email,
+      if (nickname != null) 'nickname': nickname,
+      if (createdAt != null) 'created_at': createdAt,
+      if (lastLoginAt != null) 'last_login_at': lastLoginAt,
+    });
+  }
+
+  UsersCompanion copyWith({
+    Value<int>? id,
+    Value<String>? email,
+    Value<String?>? nickname,
+    Value<DateTime>? createdAt,
+    Value<DateTime?>? lastLoginAt,
+  }) {
+    return UsersCompanion(
+      id: id ?? this.id,
+      email: email ?? this.email,
+      nickname: nickname ?? this.nickname,
+      createdAt: createdAt ?? this.createdAt,
+      lastLoginAt: lastLoginAt ?? this.lastLoginAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (email.present) {
+      map['email'] = Variable<String>(email.value);
+    }
+    if (nickname.present) {
+      map['nickname'] = Variable<String>(nickname.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (lastLoginAt.present) {
+      map['last_login_at'] = Variable<DateTime>(lastLoginAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('UsersCompanion(')
+          ..write('id: $id, ')
+          ..write('email: $email, ')
+          ..write('nickname: $nickname, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('lastLoginAt: $lastLoginAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $GradesTable extends Grades with TableInfo<$GradesTable, Grade> {
   @override
   final GeneratedDatabase attachedDatabase;
@@ -1274,6 +1628,15 @@ class $AttendanceTasksTable extends AttendanceTasks
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _userIdMeta = const VerificationMeta('userId');
+  @override
+  late final GeneratedColumn<int> userId = GeneratedColumn<int>(
+    'user_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _typeMeta = const VerificationMeta('type');
   @override
   late final GeneratedColumn<String> type = GeneratedColumn<String>(
@@ -1387,6 +1750,7 @@ class $AttendanceTasksTable extends AttendanceTasks
   @override
   List<GeneratedColumn> get $columns => [
     id,
+    userId,
     type,
     status,
     phase,
@@ -1414,6 +1778,12 @@ class $AttendanceTasksTable extends AttendanceTasks
       context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
     } else if (isInserting) {
       context.missing(_idMeta);
+    }
+    if (data.containsKey('user_id')) {
+      context.handle(
+        _userIdMeta,
+        userId.isAcceptableOrUnknown(data['user_id']!, _userIdMeta),
+      );
     }
     if (data.containsKey('type')) {
       context.handle(
@@ -1502,6 +1872,10 @@ class $AttendanceTasksTable extends AttendanceTasks
         DriftSqlType.string,
         data['${effectivePrefix}id'],
       )!,
+      userId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}user_id'],
+      ),
       type: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}type'],
@@ -1553,6 +1927,7 @@ class $AttendanceTasksTable extends AttendanceTasks
 
 class AttendanceTask extends DataClass implements Insertable<AttendanceTask> {
   final String id;
+  final int? userId;
   final String type;
   final String status;
   final String phase;
@@ -1565,6 +1940,7 @@ class AttendanceTask extends DataClass implements Insertable<AttendanceTask> {
   final String syncStatus;
   const AttendanceTask({
     required this.id,
+    this.userId,
     required this.type,
     required this.status,
     required this.phase,
@@ -1580,6 +1956,9 @@ class AttendanceTask extends DataClass implements Insertable<AttendanceTask> {
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['id'] = Variable<String>(id);
+    if (!nullToAbsent || userId != null) {
+      map['user_id'] = Variable<int>(userId);
+    }
     map['type'] = Variable<String>(type);
     map['status'] = Variable<String>(status);
     map['phase'] = Variable<String>(phase);
@@ -1600,6 +1979,9 @@ class AttendanceTask extends DataClass implements Insertable<AttendanceTask> {
   AttendanceTasksCompanion toCompanion(bool nullToAbsent) {
     return AttendanceTasksCompanion(
       id: Value(id),
+      userId: userId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(userId),
       type: Value(type),
       status: Value(status),
       phase: Value(phase),
@@ -1624,6 +2006,7 @@ class AttendanceTask extends DataClass implements Insertable<AttendanceTask> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return AttendanceTask(
       id: serializer.fromJson<String>(json['id']),
+      userId: serializer.fromJson<int?>(json['userId']),
       type: serializer.fromJson<String>(json['type']),
       status: serializer.fromJson<String>(json['status']),
       phase: serializer.fromJson<String>(json['phase']),
@@ -1643,6 +2026,7 @@ class AttendanceTask extends DataClass implements Insertable<AttendanceTask> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
+      'userId': serializer.toJson<int?>(userId),
       'type': serializer.toJson<String>(type),
       'status': serializer.toJson<String>(status),
       'phase': serializer.toJson<String>(phase),
@@ -1658,6 +2042,7 @@ class AttendanceTask extends DataClass implements Insertable<AttendanceTask> {
 
   AttendanceTask copyWith({
     String? id,
+    Value<int?> userId = const Value.absent(),
     String? type,
     String? status,
     String? phase,
@@ -1670,6 +2055,7 @@ class AttendanceTask extends DataClass implements Insertable<AttendanceTask> {
     String? syncStatus,
   }) => AttendanceTask(
     id: id ?? this.id,
+    userId: userId.present ? userId.value : this.userId,
     type: type ?? this.type,
     status: status ?? this.status,
     phase: phase ?? this.phase,
@@ -1688,6 +2074,7 @@ class AttendanceTask extends DataClass implements Insertable<AttendanceTask> {
   AttendanceTask copyWithCompanion(AttendanceTasksCompanion data) {
     return AttendanceTask(
       id: data.id.present ? data.id.value : this.id,
+      userId: data.userId.present ? data.userId.value : this.userId,
       type: data.type.present ? data.type.value : this.type,
       status: data.status.present ? data.status.value : this.status,
       phase: data.phase.present ? data.phase.value : this.phase,
@@ -1715,6 +2102,7 @@ class AttendanceTask extends DataClass implements Insertable<AttendanceTask> {
   String toString() {
     return (StringBuffer('AttendanceTask(')
           ..write('id: $id, ')
+          ..write('userId: $userId, ')
           ..write('type: $type, ')
           ..write('status: $status, ')
           ..write('phase: $phase, ')
@@ -1732,6 +2120,7 @@ class AttendanceTask extends DataClass implements Insertable<AttendanceTask> {
   @override
   int get hashCode => Object.hash(
     id,
+    userId,
     type,
     status,
     phase,
@@ -1748,6 +2137,7 @@ class AttendanceTask extends DataClass implements Insertable<AttendanceTask> {
       identical(this, other) ||
       (other is AttendanceTask &&
           other.id == this.id &&
+          other.userId == this.userId &&
           other.type == this.type &&
           other.status == this.status &&
           other.phase == this.phase &&
@@ -1762,6 +2152,7 @@ class AttendanceTask extends DataClass implements Insertable<AttendanceTask> {
 
 class AttendanceTasksCompanion extends UpdateCompanion<AttendanceTask> {
   final Value<String> id;
+  final Value<int?> userId;
   final Value<String> type;
   final Value<String> status;
   final Value<String> phase;
@@ -1775,6 +2166,7 @@ class AttendanceTasksCompanion extends UpdateCompanion<AttendanceTask> {
   final Value<int> rowid;
   const AttendanceTasksCompanion({
     this.id = const Value.absent(),
+    this.userId = const Value.absent(),
     this.type = const Value.absent(),
     this.status = const Value.absent(),
     this.phase = const Value.absent(),
@@ -1789,6 +2181,7 @@ class AttendanceTasksCompanion extends UpdateCompanion<AttendanceTask> {
   });
   AttendanceTasksCompanion.insert({
     required String id,
+    this.userId = const Value.absent(),
     required String type,
     this.status = const Value.absent(),
     this.phase = const Value.absent(),
@@ -1804,6 +2197,7 @@ class AttendanceTasksCompanion extends UpdateCompanion<AttendanceTask> {
        type = Value(type);
   static Insertable<AttendanceTask> custom({
     Expression<String>? id,
+    Expression<int>? userId,
     Expression<String>? type,
     Expression<String>? status,
     Expression<String>? phase,
@@ -1818,6 +2212,7 @@ class AttendanceTasksCompanion extends UpdateCompanion<AttendanceTask> {
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
+      if (userId != null) 'user_id': userId,
       if (type != null) 'type': type,
       if (status != null) 'status': status,
       if (phase != null) 'phase': phase,
@@ -1835,6 +2230,7 @@ class AttendanceTasksCompanion extends UpdateCompanion<AttendanceTask> {
 
   AttendanceTasksCompanion copyWith({
     Value<String>? id,
+    Value<int?>? userId,
     Value<String>? type,
     Value<String>? status,
     Value<String>? phase,
@@ -1849,6 +2245,7 @@ class AttendanceTasksCompanion extends UpdateCompanion<AttendanceTask> {
   }) {
     return AttendanceTasksCompanion(
       id: id ?? this.id,
+      userId: userId ?? this.userId,
       type: type ?? this.type,
       status: status ?? this.status,
       phase: phase ?? this.phase,
@@ -1868,6 +2265,9 @@ class AttendanceTasksCompanion extends UpdateCompanion<AttendanceTask> {
     final map = <String, Expression>{};
     if (id.present) {
       map['id'] = Variable<String>(id.value);
+    }
+    if (userId.present) {
+      map['user_id'] = Variable<int>(userId.value);
     }
     if (type.present) {
       map['type'] = Variable<String>(type.value);
@@ -1909,6 +2309,7 @@ class AttendanceTasksCompanion extends UpdateCompanion<AttendanceTask> {
   String toString() {
     return (StringBuffer('AttendanceTasksCompanion(')
           ..write('id: $id, ')
+          ..write('userId: $userId, ')
           ..write('type: $type, ')
           ..write('status: $status, ')
           ..write('phase: $phase, ')
@@ -3281,6 +3682,7 @@ class SyncQueueCompanion extends UpdateCompanion<SyncQueueData> {
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
+  late final $UsersTable users = $UsersTable(this);
   late final $GradesTable grades = $GradesTable(this);
   late final $MajorsTable majors = $MajorsTable(this);
   late final $ClassesTable classes = $ClassesTable(this);
@@ -3297,6 +3699,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
   @override
   List<DatabaseSchemaEntity> get allSchemaEntities => [
+    users,
     grades,
     majors,
     classes,
@@ -3308,6 +3711,195 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   ];
 }
 
+typedef $$UsersTableCreateCompanionBuilder =
+    UsersCompanion Function({
+      Value<int> id,
+      required String email,
+      Value<String?> nickname,
+      required DateTime createdAt,
+      Value<DateTime?> lastLoginAt,
+    });
+typedef $$UsersTableUpdateCompanionBuilder =
+    UsersCompanion Function({
+      Value<int> id,
+      Value<String> email,
+      Value<String?> nickname,
+      Value<DateTime> createdAt,
+      Value<DateTime?> lastLoginAt,
+    });
+
+class $$UsersTableFilterComposer extends Composer<_$AppDatabase, $UsersTable> {
+  $$UsersTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get email => $composableBuilder(
+    column: $table.email,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get nickname => $composableBuilder(
+    column: $table.nickname,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get lastLoginAt => $composableBuilder(
+    column: $table.lastLoginAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$UsersTableOrderingComposer
+    extends Composer<_$AppDatabase, $UsersTable> {
+  $$UsersTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get email => $composableBuilder(
+    column: $table.email,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get nickname => $composableBuilder(
+    column: $table.nickname,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get lastLoginAt => $composableBuilder(
+    column: $table.lastLoginAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$UsersTableAnnotationComposer
+    extends Composer<_$AppDatabase, $UsersTable> {
+  $$UsersTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get email =>
+      $composableBuilder(column: $table.email, builder: (column) => column);
+
+  GeneratedColumn<String> get nickname =>
+      $composableBuilder(column: $table.nickname, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get lastLoginAt => $composableBuilder(
+    column: $table.lastLoginAt,
+    builder: (column) => column,
+  );
+}
+
+class $$UsersTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $UsersTable,
+          User,
+          $$UsersTableFilterComposer,
+          $$UsersTableOrderingComposer,
+          $$UsersTableAnnotationComposer,
+          $$UsersTableCreateCompanionBuilder,
+          $$UsersTableUpdateCompanionBuilder,
+          (User, BaseReferences<_$AppDatabase, $UsersTable, User>),
+          User,
+          PrefetchHooks Function()
+        > {
+  $$UsersTableTableManager(_$AppDatabase db, $UsersTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$UsersTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$UsersTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$UsersTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> email = const Value.absent(),
+                Value<String?> nickname = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime?> lastLoginAt = const Value.absent(),
+              }) => UsersCompanion(
+                id: id,
+                email: email,
+                nickname: nickname,
+                createdAt: createdAt,
+                lastLoginAt: lastLoginAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String email,
+                Value<String?> nickname = const Value.absent(),
+                required DateTime createdAt,
+                Value<DateTime?> lastLoginAt = const Value.absent(),
+              }) => UsersCompanion.insert(
+                id: id,
+                email: email,
+                nickname: nickname,
+                createdAt: createdAt,
+                lastLoginAt: lastLoginAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$UsersTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $UsersTable,
+      User,
+      $$UsersTableFilterComposer,
+      $$UsersTableOrderingComposer,
+      $$UsersTableAnnotationComposer,
+      $$UsersTableCreateCompanionBuilder,
+      $$UsersTableUpdateCompanionBuilder,
+      (User, BaseReferences<_$AppDatabase, $UsersTable, User>),
+      User,
+      PrefetchHooks Function()
+    >;
 typedef $$GradesTableCreateCompanionBuilder =
     GradesCompanion Function({
       Value<int> id,
@@ -4925,6 +5517,7 @@ typedef $$StudentsTableProcessedTableManager =
 typedef $$AttendanceTasksTableCreateCompanionBuilder =
     AttendanceTasksCompanion Function({
       required String id,
+      Value<int?> userId,
       required String type,
       Value<String> status,
       Value<String> phase,
@@ -4940,6 +5533,7 @@ typedef $$AttendanceTasksTableCreateCompanionBuilder =
 typedef $$AttendanceTasksTableUpdateCompanionBuilder =
     AttendanceTasksCompanion Function({
       Value<String> id,
+      Value<int?> userId,
       Value<String> type,
       Value<String> status,
       Value<String> phase,
@@ -5019,6 +5613,11 @@ class $$AttendanceTasksTableFilterComposer
   });
   ColumnFilters<String> get id => $composableBuilder(
     column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get userId => $composableBuilder(
+    column: $table.userId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -5137,6 +5736,11 @@ class $$AttendanceTasksTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get userId => $composableBuilder(
+    column: $table.userId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get type => $composableBuilder(
     column: $table.type,
     builder: (column) => ColumnOrderings(column),
@@ -5199,6 +5803,9 @@ class $$AttendanceTasksTableAnnotationComposer
   });
   GeneratedColumn<String> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get userId =>
+      $composableBuilder(column: $table.userId, builder: (column) => column);
 
   GeneratedColumn<String> get type =>
       $composableBuilder(column: $table.type, builder: (column) => column);
@@ -5326,6 +5933,7 @@ class $$AttendanceTasksTableTableManager
           updateCompanionCallback:
               ({
                 Value<String> id = const Value.absent(),
+                Value<int?> userId = const Value.absent(),
                 Value<String> type = const Value.absent(),
                 Value<String> status = const Value.absent(),
                 Value<String> phase = const Value.absent(),
@@ -5339,6 +5947,7 @@ class $$AttendanceTasksTableTableManager
                 Value<int> rowid = const Value.absent(),
               }) => AttendanceTasksCompanion(
                 id: id,
+                userId: userId,
                 type: type,
                 status: status,
                 phase: phase,
@@ -5354,6 +5963,7 @@ class $$AttendanceTasksTableTableManager
           createCompanionCallback:
               ({
                 required String id,
+                Value<int?> userId = const Value.absent(),
                 required String type,
                 Value<String> status = const Value.absent(),
                 Value<String> phase = const Value.absent(),
@@ -5367,6 +5977,7 @@ class $$AttendanceTasksTableTableManager
                 Value<int> rowid = const Value.absent(),
               }) => AttendanceTasksCompanion.insert(
                 id: id,
+                userId: userId,
                 type: type,
                 status: status,
                 phase: phase,
@@ -6692,6 +7303,8 @@ typedef $$SyncQueueTableProcessedTableManager =
 class $AppDatabaseManager {
   final _$AppDatabase _db;
   $AppDatabaseManager(this._db);
+  $$UsersTableTableManager get users =>
+      $$UsersTableTableManager(_db, _db.users);
   $$GradesTableTableManager get grades =>
       $$GradesTableTableManager(_db, _db.grades);
   $$MajorsTableTableManager get majors =>
