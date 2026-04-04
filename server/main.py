@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from routers import grades, majors, classes, students, tasks, records, auth
+from routers import grades, majors, classes, students, tasks, records, auth, app_version
 
 app = FastAPI(
     title="查课 API",
@@ -8,6 +8,7 @@ app = FastAPI(
 )
 
 app.include_router(auth.router, prefix="/api")
+app.include_router(app_version.router, prefix="/api")
 app.include_router(grades.router, prefix="/api")
 app.include_router(majors.router, prefix="/api")
 app.include_router(classes.router, prefix="/api")

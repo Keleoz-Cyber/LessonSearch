@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/announcement/announcement_config.dart';
 import '../../../shared/providers.dart';
@@ -64,13 +65,9 @@ class SettingsPage extends ConsumerWidget {
           ListTile(
             leading: const Icon(Icons.system_update),
             title: const Text('检查更新'),
-            subtitle: const Text('当前已是最新版本'),
+            subtitle: const Text('检查是否有新版本'),
             trailing: const Icon(Icons.chevron_right),
-            onTap: () {
-              ScaffoldMessenger.of(
-                context,
-              ).showSnackBar(const SnackBar(content: Text('当前已是最新版本')));
-            },
+            onTap: () => _checkUpdate(context, ref),
           ),
 
           const Divider(),
@@ -234,6 +231,65 @@ class SettingsPage extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  Future<void> _checkUpdate(BuildContext context, WidgetRef ref) async {
+    try {
+      final apiClient = ref.read(apiClientProvider);
+      final response = await apiClient.checkUpdate();
+
+      final latestVersion = response['version'] as String;
+      final downloadUrl = response['download_url'] as String;
+      final releaseNotes = response['release_notes'] as String;
+
+      const currentVersion = '0.3.2';
+
+      if (latestVersion == currentVersion) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('当前已是最新版本')));
+        }
+        return;
+      }
+
+      if (context.mounted) {
+        showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: Text('发现新版本 v$latestVersion'),
+            content: SingleChildScrollView(
+              child: Text(
+                releaseNotes,
+                style: const TextStyle(fontSize: 13, height: 1.6),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('稍后再说'),
+              ),
+              FilledButton(
+                onPressed: () async {
+                  Navigator.pop(ctx);
+                  final uri = Uri.parse(downloadUrl);
+                  if (await canLaunchUrl(uri)) {
+                    await launchUrl(uri, mode: LaunchMode.externalApplication);
+                  }
+                },
+                child: const Text('立即更新'),
+              ),
+            ],
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('检查更新失败: $e')));
+      }
+    }
   }
 }
 

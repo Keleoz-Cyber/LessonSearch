@@ -50,10 +50,21 @@ class ApiClient {
   Future<Map<String, dynamic>> login({
     required String email,
     required String code,
-    required String invitationCode,
   }) async {
     final res = await dio.post(
       '/auth/login',
+      data: {'email': email, 'code': code},
+    );
+    return res.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> register({
+    required String email,
+    required String code,
+    required String invitationCode,
+  }) async {
+    final res = await dio.post(
+      '/auth/register',
       data: {'email': email, 'code': code, 'invitation_code': invitationCode},
     );
     return res.data as Map<String, dynamic>;
@@ -61,6 +72,13 @@ class ApiClient {
 
   Future<Map<String, dynamic>> getCurrentUser() async {
     final res = await dio.get('/auth/me');
+    return res.data as Map<String, dynamic>;
+  }
+
+  // === 应用版本 ===
+
+  Future<Map<String, dynamic>> checkUpdate() async {
+    final res = await dio.get('/version');
     return res.data as Map<String, dynamic>;
   }
 
