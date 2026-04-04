@@ -42,7 +42,7 @@ class SettingsPage extends ConsumerWidget {
           const ListTile(
             leading: Icon(Icons.tag),
             title: Text('版本号'),
-            subtitle: Text('0.3.3'),
+            subtitle: Text('0.3.5'),
           ),
 
           const Divider(),
@@ -241,7 +241,7 @@ class SettingsPage extends ConsumerWidget {
       final downloadUrl = response['download_url'] as String;
       final releaseNotes = response['release_notes'] as String;
 
-      const currentVersion = '0.3.3';
+      const currentVersion = '0.3.5';
 
       if (latestVersion == currentVersion) {
         if (context.mounted) {
@@ -399,7 +399,7 @@ class AboutPage extends StatelessWidget {
 
           Center(
             child: Text(
-              '查课 App v0.3.3',
+              '查课 App v0.3.5',
               style: TextStyle(
                 color: Theme.of(
                   context,
