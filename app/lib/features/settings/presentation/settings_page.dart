@@ -75,8 +75,8 @@ class SettingsPage extends ConsumerWidget {
           // --- 显示 ---
           const _SectionHeader(title: '显示'),
           ListTile(
-            leading: const Icon(Icons.dark_mode_outlined),
-            title: const Text('暗色模式'),
+            leading: const Icon(Icons.palette_outlined),
+            title: const Text('主题'),
             subtitle: Text(_themeModeLabel(themeMode)),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => _showThemeDialog(context, ref, themeMode),
@@ -352,8 +352,6 @@ class AboutPage extends StatelessWidget {
             title: '开发者',
             children: [
               _PersonTile(name: 'keleoz', role: '开发者', icon: Icons.code),
-              // 添加更多开发者：
-              // _PersonTile(name: '张三', role: 'UI 设计', icon: Icons.design_services),
             ],
           ),
 
@@ -363,9 +361,21 @@ class AboutPage extends StatelessWidget {
           const _InfoSection(
             title: '致谢',
             children: [
-              _PersonTile(name: '暂未设置', role: '暂未设置', icon: Icons.smart_toy),
-              // 添加更多致谢：
-              // _PersonTile(name: '李四', role: '测试支持', icon: Icons.bug_report),
+              _PersonTile(
+                name: 'Horldsense',
+                role: '技术顾问',
+                icon: Icons.lightbulb_outline,
+              ),
+              _PersonTile(
+                name: 'Horldsense',
+                role: 'iOS 适配',
+                icon: Icons.phone_iphone,
+              ),
+              _PersonTile(
+                name: 'keleoz, Horldsense',
+                role: '测试',
+                icon: Icons.bug_report,
+              ),
             ],
           ),
 
