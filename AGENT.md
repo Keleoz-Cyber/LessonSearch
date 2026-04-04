@@ -1,7 +1,7 @@
 # AGENT.md — AI Agent 协作指南
 
 > 本文档面向接手此项目的 AI Agent。请在开始任何工作前完整阅读此文件。
-> 最后更新：2026-04-04 · 当前版本：0.2.4
+> 最后更新：2026-04-04 · 当前版本：0.3.0
 
 ---
 
@@ -26,11 +26,15 @@ Flutter App
   Repository (data/)              ← 统一数据访问
     ├── LocalDataSource → Drift (SQLite)   ← 所有读写先走这里
     └── RemoteDataSource → ApiClient → Dio
-                                    ↓ HTTPS
-                           FastAPI → MySQL
+                                     ↓ HTTPS
+                            FastAPI → MySQL
   SyncService (core/sync/)
     ↓ 定期消费 SyncQueue 表
     → RemoteDataSource → 服务端
+
+AuthService (features/auth/)
+  → SharedPreferences (token, userId, email)
+  → ApiClient 自动携带 Authorization: Bearer <token>
 ```
 
 ### 核心规则
@@ -40,6 +44,7 @@ Flutter App
 3. **写操作 = 写本地 + 入队 SyncQueue** — Repository 自动处理
 4. **读操作 = 读本地 Drift** — 首次使用时从服务器拉取缓存
 5. **SyncService 是独立的后台消费者** — 不被页面直接调用（除了 syncNow）
+6. **登录后任务绑定 user_id** — 数据隔离，每用户只看自己的记录
 
 ### Drift 和 Domain 模型名称冲突
 
@@ -79,7 +84,7 @@ app/lib/
 │
 ├── features/
 │   ├── home/presentation/
-│   │   └── home_page.dart             # 首页（3入口 + 设置 + 同步状态）
+│   │   └── home_page.dart             # 首页（4入口 + 设置 + 同步状态）
 │   │
 │   ├── attendance/                    # ★ 核心模块
 │   │   ├── domain/
@@ -108,8 +113,15 @@ app/lib/
 │   │       ├── records_list_page.dart
 │   │       └── record_detail_page.dart
 │   │
+│   ├── auth/                          # ★ 用户认证（v0.3.0 新增）
+│   │   ├── data/auth_service.dart     # token 管理、登录状态
+│   │   └── presentation/login_page.dart
+│   │
+│   ├── extension/                     # ★ 扩展功能（v0.3.0 新增）
+│   │   └── presentation/extension_page.dart
+│   │
 │   ├── settings/presentation/
-│   │   └── settings_page.dart         # 设置页 + 关于页
+│   │   └── settings_page.dart         # 设置页 + 关于页 + 主题切换
 │   │
 │   └── debug/
 │       └── sync_test_page.dart        # 联调测试页（长按首页标题进入）
@@ -122,41 +134,58 @@ app/lib/
 ```
 server/
 ├── main.py           # FastAPI 入口 + 路由注册
-├── config.py         # 数据库配置（读 .env）
+├── config.py         # 数据库配置 + JWT/SMTP 配置（读 .env）
 ├── database.py       # SQLAlchemy Session
-├── models.py         # ★ 7 张表的 ORM 模型
+├── models.py         # ★ 10 张表的 ORM 模型（含 users, verification_codes, invitation_codes）
 ├── schemas.py        # ★ Pydantic 请求/响应模型
 ├── requirements.txt
 ├── .env.example
 └── routers/
+    ├── auth.py       # ★ POST /api/auth/send-code, /api/auth/login, GET /api/auth/me
     ├── grades.py     # GET /api/grades
     ├── majors.py     # GET /api/majors
     ├── classes.py    # GET /api/classes
     ├── students.py   # GET /api/students
-    ├── tasks.py      # ★ POST/GET/PUT /api/tasks
+    ├── tasks.py      # ★ POST/GET/PUT /api/tasks（支持 user_id 过滤）
     └── records.py    # ★ POST/GET/PUT 考勤记录
+```
+
+```
+scripts/
+├── init_db.py                        # 初始化数据库
+├── excel_analyzer.py                 # Excel 结构分析
+├── excel_importer.py                 # Excel 导入 MySQL
+└── generate_invitation_codes.py      # 生成邀请码（v0.3.0 新增）
 ```
 
 ---
 
 ## 四、数据库
 
-### 本地 SQLite (Drift) — 8 张表
+### 本地 SQLite (Drift) — 9 张表
 
 | 表 | 说明 | 关键字段 |
 |----|------|---------|
+| users | 用户 | id, email, nickname, createdAt |
 | grades | 年级 | id, name, year |
 | majors | 专业 | id, name, shortName |
 | classes | 班级 | id, gradeId, majorId, classCode, displayName |
 | students | 学生 | id, name, studentNo, pinyin(带声调), pinyinAbbr, classId |
-| attendance_tasks | 任务 | id(UUID), type, status, phase, syncStatus, currentStudentIndex |
+| attendance_tasks | 任务 | id(UUID), **userId**, type, status, phase, syncStatus, currentStudentIndex |
 | task_classes | 任务-班级关联 | taskId, classId, sortOrder |
 | attendance_records | 考勤记录 | taskId, studentId, classId, status, remark |
 | sync_queue | 同步队列 | entityType, entityId, action, payload, syncStatus, retryCount |
 
-### 服务端 MySQL — 7 张表（无 sync_queue）
+### 服务端 MySQL — 10 张表
 
-与 SQLite 基本对应。`classes` 唯一约束为 `(grade_id, major_id, class_code)`。
+| 表 | 说明 |
+|----|------|
+| users | 用户账户 |
+| verification_codes | 邮箱验证码（5分钟过期） |
+| invitation_codes | 邀请码（一人一码） |
+| grades, majors, classes, students | 基础数据 |
+| attendance_tasks | 任务（含 user_id） |
+| task_classes, attendance_records | 关联数据 |
 
 ### ⚠️ 当前无 Drift migration
 
@@ -211,6 +240,24 @@ SyncService(每10秒)
   → _processItem() → RemoteDS → POST/PUT 服务端
   → markSynced() 或 markSyncFailed(retryCount++)
 ```
+
+### 登录流程（v0.3.0）
+```
+设置页 → 登录页
+  输入邮箱 → 发送验证码 → SMTP 发送邮件（5分钟有效）
+  输入验证码 + 邀请码 → 验证
+    → 新用户：检查邀请码有效性 → 创建账户 → 标记邀请码已使用
+    → 老用户：忽略邀请码
+  → 返回 JWT token（7天有效）
+  → AuthService 保存到 SharedPreferences
+  → ApiClient 自动携带 Authorization: Bearer <token>
+  → 后续请求按 user_id 过滤数据
+```
+
+### 邀请码机制
+- **一人一码**：每个邀请码只能注册一个新用户
+- **老用户登录**：不需要邀请码
+- **管理**：`docs/invitation-codes.md`
 
 ---
 
@@ -275,8 +322,13 @@ flutter build apk --debug --target-platform android-arm,android-arm64,android-x6
 ## 九、Provider 依赖关系
 
 ```
+sharedPreferencesProvider (SharedPreferences)
+  ↓
+authServiceProvider (AuthService) — token/userId 管理
+themeModeProvider (ThemeModeNotifier) — 暗色模式
+  ↓
 databaseProvider (AppDatabase)
-apiClientProvider (ApiClient)
+apiClientProvider (ApiClient) — 自动携带 token
   ↓
 attendanceLocalDSProvider (AttendanceLocalDataSource)
 attendanceRemoteDSProvider (AttendanceRemoteDataSource)
@@ -305,6 +357,9 @@ syncStateProvider (SyncState) — 供 UI 监听同步状态
 7. **本地数据首次加载** — `StudentRepository.ensureBaseData()` 和 `ensureStudentsForClass()` 会从服务器拉取并缓存
 8. **服务器 MySQL 在 Docker 里** — 命令行访问需要 `docker exec -it $(docker ps | grep mysql | awk '{print $1}') mysql ...`
 9. **Windows 终端 python -c 多行命令** — 会有缩进问题，用 `cat > /tmp/script.py << 'EOF'` 写文件再执行
+10. **服务端时间用 datetime.now()** — 不用 utcnow()，否则时区不一致导致验证码验证失败
+11. **登录后任务带 userId** — 创建任务时传入 `authService.userId`，否则数据不会隔离
+12. **userId=NULL 的任务不同步** — 本地历史数据（登录前）不会被同步到服务端
 
 ---
 
@@ -344,3 +399,15 @@ SELECT id, type, status FROM attendance_tasks ORDER BY created_at DESC LIMIT 10;
 - 提交格式：`feat:` / `fix:` / `perf:` / `docs:` / `chore:`
 - 每次打包前：更新 version、settings 版本号、公告 version+1 和 updateNotes
 - 禁止提交：.env、data/、构建产物、IDE 配置
+
+---
+
+## 十三、相关文档
+
+| 文档 | 说明 |
+|------|------|
+| `CLAUDE.md` | 项目规范与约束 |
+| `docs/tasks.md` | 开发任务表 |
+| `docs/dev-guide.md` | 完整开发文档 |
+| `docs/invitation-codes.md` | 邀请码管理指南 |
+| `docs/ios-guide.md` | iOS 适配指南 |
