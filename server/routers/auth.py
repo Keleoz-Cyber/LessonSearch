@@ -26,12 +26,8 @@ def _send_email(to: str, code: str):
     if not SMTP_USER or not SMTP_PASSWORD:
         raise HTTPException(status_code=500, detail="SMTP 未配置")
 
-    subject = f"【{SMTP_FROM_NAME}】验证码"
-    body = f"""您的验证码是：{code}
-
-验证码 5 分钟内有效，请勿泄露。
-
-— {SMTP_FROM_NAME}"""
+    subject = "Code"
+    body = f"Your code: {code}"
 
     msg = MIMEText(body, "plain", "utf-8")
     msg["Subject"] = subject
