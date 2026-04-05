@@ -98,6 +98,12 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
         nickname: response['user']['nickname'],
       );
 
+      // 刷新登录状态
+      ref.invalidate(authServiceProvider);
+      ref.invalidate(isLoggedInProvider);
+      ref.invalidate(userEmailProvider);
+      ref.invalidate(apiClientProvider);
+
       if (mounted) {
         _showSuccessDialog();
       }

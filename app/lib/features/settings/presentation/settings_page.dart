@@ -13,8 +13,8 @@ class SettingsPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final themeMode = ref.watch(themeModeProvider);
-    final authService = ref.watch(authServiceProvider);
-    final isLoggedIn = authService.isLoggedIn;
+    final isLoggedIn = ref.watch(isLoggedInProvider);
+    final userEmail = ref.watch(userEmailProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('设置')),
@@ -24,7 +24,7 @@ class SettingsPage extends ConsumerWidget {
           const _SectionHeader(title: '账户'),
           ListTile(
             leading: Icon(isLoggedIn ? Icons.account_circle : Icons.login),
-            title: Text(isLoggedIn ? authService.userEmail ?? '已登录' : '登录'),
+            title: Text(isLoggedIn ? userEmail ?? '已登录' : '登录'),
             subtitle: Text(isLoggedIn ? '点击退出登录' : '使用邮箱验证码登录'),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => _handleAuth(context, ref, isLoggedIn),
@@ -116,6 +116,10 @@ class SettingsPage extends ConsumerWidget {
             FilledButton(
               onPressed: () async {
                 await ref.read(authServiceProvider).clearAuth();
+                ref.invalidate(authServiceProvider);
+                ref.invalidate(isLoggedInProvider);
+                ref.invalidate(userEmailProvider);
+                ref.invalidate(apiClientProvider);
                 if (context.mounted) {
                   Navigator.pop(ctx);
                   Toast.show(context, '已退出登录');

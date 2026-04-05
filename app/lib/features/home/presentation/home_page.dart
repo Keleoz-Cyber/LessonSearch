@@ -27,8 +27,8 @@ class _HomePageState extends ConsumerState<HomePage> {
   }
 
   void _checkLoginAndNavigate(String route) {
-    final authService = ref.read(authServiceProvider);
-    if (authService.isLoggedIn) {
+    final isLoggedIn = ref.read(isLoggedInProvider);
+    if (isLoggedIn) {
       context.push(route);
     } else {
       _showLoginRequiredDialog();

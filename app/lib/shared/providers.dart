@@ -31,6 +31,18 @@ final authServiceProvider = Provider<AuthService>((ref) {
   return AuthService(ref.watch(sharedPreferencesProvider));
 });
 
+/// 登录状态（响应式）
+final isLoggedInProvider = Provider<bool>((ref) {
+  final authService = ref.watch(authServiceProvider);
+  return authService.isLoggedIn;
+});
+
+/// 用户邮箱（响应式）
+final userEmailProvider = Provider<String?>((ref) {
+  final authService = ref.watch(authServiceProvider);
+  return authService.userEmail;
+});
+
 /// 全局 API 客户端
 final apiClientProvider = Provider<ApiClient>((ref) {
   final authService = ref.watch(authServiceProvider);

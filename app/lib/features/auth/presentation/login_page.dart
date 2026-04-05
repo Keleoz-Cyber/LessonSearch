@@ -91,6 +91,12 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         nickname: response['user']['nickname'],
       );
 
+      // 刷新登录状态
+      ref.invalidate(authServiceProvider);
+      ref.invalidate(isLoggedInProvider);
+      ref.invalidate(userEmailProvider);
+      ref.invalidate(apiClientProvider);
+
       if (mounted) {
         context.pop();
       }
