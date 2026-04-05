@@ -639,9 +639,8 @@ flutter build apk --release
 ```
 
 **APK 命名规范：**
-- GitHub 文件名：`kaoqin-helper-vX.X.X.apk`（英文，GitHub 不支持中文文件名）
-- 下载后建议重命名为：`考勤助手vX.X.X.apk`
-- 示例：`kaoqin-helper-v0.4.0.apk` → `考勤助手v0.4.0.apk`
+- 格式：`kaoqin-helper-vX.X.X.apk`
+- 示例：`kaoqin-helper-v0.4.0.apk`
 
 ### 11.4 发布到 GitHub
 
