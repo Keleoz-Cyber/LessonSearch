@@ -261,7 +261,7 @@ class SettingsPage extends ConsumerWidget {
       final downloadUrl = response['download_url'] as String;
       final releaseNotes = response['release_notes'] as String;
 
-      const currentVersion = '0.3.7';
+      const currentVersion = '0.3.8';
 
       if (latestVersion == currentVersion) {
         if (context.mounted) {
@@ -419,7 +419,7 @@ class AboutPage extends StatelessWidget {
 
           Center(
             child: Text(
-              '查课 App v0.3.7',
+              '查课 App v0.3.8',
               style: TextStyle(
                 color: Theme.of(
                   context,
