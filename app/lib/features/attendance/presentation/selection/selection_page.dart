@@ -228,11 +228,11 @@ class _SelectionPageState extends ConsumerState<SelectionPage> {
 
     final allSelected = _selectedClassIds.length == _classes.length;
 
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Row(
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      child: Column(
+        children: [
+          Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
@@ -255,50 +255,46 @@ class _SelectionPageState extends ConsumerState<SelectionPage> {
               ),
             ],
           ),
-        ),
-        Expanded(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Wrap(
-              spacing: 12,
-              runSpacing: 10,
-              children: _classes.map((c) {
-                final selected = _selectedClassIds.contains(c.id);
-                return FilterChip(
-                  label: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.check,
-                        size: 16,
-                        color: selected ? null : Colors.transparent,
+          const SizedBox(height: 8),
+          Expanded(
+            child: Container(
+              decoration: BoxDecoration(
+                border: Border.all(
+                  color: Theme.of(context).colorScheme.outline,
+                ),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(12),
+                child: Wrap(
+                  spacing: 12,
+                  runSpacing: 10,
+                  children: _classes.map((c) {
+                    final selected = _selectedClassIds.contains(c.id);
+                    return FilterChip(
+                      label: Text(
+                        c.displayName,
+                        style: const TextStyle(fontSize: 15),
                       ),
-                      const SizedBox(width: 4),
-                      Flexible(
-                        child: Text(
-                          c.displayName,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
-                  selected: selected,
-                  onSelected: (val) {
-                    setState(() {
-                      if (val) {
-                        _selectedClassIds.add(c.id);
-                      } else {
-                        _selectedClassIds.remove(c.id);
-                      }
-                    });
-                  },
-                  showCheckmark: false,
-                );
-              }).toList(),
+                      selected: selected,
+                      onSelected: (val) {
+                        setState(() {
+                          if (val) {
+                            _selectedClassIds.add(c.id);
+                          } else {
+                            _selectedClassIds.remove(c.id);
+                          }
+                        });
+                      },
+                      showCheckmark: true,
+                    );
+                  }).toList(),
+                ),
+              ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
