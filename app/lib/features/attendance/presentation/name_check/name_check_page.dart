@@ -157,7 +157,7 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
                       crossAxisCount;
                   final itemHeight = 56.0;
                   return GridView.builder(
-                    padding: EdgeInsets.all(12),
+                    padding: const EdgeInsets.all(12),
                     gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                       crossAxisCount: crossAxisCount,
                       mainAxisSpacing: 8,
@@ -169,14 +169,16 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
                       final sw = students[index];
                       final isFocused = _focusedIndex == index;
 
-                      return _StudentCard(
-                        key: ValueKey('${sw.student.id}-${sw.status}'),
-                        name: sw.student.name,
-                        studentNo: sw.student.studentNo,
-                        status: sw.status,
-                        remark: sw.remark,
-                        isFocused: isFocused,
-                        onTap: () => setState(() => _focusedIndex = index),
+                      return RepaintBoundary(
+                        key: ValueKey(sw.student.id),
+                        child: _StudentCard(
+                          name: sw.student.name,
+                          studentNo: sw.student.studentNo,
+                          status: sw.status,
+                          remark: sw.remark,
+                          isFocused: isFocused,
+                          onTap: () => setState(() => _focusedIndex = index),
+                        ),
                       );
                     },
                   );
@@ -404,7 +406,6 @@ class _StudentCard extends StatelessWidget {
   final VoidCallback onTap;
 
   const _StudentCard({
-    super.key,
     required this.name,
     required this.studentNo,
     required this.status,
@@ -413,98 +414,90 @@ class _StudentCard extends StatelessWidget {
     required this.onTap,
   });
 
-  Color _statusColor(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+  static const _statusLabels = {
+    AttendanceStatus.present: '到',
+    AttendanceStatus.absent: '缺',
+    AttendanceStatus.late_: '迟',
+    AttendanceStatus.leave: '假',
+  };
+
+  static Color _statusColor(AttendanceStatus status, bool isDark) {
     return switch (status) {
       AttendanceStatus.pending =>
-        isDark ? Colors.grey.shade800 : Colors.grey.shade200,
+        isDark ? const Color(0xFF424242) : const Color(0xFFEEEEEE),
       AttendanceStatus.present =>
-        isDark ? Colors.green.shade900 : Colors.green.shade100,
+        isDark ? const Color(0xFF1B5E20) : const Color(0xFFC8E6C9),
       AttendanceStatus.absent =>
-        isDark ? Colors.red.shade900 : Colors.red.shade100,
+        isDark ? const Color(0xFFB71C1C) : const Color(0xFFFFCDD2),
       AttendanceStatus.late_ =>
-        isDark ? Colors.amber.shade900 : Colors.amber.shade100,
+        isDark ? const Color(0xFFF57F17) : const Color(0xFFFFECB3),
       AttendanceStatus.leave =>
-        isDark ? Colors.blue.shade900 : Colors.blue.shade100,
+        isDark ? const Color(0xFF0D47A1) : const Color(0xFFBBDEFB),
       AttendanceStatus.other =>
-        isDark ? Colors.purple.shade900 : Colors.purple.shade100,
+        isDark ? const Color(0xFF4A148C) : const Color(0xFFE1BEE7),
     };
   }
 
-  Color _textColor(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return isDark ? Colors.white : Colors.black87;
-  }
-
-  Color _subtextColor(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return isDark ? Colors.grey.shade400 : Colors.grey.shade600;
-  }
-
-  String get _statusLabel => switch (status) {
-    AttendanceStatus.pending => '',
-    AttendanceStatus.present => '到',
-    AttendanceStatus.absent => '缺',
-    AttendanceStatus.late_ => '迟',
-    AttendanceStatus.leave => '假',
-    AttendanceStatus.other => remark ?? '他',
-  };
-
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: _statusColor(context),
-      borderRadius: BorderRadius.circular(8),
-      child: InkWell(
-        onTap: onTap,
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bgColor = _statusColor(status, isDark);
+    final textColor = isDark ? Colors.white : Colors.black87;
+    final subtextColor = isDark ? Colors.grey.shade400 : Colors.grey.shade600;
+    final statusLabel = status == AttendanceStatus.other
+        ? (remark ?? '他')
+        : _statusLabels[status] ?? '';
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 150),
+      decoration: BoxDecoration(
+        color: bgColor,
         borderRadius: BorderRadius.circular(8),
-        child: Container(
-          decoration: isFocused
-              ? BoxDecoration(
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: Theme.of(context).colorScheme.primary,
-                    width: 2,
-                  ),
-                )
-              : null,
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      name,
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w500,
-                        color: _textColor(context),
+        border: isFocused
+            ? Border.all(color: Theme.of(context).colorScheme.primary, width: 2)
+            : null,
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(8),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        name,
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w500,
+                          color: textColor,
+                        ),
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    Text(
-                      studentNo,
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: _subtextColor(context),
+                      Text(
+                        studentNo,
+                        style: TextStyle(fontSize: 11, color: subtextColor),
                       ),
-                    ),
-                  ],
-                ),
-              ),
-              if (_statusLabel.isNotEmpty)
-                Text(
-                  _statusLabel,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                    color: _textColor(context),
+                    ],
                   ),
                 ),
-            ],
+                if (statusLabel.isNotEmpty)
+                  Text(
+                    statusLabel,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: textColor,
+                    ),
+                  ),
+              ],
+            ),
           ),
         ),
       ),
