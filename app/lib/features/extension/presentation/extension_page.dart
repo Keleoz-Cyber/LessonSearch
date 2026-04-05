@@ -9,43 +9,45 @@ class ExtensionPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('扩展功能')),
-      body: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _FeatureCard(
-              icon: Icons.file_upload_outlined,
-              title: '导入查课信息',
-              subtitle: '从文件导入查课数据',
-              color: Colors.blue,
-              onTap: () => Toast.show(context, '暂未开发'),
-            ),
-            const SizedBox(height: 16),
-            _FeatureCard(
-              icon: Icons.send_outlined,
-              title: '名单提交',
-              subtitle: '提交查课名单到总群',
-              color: Colors.green,
-              onTap: () => Toast.show(context, '暂未开发'),
-            ),
-            const SizedBox(height: 16),
-            _FeatureCard(
-              icon: Icons.summarize_outlined,
-              title: '周名单汇总',
-              subtitle: '汇总本周查课情况',
-              color: Colors.orange,
-              onTap: () => Toast.show(context, '暂未开发'),
-            ),
-            const SizedBox(height: 16),
-            _FeatureCard(
-              icon: Icons.leaderboard_outlined,
-              title: '排行榜',
-              subtitle: '查看查课统计排名',
-              color: Colors.purple,
-              onTap: () => Toast.show(context, '暂未开发'),
-            ),
-          ],
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _FeatureCard(
+                icon: Icons.file_upload_outlined,
+                title: '导入查课信息',
+                subtitle: '从文件导入查课数据',
+                color: Colors.blue,
+                onTap: () => Toast.show(context, '暂未开发'),
+              ),
+              const SizedBox(height: 12),
+              _FeatureCard(
+                icon: Icons.send_outlined,
+                title: '名单提交',
+                subtitle: '提交查课名单到总群',
+                color: Colors.green,
+                onTap: () => Toast.show(context, '暂未开发'),
+              ),
+              const SizedBox(height: 12),
+              _FeatureCard(
+                icon: Icons.summarize_outlined,
+                title: '周名单汇总',
+                subtitle: '汇总本周查课情况',
+                color: Colors.orange,
+                onTap: () => Toast.show(context, '暂未开发'),
+              ),
+              const SizedBox(height: 12),
+              _FeatureCard(
+                icon: Icons.leaderboard_outlined,
+                title: '排行榜',
+                subtitle: '查看查课统计排名',
+                color: Colors.purple,
+                onTap: () => Toast.show(context, '暂未开发'),
+              ),
+            ],
+          ),
         ),
       ),
     );

@@ -83,8 +83,9 @@ class _SelectionPageState extends ConsumerState<SelectionPage> {
   void _startTask() {
     if (!_canStart) return;
 
-    final selectedClasses =
-        _classes.where((c) => _selectedClassIds.contains(c.id)).toList();
+    final selectedClasses = _classes
+        .where((c) => _selectedClassIds.contains(c.id))
+        .toList();
     final route = _isNameCheck ? '/name-check/execute' : '/roll-call/execute';
 
     context.push(
@@ -106,19 +107,25 @@ class _SelectionPageState extends ConsumerState<SelectionPage> {
       return Scaffold(
         appBar: AppBar(title: Text('$title - 选择班级')),
         body: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(_error!, style: const TextStyle(color: Colors.red)),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: () {
-                  setState(() { _loading = true; _error = null; });
-                  _loadBaseData();
-                },
-                child: const Text('重试'),
-              ),
-            ],
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(_error!, style: const TextStyle(color: Colors.red)),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: () {
+                    setState(() {
+                      _loading = true;
+                      _error = null;
+                    });
+                    _loadBaseData();
+                  },
+                  child: const Text('重试'),
+                ),
+              ],
+            ),
           ),
         ),
       );
@@ -129,67 +136,81 @@ class _SelectionPageState extends ConsumerState<SelectionPage> {
       body: LoadingOverlay(
         isLoading: _loading,
         message: '加载数据中...',
-        child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // 年级
-            DropdownButtonFormField<GradeInfo>(
-              decoration: const InputDecoration(
-                labelText: '年级',
-                border: OutlineInputBorder(),
-              ),
-              initialValue: _selectedGrade,
-              items: _grades
-                  .map((g) => DropdownMenuItem(value: g, child: Text(g.name)))
-                  .toList(),
-              onChanged: _onGradeChanged,
-            ),
-            const SizedBox(height: 16),
-
-            // 专业
-            DropdownButtonFormField<MajorInfo>(
-              decoration: const InputDecoration(
-                labelText: '专业',
-                border: OutlineInputBorder(),
-              ),
-              initialValue: _selectedMajor,
-              items: _majors
-                  .map((m) => DropdownMenuItem(value: m, child: Text(m.shortName)))
-                  .toList(),
-              onChanged: _selectedGrade != null ? _onMajorChanged : null,
-            ),
-            const SizedBox(height: 16),
-
-            // 班级多选
-            _buildMultiSelectClasses(),
-
-            const Spacer(),
-
-            // 选中数量提示（记名模式）
-            if (_selectedClassIds.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: Text(
-                  '已选 ${_selectedClassIds.length} 个班级',
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.bodyLarge,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                child: IntrinsicHeight(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      DropdownButtonFormField<GradeInfo>(
+                        decoration: const InputDecoration(
+                          labelText: '年级',
+                          border: OutlineInputBorder(),
+                        ),
+                        initialValue: _selectedGrade,
+                        items: _grades
+                            .map(
+                              (g) => DropdownMenuItem(
+                                value: g,
+                                child: Text(g.name),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: _onGradeChanged,
+                      ),
+                      const SizedBox(height: 12),
+                      DropdownButtonFormField<MajorInfo>(
+                        decoration: const InputDecoration(
+                          labelText: '专业',
+                          border: OutlineInputBorder(),
+                        ),
+                        initialValue: _selectedMajor,
+                        items: _majors
+                            .map(
+                              (m) => DropdownMenuItem(
+                                value: m,
+                                child: Text(m.shortName),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: _selectedGrade != null
+                            ? _onMajorChanged
+                            : null,
+                      ),
+                      const SizedBox(height: 12),
+                      Expanded(child: _buildMultiSelectClasses()),
+                      const SizedBox(height: 16),
+                      if (_selectedClassIds.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: Text(
+                            '已选 ${_selectedClassIds.length} 个班级',
+                            textAlign: TextAlign.center,
+                            style: Theme.of(context).textTheme.bodyLarge,
+                          ),
+                        ),
+                      SafeArea(
+                        top: false,
+                        child: FilledButton.icon(
+                          onPressed: _canStart ? _startTask : null,
+                          icon: const Icon(Icons.play_arrow),
+                          label: Text('开始$title'),
+                          style: FilledButton.styleFrom(
+                            minimumSize: const Size.fromHeight(48),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-
-            // 开始按钮
-            FilledButton.icon(
-              onPressed: _canStart ? _startTask : null,
-              icon: const Icon(Icons.play_arrow),
-              label: Text('开始$title'),
-              style: FilledButton.styleFrom(
-                minimumSize: const Size.fromHeight(52),
-              ),
-            ),
-          ],
+            );
+          },
         ),
-      ),
       ),
     );
   }
@@ -210,44 +231,68 @@ class _SelectionPageState extends ConsumerState<SelectionPage> {
 
     final allSelected = _selectedClassIds.length == _classes.length;
 
-    return InputDecorator(
-      decoration: InputDecoration(
-        labelText: '班级（多选）',
-        border: const OutlineInputBorder(),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        suffixIcon: TextButton(
-          onPressed: () {
-            setState(() {
-              if (allSelected) {
-                _selectedClassIds.clear();
-              } else {
-                _selectedClassIds.addAll(_classes.map((c) => c.id));
-              }
-            });
-          },
-          child: Text(allSelected ? '取消全选' : '全选'),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              '班级（多选）',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+            TextButton(
+              onPressed: () {
+                setState(() {
+                  if (allSelected) {
+                    _selectedClassIds.clear();
+                  } else {
+                    _selectedClassIds.addAll(_classes.map((c) => c.id));
+                  }
+                });
+              },
+              child: Text(allSelected ? '取消全选' : '全选'),
+            ),
+          ],
         ),
-      ),
-      child: Wrap(
-        spacing: 8,
-        runSpacing: 4,
-        children: _classes.map((c) {
-          final selected = _selectedClassIds.contains(c.id);
-          return FilterChip(
-            label: Text(c.displayName),
-            selected: selected,
-            onSelected: (val) {
-              setState(() {
-                if (val) {
-                  _selectedClassIds.add(c.id);
-                } else {
-                  _selectedClassIds.remove(c.id);
-                }
-              });
-            },
-          );
-        }).toList(),
-      ),
+        const SizedBox(height: 8),
+        Expanded(
+          child: Card(
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+              side: BorderSide(
+                color: Theme.of(context).colorScheme.outline.withAlpha(100),
+              ),
+            ),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(8),
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: _classes.map((c) {
+                  final selected = _selectedClassIds.contains(c.id);
+                  return FilterChip(
+                    label: Text(c.displayName),
+                    selected: selected,
+                    onSelected: (val) {
+                      setState(() {
+                        if (val) {
+                          _selectedClassIds.add(c.id);
+                        } else {
+                          _selectedClassIds.remove(c.id);
+                        }
+                      });
+                    },
+                  );
+                }).toList(),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

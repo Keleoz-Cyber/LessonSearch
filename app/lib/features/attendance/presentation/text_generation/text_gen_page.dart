@@ -191,14 +191,17 @@ class _TextGenPageState extends ConsumerState<TextGenPage>
             _buildTextView(_committeeReport, '学委汇报'),
           ],
         ),
-        bottomNavigationBar: Padding(
-          padding: const EdgeInsets.all(16),
-          child: FilledButton(
-            onPressed: _finish,
-            style: FilledButton.styleFrom(
-              minimumSize: const Size.fromHeight(48),
+        bottomNavigationBar: SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: FilledButton(
+              onPressed: _finish,
+              style: FilledButton.styleFrom(
+                minimumSize: const Size.fromHeight(48),
+              ),
+              child: const Text('完成'),
             ),
-            child: const Text('完成'),
           ),
         ),
       ),

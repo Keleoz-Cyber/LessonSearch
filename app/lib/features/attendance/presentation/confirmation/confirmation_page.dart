@@ -116,34 +116,37 @@ class ConfirmationPage extends ConsumerWidget {
 
             Padding(
               padding: const EdgeInsets.all(16),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () {
-                        ref.read(nameCheckProvider.notifier).resumeEditing();
-                        context.pop();
-                      },
-                      style: OutlinedButton.styleFrom(
-                        minimumSize: const Size.fromHeight(48),
+              child: SafeArea(
+                top: false,
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () {
+                          ref.read(nameCheckProvider.notifier).resumeEditing();
+                          context.pop();
+                        },
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: const Size.fromHeight(48),
+                        ),
+                        child: const Text('重新编辑'),
                       ),
-                      child: const Text('重新编辑'),
                     ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    flex: 2,
-                    child: FilledButton(
-                      onPressed: () {
-                        context.push('/text-gen', extra: {'taskId': task.id});
-                      },
-                      style: FilledButton.styleFrom(
-                        minimumSize: const Size.fromHeight(48),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      flex: 2,
+                      child: FilledButton(
+                        onPressed: () {
+                          context.push('/text-gen', extra: {'taskId': task.id});
+                        },
+                        style: FilledButton.styleFrom(
+                          minimumSize: const Size.fromHeight(48),
+                        ),
+                        child: const Text('确认名单'),
                       ),
-                      child: const Text('确认名单'),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ],
