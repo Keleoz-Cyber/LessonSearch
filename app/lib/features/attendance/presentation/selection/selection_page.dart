@@ -50,10 +50,22 @@ class _SelectionPageState extends ConsumerState<SelectionPage> {
       });
     } catch (e) {
       setState(() {
-        _error = '加载数据失败: $e';
+        _error = _formatError(e);
         _loading = false;
       });
     }
+  }
+
+  static String _formatError(dynamic e) {
+    final msg = e.toString();
+    if (msg.contains('SocketException') ||
+        msg.contains('Connection refused') ||
+        msg.contains('timed out') ||
+        msg.contains('network') ||
+        msg.contains('Network')) {
+      return '网络连接失败，请检查网络后重试';
+    }
+    return '加载数据失败: $e';
   }
 
   Future<void> _onGradeChanged(GradeInfo? grade) async {
@@ -112,9 +124,19 @@ class _SelectionPageState extends ConsumerState<SelectionPage> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(_error!, style: const TextStyle(color: Colors.red)),
+                Icon(
+                  Icons.error_outline,
+                  size: 48,
+                  color: Theme.of(context).colorScheme.error,
+                ),
                 const SizedBox(height: 16),
-                ElevatedButton(
+                Text(
+                  _error!,
+                  style: Theme.of(context).textTheme.bodyLarge,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24),
+                FilledButton.icon(
                   onPressed: () {
                     setState(() {
                       _loading = true;
@@ -122,7 +144,8 @@ class _SelectionPageState extends ConsumerState<SelectionPage> {
                     });
                     _loadBaseData();
                   },
-                  child: const Text('重试'),
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('重试'),
                 ),
               ],
             ),

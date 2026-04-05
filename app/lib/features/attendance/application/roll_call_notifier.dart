@@ -109,7 +109,7 @@ class RollCallNotifier extends StateNotifier<RollCallState> {
         isLoading: false,
       );
     } catch (e) {
-      state = state.copyWith(isLoading: false, error: '恢复失败: $e');
+      state = state.copyWith(isLoading: false, error: _formatError(e));
     }
   }
 
@@ -165,8 +165,20 @@ class RollCallNotifier extends StateNotifier<RollCallState> {
         isLoading: false,
       );
     } catch (e) {
-      state = state.copyWith(isLoading: false, error: '初始化失败: $e');
+      state = state.copyWith(isLoading: false, error: _formatError(e));
     }
+  }
+
+  static String _formatError(dynamic e) {
+    final msg = e.toString();
+    if (msg.contains('SocketException') ||
+        msg.contains('Connection refused') ||
+        msg.contains('timed out') ||
+        msg.contains('network') ||
+        msg.contains('Network')) {
+      return '网络连接失败，请检查网络后重试';
+    }
+    return '加载失败: $e';
   }
 
   /// 下一位（记录当前学生为已点）

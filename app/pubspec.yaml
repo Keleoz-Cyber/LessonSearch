@@ -1,7 +1,7 @@
 name: lesson_search
-description: "查课 App"
+description: "考勤助手 - 课堂考勤查课工具"
 publish_to: 'none'
-version: 0.3.9+16
+version: 0.4.0+17
 
 environment:
   sdk: ^3.11.0
@@ -45,6 +45,18 @@ dev_dependencies:
   freezed: ^2.5.7
   json_serializable: ^6.9.4
   riverpod_generator: ^2.6.3
+  
+  # Launcher 图标生成
+  flutter_launcher_icons: ^0.14.3
+
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: "assets/icon.png"
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "assets/icon_foreground.png"
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/

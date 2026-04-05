@@ -29,6 +29,13 @@ class NameCheckPage extends ConsumerStatefulWidget {
 
 class _NameCheckPageState extends ConsumerState<NameCheckPage> {
   int? _focusedIndex = 0; // 默认选中第一个
+  final PageController _pageController = PageController();
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
 
   @override
   void initState() {
@@ -69,7 +76,47 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
       return Scaffold(
         appBar: AppBar(title: const Text('记名')),
         body: Center(
-          child: Text(state.error!, style: const TextStyle(color: Colors.red)),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.error_outline,
+                  size: 48,
+                  color: Theme.of(context).colorScheme.error,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  state.error!,
+                  style: Theme.of(context).textTheme.bodyLarge,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24),
+                FilledButton.icon(
+                  onPressed: () {
+                    final authService = ref.read(authServiceProvider);
+                    if (widget.resumeTaskId != null) {
+                      ref
+                          .read(nameCheckProvider.notifier)
+                          .resumeTask(widget.resumeTaskId!);
+                    } else {
+                      ref
+                          .read(nameCheckProvider.notifier)
+                          .startNameCheck(
+                            classIds: widget.classIds,
+                            gradeId: widget.gradeId,
+                            majorId: widget.majorId,
+                            userId: authService.userId,
+                          );
+                    }
+                  },
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('重试'),
+                ),
+              ],
+            ),
+          ),
         ),
       );
     }
@@ -136,54 +183,94 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
                       child: ChoiceChip(
                         label: Text(cls.displayName),
                         selected: isActive,
-                        onSelected: (_) => ref
-                            .read(nameCheckProvider.notifier)
-                            .switchClass(index),
+                        onSelected: (_) {
+                          ref
+                              .read(nameCheckProvider.notifier)
+                              .switchClass(index);
+                          _pageController.animateToPage(
+                            index,
+                            duration: const Duration(milliseconds: 200),
+                            curve: Curves.easeInOut,
+                          );
+                          setState(() => _focusedIndex = 0);
+                        },
                       ),
                     );
                   },
                 ),
               ),
 
-            // 学生列表
+            // 学生列表 - 使用 PageView 支持左右滑动
             Expanded(
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final crossAxisCount = constraints.maxWidth > 400 ? 2 : 1;
-                  final itemWidth =
-                      (constraints.maxWidth -
-                          12 * 2 -
-                          8 * (crossAxisCount - 1)) /
-                      crossAxisCount;
-                  final itemHeight = 56.0;
-                  return GridView.builder(
-                    padding: const EdgeInsets.all(12),
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: crossAxisCount,
-                      mainAxisSpacing: 8,
-                      crossAxisSpacing: 8,
-                      childAspectRatio: itemWidth / itemHeight,
-                    ),
-                    itemCount: students.length,
-                    itemBuilder: (context, index) {
-                      final sw = students[index];
-                      final isFocused = _focusedIndex == index;
+              child: state.classes.length > 1
+                  ? PageView.builder(
+                      controller: _pageController,
+                      itemCount: state.classes.length,
+                      onPageChanged: (index) {
+                        ref.read(nameCheckProvider.notifier).switchClass(index);
+                        setState(() => _focusedIndex = 0);
+                      },
+                      itemBuilder: (context, classIndex) {
+                        final cls = state.classes[classIndex];
+                        final classStudents =
+                            state.studentsByClass[cls.id] ?? [];
+                        return _ClassStudentGrid(
+                          students: classStudents,
+                          focusedIndex: classIndex == state.currentClassIndex
+                              ? _focusedIndex
+                              : null,
+                          onTap: (index) {
+                            if (classIndex != state.currentClassIndex) {
+                              ref
+                                  .read(nameCheckProvider.notifier)
+                                  .switchClass(classIndex);
+                            }
+                            setState(() => _focusedIndex = index);
+                          },
+                        );
+                      },
+                    )
+                  : LayoutBuilder(
+                      builder: (context, constraints) {
+                        final crossAxisCount = constraints.maxWidth > 400
+                            ? 2
+                            : 1;
+                        final itemWidth =
+                            (constraints.maxWidth -
+                                12 * 2 -
+                                8 * (crossAxisCount - 1)) /
+                            crossAxisCount;
+                        final itemHeight = 56.0;
+                        return GridView.builder(
+                          padding: const EdgeInsets.all(12),
+                          gridDelegate:
+                              SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: crossAxisCount,
+                                mainAxisSpacing: 8,
+                                crossAxisSpacing: 8,
+                                childAspectRatio: itemWidth / itemHeight,
+                              ),
+                          itemCount: students.length,
+                          itemBuilder: (context, index) {
+                            final sw = students[index];
+                            final isFocused = _focusedIndex == index;
 
-                      return RepaintBoundary(
-                        key: ValueKey(sw.student.id),
-                        child: _StudentCard(
-                          name: sw.student.name,
-                          studentNo: sw.student.studentNo,
-                          status: sw.status,
-                          remark: sw.remark,
-                          isFocused: isFocused,
-                          onTap: () => setState(() => _focusedIndex = index),
-                        ),
-                      );
-                    },
-                  );
-                },
-              ),
+                            return RepaintBoundary(
+                              key: ValueKey(sw.student.id),
+                              child: _StudentCard(
+                                name: sw.student.name,
+                                studentNo: sw.student.studentNo,
+                                status: sw.status,
+                                remark: sw.remark,
+                                isFocused: isFocused,
+                                onTap: () =>
+                                    setState(() => _focusedIndex = index),
+                              ),
+                            );
+                          },
+                        );
+                      },
+                    ),
             ),
 
             // 底部操作栏
@@ -208,13 +295,40 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
       ref
           .read(nameCheckProvider.notifier)
           .markStudent(classId, _focusedIndex!, status, remark: remark);
+
+      // 查找当前班级下一个待处理学生
       final nextIndex = students.indexWhere(
         (s) => s.status == AttendanceStatus.pending,
         _focusedIndex! + 1,
       );
-      setState(() {
-        _focusedIndex = nextIndex >= 0 ? nextIndex : _focusedIndex;
-      });
+
+      if (nextIndex >= 0) {
+        setState(() => _focusedIndex = nextIndex);
+      } else if (state.classes.length > 1) {
+        // 当前班级已全部处理，切换到下一个班级
+        final nextClassIndex = state.currentClassIndex + 1;
+        if (nextClassIndex < state.classes.length) {
+          final nextClass = state.classes[nextClassIndex];
+          final nextClassStudents = state.studentsByClass[nextClass.id] ?? [];
+          final firstPending = nextClassStudents.indexWhere(
+            (s) => s.status == AttendanceStatus.pending,
+          );
+
+          ref.read(nameCheckProvider.notifier).switchClass(nextClassIndex);
+          _pageController.animateToPage(
+            nextClassIndex,
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeInOut,
+          );
+          setState(() => _focusedIndex = firstPending >= 0 ? firstPending : 0);
+        } else {
+          // 已经是最后一个班级，保持当前焦点
+          setState(() => _focusedIndex = _focusedIndex);
+        }
+      } else {
+        // 单班级，保持当前焦点
+        setState(() => _focusedIndex = _focusedIndex);
+      }
     }
 
     Future<void> markOther() async {
@@ -529,6 +643,57 @@ class _ActionButton extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 12),
       ),
       child: Text(label),
+    );
+  }
+}
+
+class _ClassStudentGrid extends StatelessWidget {
+  final List<StudentWithStatus> students;
+  final int? focusedIndex;
+  final void Function(int index) onTap;
+
+  const _ClassStudentGrid({
+    required this.students,
+    required this.focusedIndex,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final crossAxisCount = constraints.maxWidth > 400 ? 2 : 1;
+        final itemWidth =
+            (constraints.maxWidth - 12 * 2 - 8 * (crossAxisCount - 1)) /
+            crossAxisCount;
+        final itemHeight = 56.0;
+        return GridView.builder(
+          padding: const EdgeInsets.all(12),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: crossAxisCount,
+            mainAxisSpacing: 8,
+            crossAxisSpacing: 8,
+            childAspectRatio: itemWidth / itemHeight,
+          ),
+          itemCount: students.length,
+          itemBuilder: (context, index) {
+            final sw = students[index];
+            final isFocused = focusedIndex == index;
+
+            return RepaintBoundary(
+              key: ValueKey(sw.student.id),
+              child: _StudentCard(
+                name: sw.student.name,
+                studentNo: sw.student.studentNo,
+                status: sw.status,
+                remark: sw.remark,
+                isFocused: isFocused,
+                onTap: () => onTap(index),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 }

@@ -75,8 +75,12 @@ class _SyncTestPageState extends ConsumerState<SyncTestPage> {
     setState(() => _loading = true);
     try {
       final sync = ref.read(syncServiceProvider);
-      await sync.syncNow();
-      _addLog('手动同步完成');
+      final result = await sync.processQueueWithStats();
+      if (result.success > 0 || result.failed > 0) {
+        _addLog('同步完成: 成功 ${result.success}，失败 ${result.failed}');
+      } else {
+        _addLog('无待同步数据');
+      }
       await _loadStats();
     } catch (e) {
       _addLog('同步失败: $e', isError: true);

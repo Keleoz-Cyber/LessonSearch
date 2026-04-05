@@ -66,18 +66,56 @@ class _RollCallPageState extends ConsumerState<RollCallPage> {
       return Scaffold(
         appBar: AppBar(title: const Text('点名')),
         body: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.error_outline, size: 48, color: Colors.red),
-              const SizedBox(height: 16),
-              Text(state.error!),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: () => context.pop(),
-                child: const Text('返回'),
-              ),
-            ],
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.error_outline,
+                  size: 48,
+                  color: Theme.of(context).colorScheme.error,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  state.error!,
+                  style: Theme.of(context).textTheme.bodyLarge,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    OutlinedButton(
+                      onPressed: () => context.pop(),
+                      child: const Text('返回'),
+                    ),
+                    const SizedBox(width: 12),
+                    FilledButton.icon(
+                      onPressed: () {
+                        final authService = ref.read(authServiceProvider);
+                        if (widget.resumeTaskId != null) {
+                          ref
+                              .read(rollCallProvider.notifier)
+                              .resumeTask(widget.resumeTaskId!);
+                        } else {
+                          ref
+                              .read(rollCallProvider.notifier)
+                              .startRollCall(
+                                classIds: widget.classIds,
+                                gradeId: widget.gradeId,
+                                majorId: widget.majorId,
+                                userId: authService.userId,
+                              );
+                        }
+                      },
+                      icon: const Icon(Icons.refresh),
+                      label: const Text('重试'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       );

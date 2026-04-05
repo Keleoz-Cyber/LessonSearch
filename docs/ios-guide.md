@@ -1,8 +1,8 @@
-# 查课 App iOS 适配指南
+# 考勤助手 iOS 适配指南
 
 > 本文档面向负责 iOS 适配的开发者，基于当前 Android 版本的代码进行适配。
 > 仓库地址：https://github.com/Keleoz-Cyber/LessonSearch
-> 当前版本：0.3.9
+> 当前版本：0.4.0
 
 ---
 

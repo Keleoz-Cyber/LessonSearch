@@ -1,0 +1,17 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <!-- 勾选符号：绿色 -->
+  <path d="M140 256 L200 320 L372 148" 
+        stroke="#4CAF50" 
+        stroke-width="40" 
+        stroke-linecap="round" 
+        stroke-linejoin="round" 
+        fill="none"/>
+  
+  <!-- 文字：学习部 - 深色 -->
+  <text x="256" y="420" 
+        text-anchor="middle" 
+        font-family="Microsoft YaHei, SimHei, sans-serif" 
+        font-size="72" 
+        font-weight="bold"
+        fill="#333333">学习部</text>
+</svg>

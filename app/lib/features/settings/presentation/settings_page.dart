@@ -42,7 +42,7 @@ class SettingsPage extends ConsumerWidget {
           const ListTile(
             leading: Icon(Icons.tag),
             title: Text('版本号'),
-            subtitle: Text('0.3.9'),
+            subtitle: Text('0.4.0'),
           ),
 
           const Divider(),
@@ -104,8 +104,8 @@ class SettingsPage extends ConsumerWidget {
           // --- 关于 ---
           const _SectionHeader(title: '关于'),
           ListTile(
-            leading: const Icon(Icons.people_outline),
-            title: const Text('开发者与致谢'),
+            leading: const Icon(Icons.favorite_outline),
+            title: const Text('致谢'),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => Navigator.push(
               context,
@@ -261,7 +261,7 @@ class SettingsPage extends ConsumerWidget {
       final downloadUrl = response['download_url'] as String;
       final releaseNotes = response['release_notes'] as String;
 
-      const currentVersion = '0.3.9';
+      const currentVersion = '0.4.0';
 
       if (latestVersion == currentVersion) {
         if (context.mounted) {
@@ -350,19 +350,39 @@ class _SectionHeader extends StatelessWidget {
 // ============================================================
 // 关于页 — 开发者与致谢
 // ============================================================
-// 编辑下面的内容修改开发者信息和致谢名单
 
 class AboutPage extends StatelessWidget {
   const AboutPage({super.key});
 
+  static const _ackList = [
+    '清粥小菜(考研版)',
+    '薯条',
+    'Daewoo',
+    '屿风',
+    '冰水混合物',
+    '苦情树下的苦命人',
+    '心沦',
+    '闲人、听曲',
+    '秋ꄴ酿',
+    '榆桉.',
+    'Authentic',
+    '#',
+    '故事很久',
+    '🍊',
+    '白榆',
+    '二二的亖',
+    'e^(ix)=(cos x+isin x)',
+    'AAA水电刘哥 金水路17号',
+  ];
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('开发者与致谢')),
+      appBar: AppBar(title: const Text('致谢')),
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
-          // --- 开发者信息（编辑这里）---
+          // --- 开发者信息 ---
           const _InfoSection(
             title: '开发者',
             children: [
@@ -372,7 +392,7 @@ class AboutPage extends StatelessWidget {
 
           const SizedBox(height: 24),
 
-          // --- 致谢名单（编辑这里）---
+          // --- 致谢 ---
           const _InfoSection(
             title: '致谢',
             children: [
@@ -386,10 +406,68 @@ class AboutPage extends StatelessWidget {
                 role: 'iOS 适配',
                 icon: Icons.phone_iphone,
               ),
-              _PersonTile(
-                name: 'keleoz, Horldsense',
-                role: '测试',
-                icon: Icons.bug_report,
+            ],
+          ),
+
+          const SizedBox(height: 24),
+
+          // --- 致谢名单 ---
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '致谢名单',
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                '致学习部全体成员',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Wrap(
+                    spacing: 12,
+                    runSpacing: 12,
+                    children: _ackList.map((name) {
+                      return Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.primaryContainer.withValues(alpha: 0.5),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          name,
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.onSurface,
+                            fontSize: 14,
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Center(
+                child: Text(
+                  '排名不分先后',
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    fontSize: 12,
+                  ),
+                ),
               ),
             ],
           ),
@@ -419,7 +497,7 @@ class AboutPage extends StatelessWidget {
 
           Center(
             child: Text(
-              '查课 App v0.3.9',
+              '考勤助手 v0.4.0',
               style: TextStyle(
                 color: Theme.of(
                   context,

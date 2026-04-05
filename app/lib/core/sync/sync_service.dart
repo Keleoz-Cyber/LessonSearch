@@ -22,8 +22,8 @@ class SyncService {
 
   void start() {
     _timer?.cancel();
-    _timer = Timer.periodic(_interval, (_) => processQueue());
-    processQueue();
+    _timer = Timer.periodic(_interval, (_) => processQueueWithStats());
+    processQueueWithStats();
   }
 
   void stop() {
@@ -31,17 +31,19 @@ class SyncService {
     _timer = null;
   }
 
-  Future<void> syncNow() => processQueue();
+  Future<void> syncNow() => processQueueWithStats();
 
-  Future<void> processQueue() async {
-    if (_isSyncing) return;
+  /// 返回同步结果统计
+  Future<({int success, int failed, int skipped})>
+  processQueueWithStats() async {
+    if (_isSyncing) return (success: 0, failed: 0, skipped: 0);
     _isSyncing = true;
 
     try {
       final items = await _local.getPendingSyncItems();
       if (items.isEmpty) {
         state.value = SyncState.idle;
-        return;
+        return (success: 0, failed: 0, skipped: 0);
       }
 
       state.value = SyncState.syncing;
@@ -63,29 +65,46 @@ class SyncService {
           );
         } catch (e) {
           final newRetry = item.retryCount + 1;
-          await _local.markSyncFailed(item.id, retryCount: newRetry);
-          failCount++;
+          final is404 =
+              e.toString().contains('404') ||
+              e.toString().contains('任务不存在') ||
+              e.toString().contains('记录不存在');
           final isNetwork =
               e.toString().contains('SocketException') ||
               e.toString().contains('Connection refused') ||
               e.toString().contains('timed out');
-          if (isNetwork) {
+
+          if (is404) {
+            // 服务端不存在，跳过并标记为已同步
+            await _local.markSynced(item.id);
+            debugPrint(
+              '[Sync] SKIP (404): ${item.entityType}/${item.action} #${item.entityId}',
+            );
+            successCount++;
+          } else if (isNetwork) {
+            await _local.markSyncFailed(item.id, retryCount: newRetry);
+            failCount++;
             debugPrint('[Sync] 网络不可用，稍后重试');
             break;
-          } else if (newRetry >= _maxRetries) {
-            debugPrint(
-              '[Sync] GIVE UP: ${item.entityType}/${item.action} #${item.entityId} ($e)',
-            );
           } else {
-            debugPrint(
-              '[Sync] RETRY $newRetry/$_maxRetries: ${item.entityType}/${item.action} #${item.entityId} ($e)',
-            );
+            await _local.markSyncFailed(item.id, retryCount: newRetry);
+            failCount++;
+            if (newRetry >= _maxRetries) {
+              debugPrint(
+                '[Sync] GIVE UP: ${item.entityType}/${item.action} #${item.entityId} ($e)',
+              );
+            } else {
+              debugPrint(
+                '[Sync] RETRY $newRetry/$_maxRetries: ${item.entityType}/${item.action} #${item.entityId} ($e)',
+              );
+            }
           }
         }
       }
 
       state.value = failCount > 0 ? SyncState.error : SyncState.idle;
       debugPrint('[Sync] 完成: 成功=$successCount 失败=$failCount');
+      return (success: successCount, failed: failCount, skipped: 0);
     } finally {
       _isSyncing = false;
     }

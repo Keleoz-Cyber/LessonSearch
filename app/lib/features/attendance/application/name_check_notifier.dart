@@ -170,7 +170,7 @@ class NameCheckNotifier extends StateNotifier<NameCheckState> {
         isLoading: false,
       );
     } catch (e) {
-      state = state.copyWith(isLoading: false, error: '恢复失败: $e');
+      state = state.copyWith(isLoading: false, error: _formatError(e));
     }
   }
 
@@ -223,8 +223,21 @@ class NameCheckNotifier extends StateNotifier<NameCheckState> {
         isLoading: false,
       );
     } catch (e) {
-      state = state.copyWith(isLoading: false, error: '初始化失败: $e');
+      final errorMsg = _formatError(e);
+      state = state.copyWith(isLoading: false, error: errorMsg);
     }
+  }
+
+  static String _formatError(dynamic e) {
+    final msg = e.toString();
+    if (msg.contains('SocketException') ||
+        msg.contains('Connection refused') ||
+        msg.contains('timed out') ||
+        msg.contains('network') ||
+        msg.contains('Network')) {
+      return '网络连接失败，请检查网络后重试';
+    }
+    return '加载失败: $e';
   }
 
   /// 切换到指定班级
