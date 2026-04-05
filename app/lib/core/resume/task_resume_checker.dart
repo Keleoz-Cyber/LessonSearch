@@ -10,8 +10,11 @@ class TaskResumeChecker {
   static Future<void> check(BuildContext context, WidgetRef ref) async {
     final repo = ref.read(attendanceRepositoryProvider);
     final authService = ref.read(authServiceProvider);
-    final currentUserId = authService.userId;
 
+    // 未登录时不恢复任务
+    if (!authService.isLoggedIn) return;
+
+    final currentUserId = authService.userId;
     final tasks = await repo.getInProgressTasks();
 
     // 只恢复记名任务 + executing 阶段 + 属于当前用户的任务
@@ -20,7 +23,7 @@ class TaskResumeChecker {
           (t) =>
               t.type == TaskType.nameCheck &&
               t.phase == TaskPhase.executing &&
-              (t.userId == null || t.userId == currentUserId),
+              t.userId == currentUserId,
         )
         .toList();
 
