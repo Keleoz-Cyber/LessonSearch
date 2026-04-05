@@ -274,10 +274,21 @@ class _SelectionPageState extends ConsumerState<SelectionPage> {
                 runSpacing: 8,
                 children: _classes.map((c) {
                   final selected = _selectedClassIds.contains(c.id);
-                  return SizedBox(
-                    height: 40,
+                  return Transform.scale(
+                    scale: selected ? 1.05 : 1.0,
                     child: FilterChip(
-                      label: Text(c.displayName),
+                      label: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.check,
+                            size: 16,
+                            color: selected ? null : Colors.transparent,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(c.displayName),
+                        ],
+                      ),
                       selected: selected,
                       onSelected: (val) {
                         setState(() {
