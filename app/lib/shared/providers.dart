@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/database/app_database.dart';
+import '../core/feedback/feedback_service.dart';
 import '../core/network/api_client.dart';
 import '../core/sync/sync_service.dart';
 import '../features/auth/data/auth_service.dart';
@@ -41,6 +42,21 @@ final isLoggedInProvider = Provider<bool>((ref) {
 final userEmailProvider = Provider<String?>((ref) {
   final authService = ref.watch(authServiceProvider);
   return authService.userEmail;
+});
+
+/// 反馈服务（振动/音效）
+final feedbackServiceProvider = Provider<FeedbackService>((ref) {
+  return FeedbackService(ref.watch(sharedPreferencesProvider));
+});
+
+/// 振动开关（响应式）
+final vibrationEnabledProvider = Provider<bool>((ref) {
+  return ref.watch(feedbackServiceProvider).vibrationEnabled;
+});
+
+/// 音效开关（响应式）
+final soundEnabledProvider = Provider<bool>((ref) {
+  return ref.watch(feedbackServiceProvider).soundEnabled;
 });
 
 /// 全局 API 客户端

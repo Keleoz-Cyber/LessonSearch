@@ -85,6 +85,22 @@ class SettingsPage extends ConsumerWidget {
 
           const Divider(),
 
+          // --- 反馈 ---
+          const _SectionHeader(title: '反馈'),
+          SwitchListTile(
+            secondary: const Icon(Icons.vibration),
+            title: const Text('振动反馈'),
+            subtitle: const Text('操作时振动提示'),
+            value: ref.watch(vibrationEnabledProvider),
+            onChanged: (val) async {
+              await ref.read(feedbackServiceProvider).setVibration(val);
+              ref.invalidate(feedbackServiceProvider);
+              ref.invalidate(vibrationEnabledProvider);
+            },
+          ),
+
+          const Divider(),
+
           // --- 关于 ---
           const _SectionHeader(title: '关于'),
           ListTile(

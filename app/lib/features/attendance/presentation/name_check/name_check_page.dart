@@ -202,10 +202,10 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
 
     void mark(AttendanceStatus status, {String? remark}) {
       if (_focusedIndex == null || _focusedIndex! >= students.length) return;
+      ref.read(feedbackServiceProvider).feedback();
       ref
           .read(nameCheckProvider.notifier)
           .markStudent(classId, _focusedIndex!, status, remark: remark);
-      // 自动移到下一个未处理的学生
       final nextIndex = students.indexWhere(
         (s) => s.status == AttendanceStatus.pending,
         _focusedIndex! + 1,

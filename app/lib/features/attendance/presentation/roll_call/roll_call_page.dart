@@ -200,8 +200,10 @@ class _RollCallPageState extends ConsumerState<RollCallPage> {
                     Expanded(
                       flex: 2,
                       child: FilledButton.icon(
-                        onPressed: () =>
-                            ref.read(rollCallProvider.notifier).nextStudent(),
+                        onPressed: () {
+                          ref.read(feedbackServiceProvider).feedback();
+                          ref.read(rollCallProvider.notifier).nextStudent();
+                        },
                         icon: Icon(Icons.navigate_next),
                         label: Text(state.hasNext ? '下一位' : '最后一位'),
                         style: FilledButton.styleFrom(
