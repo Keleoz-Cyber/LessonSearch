@@ -124,16 +124,16 @@ String generateGroupReport(
   for (var i = 0; i < classStatsList.length; i++) {
     final cs = classStatsList[i];
     final absentSection = cs.absent > 0
-        ? '缺勤（${cs.absent}人）：${_formatNames(cs.absentStudents)}'
+        ? '缺勤（${cs.absent}人）：\n${_formatNamesWithId(cs.absentStudents)}'
         : '';
     final lateSection = cs.late_ > 0
-        ? '迟到（${cs.late_}人）：${_formatNames(cs.lateStudents)}'
+        ? '迟到（${cs.late_}人）：\n${_formatNamesWithId(cs.lateStudents)}'
         : '';
     final leaveSection = cs.leave > 0
-        ? '请假（${cs.leave}人）：${_formatNames(cs.leaveStudents)}'
+        ? '请假（${cs.leave}人）：\n${_formatNamesWithId(cs.leaveStudents)}'
         : '';
     final otherSection = cs.other > 0
-        ? '其他（${cs.other}人）：${_formatNamesWithRemark(cs.otherStudents)}'
+        ? '其他（${cs.other}人）：\n${_formatNamesWithIdAndRemark(cs.otherStudents)}'
         : '';
 
     final report = classReportTemplate
@@ -198,4 +198,19 @@ String _formatNamesWithRemark(List<StudentRecord> students) {
         return s.remark != null ? '${s.name}(${s.remark})' : s.name;
       })
       .join('、');
+}
+
+String _formatNamesWithId(List<StudentRecord> students) {
+  if (students.isEmpty) return '无';
+  return students.map((s) => '${s.name} ${s.studentNo}').join('\n');
+}
+
+String _formatNamesWithIdAndRemark(List<StudentRecord> students) {
+  if (students.isEmpty) return '无';
+  return students
+      .map((s) {
+        final remark = s.remark != null ? ' ${s.remark}' : '';
+        return '${s.name} ${s.studentNo}$remark';
+      })
+      .join('\n');
 }
