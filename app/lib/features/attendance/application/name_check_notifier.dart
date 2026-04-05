@@ -244,40 +244,65 @@ class NameCheckNotifier extends StateNotifier<NameCheckState> {
     final task = state.task;
     if (task == null) return;
 
-    final students = List<StudentWithStatus>.from(
-      state.studentsByClass[classId] ?? [],
-    );
-    if (studentIndex >= students.length) return;
+    final students = state.studentsByClass[classId];
+    if (students == null || studentIndex >= students.length) return;
 
     final student = students[studentIndex];
 
-    if (student.recordId != null) {
-      await _attendanceRepo.updateRecordStatus(
-        student.recordId!,
-        status,
-        remark: remark,
-      );
-      students[studentIndex] = student.copyWith(status: status, remark: remark);
-    } else {
-      final record = await _attendanceRepo.createRecord(
-        taskId: task.id,
-        studentId: student.student.id,
-        classId: classId,
-        status: status,
-        remark: remark,
-      );
-      students[studentIndex] = student.copyWith(
-        status: status,
-        remark: remark,
-        recordId: record.id,
-      );
-    }
-
+    // 先更新 UI（乐观更新）
+    final updatedStudents = List<StudentWithStatus>.from(students);
+    updatedStudents[studentIndex] = student.copyWith(
+      status: status,
+      remark: remark,
+      recordId: student.recordId,
+    );
     final updatedMap = Map<int, List<StudentWithStatus>>.from(
       state.studentsByClass,
     );
-    updatedMap[classId] = students;
+    updatedMap[classId] = updatedStudents;
     state = state.copyWith(studentsByClass: updatedMap);
+
+    // 异步保存到数据库
+    try {
+      if (student.recordId != null) {
+        await _attendanceRepo.updateRecordStatus(
+          student.recordId!,
+          status,
+          remark: remark,
+        );
+      } else {
+        final record = await _attendanceRepo.createRecord(
+          taskId: task.id,
+          studentId: student.student.id,
+          classId: classId,
+          status: status,
+          remark: remark,
+        );
+        // 更新 recordId
+        final finalStudents = List<StudentWithStatus>.from(
+          state.studentsByClass[classId] ?? [],
+        );
+        if (studentIndex < finalStudents.length &&
+            finalStudents[studentIndex].student.id == student.student.id) {
+          finalStudents[studentIndex] = finalStudents[studentIndex].copyWith(
+            recordId: record.id,
+          );
+          final finalMap = Map<int, List<StudentWithStatus>>.from(
+            state.studentsByClass,
+          );
+          finalMap[classId] = finalStudents;
+          state = state.copyWith(studentsByClass: finalMap);
+        }
+      }
+    } catch (e) {
+      // 保存失败时回滚
+      final rollbackStudents = List<StudentWithStatus>.from(students);
+      final rollbackMap = Map<int, List<StudentWithStatus>>.from(
+        state.studentsByClass,
+      );
+      rollbackMap[classId] = rollbackStudents;
+      state = state.copyWith(studentsByClass: rollbackMap);
+    }
   }
 
   /// 结束记名（批量标记未处理学生为已到）
