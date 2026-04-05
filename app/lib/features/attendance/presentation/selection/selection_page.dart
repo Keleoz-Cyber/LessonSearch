@@ -274,18 +274,22 @@ class _SelectionPageState extends ConsumerState<SelectionPage> {
                 runSpacing: 8,
                 children: _classes.map((c) {
                   final selected = _selectedClassIds.contains(c.id);
-                  return FilterChip(
-                    label: Text(c.displayName),
-                    selected: selected,
-                    onSelected: (val) {
-                      setState(() {
-                        if (val) {
-                          _selectedClassIds.add(c.id);
-                        } else {
-                          _selectedClassIds.remove(c.id);
-                        }
-                      });
-                    },
+                  return SizedBox(
+                    height: 40,
+                    child: FilterChip(
+                      label: Text(c.displayName),
+                      selected: selected,
+                      onSelected: (val) {
+                        setState(() {
+                          if (val) {
+                            _selectedClassIds.add(c.id);
+                          } else {
+                            _selectedClassIds.remove(c.id);
+                          }
+                        });
+                      },
+                      showCheckmark: false,
+                    ),
                   );
                 }).toList(),
               ),
