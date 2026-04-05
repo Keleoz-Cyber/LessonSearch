@@ -270,37 +270,39 @@ class _SelectionPageState extends ConsumerState<SelectionPage> {
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(8),
               child: Wrap(
-                spacing: 8,
-                runSpacing: 8,
+                spacing: 12,
+                runSpacing: 10,
                 children: _classes.map((c) {
                   final selected = _selectedClassIds.contains(c.id);
-                  return Transform.scale(
-                    scale: selected ? 1.05 : 1.0,
-                    child: FilterChip(
-                      label: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.check,
-                            size: 16,
-                            color: selected ? null : Colors.transparent,
+                  return FilterChip(
+                    label: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.check,
+                          size: 16,
+                          color: selected ? null : Colors.transparent,
+                        ),
+                        const SizedBox(width: 4),
+                        Flexible(
+                          child: Text(
+                            c.displayName,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                          const SizedBox(width: 4),
-                          Text(c.displayName),
-                        ],
-                      ),
-                      selected: selected,
-                      onSelected: (val) {
-                        setState(() {
-                          if (val) {
-                            _selectedClassIds.add(c.id);
-                          } else {
-                            _selectedClassIds.remove(c.id);
-                          }
-                        });
-                      },
-                      showCheckmark: false,
+                        ),
+                      ],
                     ),
+                    selected: selected,
+                    onSelected: (val) {
+                      setState(() {
+                        if (val) {
+                          _selectedClassIds.add(c.id);
+                        } else {
+                          _selectedClassIds.remove(c.id);
+                        }
+                      });
+                    },
+                    showCheckmark: false,
                   );
                 }).toList(),
               ),
