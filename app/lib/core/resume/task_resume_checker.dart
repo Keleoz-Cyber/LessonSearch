@@ -9,12 +9,20 @@ import '../../shared/providers.dart';
 class TaskResumeChecker {
   static Future<void> check(BuildContext context, WidgetRef ref) async {
     final repo = ref.read(attendanceRepositoryProvider);
+    final authService = ref.read(authServiceProvider);
+    final currentUserId = authService.userId;
+
     final tasks = await repo.getInProgressTasks();
 
-    // 只恢复记名任务 + executing 阶段
-    final resumable = tasks.where((t) =>
-        t.type == TaskType.nameCheck &&
-        t.phase == TaskPhase.executing).toList();
+    // 只恢复记名任务 + executing 阶段 + 属于当前用户的任务
+    final resumable = tasks
+        .where(
+          (t) =>
+              t.type == TaskType.nameCheck &&
+              t.phase == TaskPhase.executing &&
+              (t.userId == null || t.userId == currentUserId),
+        )
+        .toList();
 
     if (resumable.isEmpty || !context.mounted) return;
 
@@ -47,12 +55,10 @@ class TaskResumeChecker {
       // 获取班级名称
       final studentRepo = ref.read(studentRepositoryProvider);
       final allClasses = await studentRepo.getClasses();
-      final classNames = task.classIds
-          .map((id) {
-            final cls = allClasses.where((c) => c.id == id);
-            return cls.isNotEmpty ? cls.first.displayName : '未知班级';
-          })
-          .toList();
+      final classNames = task.classIds.map((id) {
+        final cls = allClasses.where((c) => c.id == id);
+        return cls.isNotEmpty ? cls.first.displayName : '未知班级';
+      }).toList();
 
       if (!context.mounted) return;
       context.push(
