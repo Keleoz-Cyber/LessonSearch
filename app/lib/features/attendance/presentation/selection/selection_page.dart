@@ -225,39 +225,59 @@ class _SelectionPageState extends ConsumerState<SelectionPage> {
   Widget _buildClassSelection() {
     // 未选择专业
     if (_selectedMajor == null) {
-      return Container(
-        margin: const EdgeInsets.symmetric(horizontal: 16),
-        decoration: BoxDecoration(
-          border: Border.all(color: Theme.of(context).colorScheme.outline),
-          borderRadius: BorderRadius.circular(4),
-        ),
-        child: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.class_outlined, size: 48, color: Colors.grey.shade400),
-              const SizedBox(height: 8),
-              Text('请先选择年级和专业', style: TextStyle(color: Colors.grey.shade500)),
-            ],
-          ),
-        ),
+      return LayoutBuilder(
+        builder: (context, constraints) {
+          return Container(
+            width: constraints.maxWidth,
+            margin: const EdgeInsets.symmetric(horizontal: 16),
+            decoration: BoxDecoration(
+              border: Border.all(color: Theme.of(context).colorScheme.outline),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.class_outlined,
+                    size: 48,
+                    color: Colors.grey.shade400,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '请先选择年级和专业',
+                    style: TextStyle(color: Colors.grey.shade500),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
       );
     }
 
     // 选择专业后无班级
     if (_classes.isEmpty) {
-      return Container(
-        margin: const EdgeInsets.symmetric(horizontal: 16),
-        decoration: BoxDecoration(
-          border: Border.all(color: Theme.of(context).colorScheme.outline),
-          borderRadius: BorderRadius.circular(4),
-        ),
-        child: Center(
-          child: Text(
-            '该专业暂无班级数据',
-            style: TextStyle(color: Colors.grey.shade500),
-          ),
-        ),
+      return LayoutBuilder(
+        builder: (context, constraints) {
+          return Container(
+            width: constraints.maxWidth,
+            margin: const EdgeInsets.symmetric(horizontal: 16),
+            decoration: BoxDecoration(
+              border: Border.all(color: Theme.of(context).colorScheme.outline),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text(
+                  '该专业暂无班级数据',
+                  style: TextStyle(color: Colors.grey.shade500),
+                ),
+              ),
+            ),
+          );
+        },
       );
     }
 
@@ -265,6 +285,7 @@ class _SelectionPageState extends ConsumerState<SelectionPage> {
     final allSelected = _selectedClassIds.length == _classes.length;
 
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         // 标题行
         Padding(
@@ -296,39 +317,47 @@ class _SelectionPageState extends ConsumerState<SelectionPage> {
 
         // 班级按钮区域
         Expanded(
-          child: Container(
-            margin: const EdgeInsets.symmetric(horizontal: 16),
-            decoration: BoxDecoration(
-              border: Border.all(color: Theme.of(context).colorScheme.outline),
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(12),
-              child: Wrap(
-                spacing: 12,
-                runSpacing: 10,
-                children: _classes.map((c) {
-                  final selected = _selectedClassIds.contains(c.id);
-                  return FilterChip(
-                    label: Text(
-                      c.displayName,
-                      style: const TextStyle(fontSize: 15),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              return SizedBox(
+                width: constraints.maxWidth - 32,
+                child: Container(
+                  decoration: BoxDecoration(
+                    border: Border.all(
+                      color: Theme.of(context).colorScheme.outline,
                     ),
-                    selected: selected,
-                    onSelected: (val) {
-                      setState(() {
-                        if (val) {
-                          _selectedClassIds.add(c.id);
-                        } else {
-                          _selectedClassIds.remove(c.id);
-                        }
-                      });
-                    },
-                    showCheckmark: true,
-                  );
-                }).toList(),
-              ),
-            ),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(12),
+                    child: Wrap(
+                      spacing: 12,
+                      runSpacing: 10,
+                      children: _classes.map((c) {
+                        final selected = _selectedClassIds.contains(c.id);
+                        return FilterChip(
+                          label: Text(
+                            c.displayName,
+                            style: const TextStyle(fontSize: 15),
+                          ),
+                          selected: selected,
+                          onSelected: (val) {
+                            setState(() {
+                              if (val) {
+                                _selectedClassIds.add(c.id);
+                              } else {
+                                _selectedClassIds.remove(c.id);
+                              }
+                            });
+                          },
+                          showCheckmark: true,
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                ),
+              );
+            },
           ),
         ),
         const SizedBox(height: 8),
