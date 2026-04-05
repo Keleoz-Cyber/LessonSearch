@@ -138,8 +138,12 @@ class _SelectionPageState extends ConsumerState<SelectionPage> {
         message: '加载数据中...',
         child: Column(
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+            // 顶部固定区域：年级、专业选择
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surface,
+              ),
               child: Column(
                 children: [
                   DropdownButtonFormField<GradeInfo>(
@@ -176,27 +180,39 @@ class _SelectionPageState extends ConsumerState<SelectionPage> {
                 ],
               ),
             ),
-            Expanded(child: _buildMultiSelectClasses()),
-            if (_selectedClassIds.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Text(
-                  '已选 ${_selectedClassIds.length} 个班级',
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.bodyLarge,
-                ),
-              ),
-            Padding(
-              padding: const EdgeInsets.all(16),
+
+            // 中间可变区域：班级选择
+            Expanded(child: _buildClassSelection()),
+
+            // 底部固定区域：已选提示 + 开始按钮
+            Container(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
               child: SafeArea(
                 top: false,
-                child: FilledButton.icon(
-                  onPressed: _canStart ? _startTask : null,
-                  icon: const Icon(Icons.play_arrow),
-                  label: Text('开始$title'),
-                  style: FilledButton.styleFrom(
-                    minimumSize: const Size.fromHeight(48),
-                  ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (_selectedClassIds.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: Text(
+                          '已选 ${_selectedClassIds.length} 个班级',
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(
+                                color: Theme.of(context).colorScheme.primary,
+                                fontWeight: FontWeight.w500,
+                              ),
+                        ),
+                      ),
+                    FilledButton.icon(
+                      onPressed: _canStart ? _startTask : null,
+                      icon: const Icon(Icons.play_arrow),
+                      label: Text('开始$title'),
+                      style: FilledButton.styleFrom(
+                        minimumSize: const Size.fromHeight(48),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -206,39 +222,59 @@ class _SelectionPageState extends ConsumerState<SelectionPage> {
     );
   }
 
-  Widget _buildMultiSelectClasses() {
-    if (_classes.isEmpty) {
-      return Padding(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-        child: InputDecorator(
-          decoration: const InputDecoration(
-            labelText: '班级（多选）',
-            border: OutlineInputBorder(),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 24),
-            child: Text(
-              _selectedMajor == null ? '请先选择专业' : '该专业暂无班级',
-              style: TextStyle(color: Colors.grey[500]),
-            ),
+  Widget _buildClassSelection() {
+    // 未选择专业
+    if (_selectedMajor == null) {
+      return Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16),
+        decoration: BoxDecoration(
+          border: Border.all(color: Theme.of(context).colorScheme.outline),
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.class_outlined, size: 48, color: Colors.grey.shade400),
+              const SizedBox(height: 8),
+              Text('请先选择年级和专业', style: TextStyle(color: Colors.grey.shade500)),
+            ],
           ),
         ),
       );
     }
 
+    // 选择专业后无班级
+    if (_classes.isEmpty) {
+      return Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16),
+        decoration: BoxDecoration(
+          border: Border.all(color: Theme.of(context).colorScheme.outline),
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: Center(
+          child: Text(
+            '该专业暂无班级数据',
+            style: TextStyle(color: Colors.grey.shade500),
+          ),
+        ),
+      );
+    }
+
+    // 有班级可选
     final allSelected = _selectedClassIds.length == _classes.length;
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
+    return Column(
+      children: [
+        // 标题行
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+          child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
                 '班级（多选）',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
               ),
@@ -256,47 +292,47 @@ class _SelectionPageState extends ConsumerState<SelectionPage> {
               ),
             ],
           ),
-          const SizedBox(height: 8),
-          Expanded(
-            child: Container(
-              width: double.infinity,
-              decoration: BoxDecoration(
-                border: Border.all(
-                  color: Theme.of(context).colorScheme.outline,
-                ),
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(12),
-                child: Wrap(
-                  spacing: 12,
-                  runSpacing: 10,
-                  children: _classes.map((c) {
-                    final selected = _selectedClassIds.contains(c.id);
-                    return FilterChip(
-                      label: Text(
-                        c.displayName,
-                        style: const TextStyle(fontSize: 15),
-                      ),
-                      selected: selected,
-                      onSelected: (val) {
-                        setState(() {
-                          if (val) {
-                            _selectedClassIds.add(c.id);
-                          } else {
-                            _selectedClassIds.remove(c.id);
-                          }
-                        });
-                      },
-                      showCheckmark: true,
-                    );
-                  }).toList(),
-                ),
+        ),
+
+        // 班级按钮区域
+        Expanded(
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 16),
+            decoration: BoxDecoration(
+              border: Border.all(color: Theme.of(context).colorScheme.outline),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(12),
+              child: Wrap(
+                spacing: 12,
+                runSpacing: 10,
+                children: _classes.map((c) {
+                  final selected = _selectedClassIds.contains(c.id);
+                  return FilterChip(
+                    label: Text(
+                      c.displayName,
+                      style: const TextStyle(fontSize: 15),
+                    ),
+                    selected: selected,
+                    onSelected: (val) {
+                      setState(() {
+                        if (val) {
+                          _selectedClassIds.add(c.id);
+                        } else {
+                          _selectedClassIds.remove(c.id);
+                        }
+                      });
+                    },
+                    showCheckmark: true,
+                  );
+                }).toList(),
               ),
             ),
           ),
-        ],
-      ),
+        ),
+        const SizedBox(height: 8),
+      ],
     );
   }
 }
