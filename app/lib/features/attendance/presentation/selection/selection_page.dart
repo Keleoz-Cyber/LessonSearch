@@ -138,55 +138,53 @@ class _SelectionPageState extends ConsumerState<SelectionPage> {
         message: '加载数据中...',
         child: Column(
           children: [
-            // 顶部固定区域：年级、专业选择
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surface,
-              ),
-              child: Column(
-                children: [
-                  DropdownButtonFormField<GradeInfo>(
-                    decoration: const InputDecoration(
-                      labelText: '年级',
-                      border: OutlineInputBorder(),
-                    ),
-                    initialValue: _selectedGrade,
-                    items: _grades
-                        .map(
-                          (g) =>
-                              DropdownMenuItem(value: g, child: Text(g.name)),
-                        )
-                        .toList(),
-                    onChanged: _onGradeChanged,
-                  ),
-                  const SizedBox(height: 12),
-                  DropdownButtonFormField<MajorInfo>(
-                    decoration: const InputDecoration(
-                      labelText: '专业',
-                      border: OutlineInputBorder(),
-                    ),
-                    initialValue: _selectedMajor,
-                    items: _majors
-                        .map(
-                          (m) => DropdownMenuItem(
-                            value: m,
-                            child: Text(m.shortName),
-                          ),
-                        )
-                        .toList(),
-                    onChanged: _selectedGrade != null ? _onMajorChanged : null,
-                  ),
-                ],
+            // 年级选择
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              child: DropdownButtonFormField<GradeInfo>(
+                decoration: const InputDecoration(
+                  labelText: '年级',
+                  border: OutlineInputBorder(),
+                ),
+                initialValue: _selectedGrade,
+                items: _grades
+                    .map((g) => DropdownMenuItem(value: g, child: Text(g.name)))
+                    .toList(),
+                onChanged: _onGradeChanged,
               ),
             ),
 
-            // 中间可变区域：班级选择
-            Expanded(child: _buildClassSelection()),
+            // 专业选择
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              child: DropdownButtonFormField<MajorInfo>(
+                decoration: const InputDecoration(
+                  labelText: '专业',
+                  border: OutlineInputBorder(),
+                ),
+                initialValue: _selectedMajor,
+                items: _majors
+                    .map(
+                      (m) =>
+                          DropdownMenuItem(value: m, child: Text(m.shortName)),
+                    )
+                    .toList(),
+                onChanged: _selectedGrade != null ? _onMajorChanged : null,
+              ),
+            ),
 
-            // 底部固定区域：已选提示 + 开始按钮
-            Container(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            // 班级选择
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              child: _buildClassSelector(),
+            ),
+
+            // 占位符，撑开剩余空间
+            const Spacer(),
+
+            // 底部按钮区域
+            Padding(
+              padding: const EdgeInsets.all(16),
               child: SafeArea(
                 top: false,
                 child: Column(
@@ -222,146 +220,100 @@ class _SelectionPageState extends ConsumerState<SelectionPage> {
     );
   }
 
-  Widget _buildClassSelection() {
+  Widget _buildClassSelector() {
     // 未选择专业
     if (_selectedMajor == null) {
-      return LayoutBuilder(
-        builder: (context, constraints) {
-          return Container(
-            width: constraints.maxWidth,
-            margin: const EdgeInsets.symmetric(horizontal: 16),
-            decoration: BoxDecoration(
-              border: Border.all(color: Theme.of(context).colorScheme.outline),
-              borderRadius: BorderRadius.circular(4),
+      return InputDecorator(
+        decoration: const InputDecoration(
+          labelText: '班级（多选）',
+          border: OutlineInputBorder(),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 24),
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.class_outlined,
+                  size: 40,
+                  color: Colors.grey.shade400,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  '请先选择年级和专业',
+                  style: TextStyle(color: Colors.grey.shade500),
+                ),
+              ],
             ),
-            child: Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.class_outlined,
-                    size: 48,
-                    color: Colors.grey.shade400,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    '请先选择年级和专业',
-                    style: TextStyle(color: Colors.grey.shade500),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
+          ),
+        ),
       );
     }
 
     // 选择专业后无班级
     if (_classes.isEmpty) {
-      return LayoutBuilder(
-        builder: (context, constraints) {
-          return Container(
-            width: constraints.maxWidth,
-            margin: const EdgeInsets.symmetric(horizontal: 16),
-            decoration: BoxDecoration(
-              border: Border.all(color: Theme.of(context).colorScheme.outline),
-              borderRadius: BorderRadius.circular(4),
+      return InputDecorator(
+        decoration: const InputDecoration(
+          labelText: '班级（多选）',
+          border: OutlineInputBorder(),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 24),
+          child: Center(
+            child: Text(
+              '该专业暂无班级数据',
+              style: TextStyle(color: Colors.grey.shade500),
             ),
-            child: Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Text(
-                  '该专业暂无班级数据',
-                  style: TextStyle(color: Colors.grey.shade500),
-                ),
-              ),
-            ),
-          );
-        },
+          ),
+        ),
       );
     }
 
     // 有班级可选
     final allSelected = _selectedClassIds.length == _classes.length;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        // 标题行
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                '班级（多选）',
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-              ),
-              TextButton(
-                onPressed: () {
-                  setState(() {
-                    if (allSelected) {
-                      _selectedClassIds.clear();
-                    } else {
-                      _selectedClassIds.addAll(_classes.map((c) => c.id));
-                    }
-                  });
-                },
-                child: Text(allSelected ? '取消全选' : '全选'),
-              ),
-            ],
-          ),
-        ),
-
-        // 班级按钮区域
-        Expanded(
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              return SizedBox(
-                width: constraints.maxWidth - 32,
-                child: Container(
-                  decoration: BoxDecoration(
-                    border: Border.all(
-                      color: Theme.of(context).colorScheme.outline,
-                    ),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(12),
-                    child: Wrap(
-                      spacing: 12,
-                      runSpacing: 10,
-                      children: _classes.map((c) {
-                        final selected = _selectedClassIds.contains(c.id);
-                        return FilterChip(
-                          label: Text(
-                            c.displayName,
-                            style: const TextStyle(fontSize: 15),
-                          ),
-                          selected: selected,
-                          onSelected: (val) {
-                            setState(() {
-                              if (val) {
-                                _selectedClassIds.add(c.id);
-                              } else {
-                                _selectedClassIds.remove(c.id);
-                              }
-                            });
-                          },
-                          showCheckmark: true,
-                        );
-                      }).toList(),
-                    ),
-                  ),
-                ),
-              );
+    return InputDecorator(
+      decoration: InputDecoration(
+        labelText: '班级（多选）',
+        border: const OutlineInputBorder(),
+        suffixIcon: Padding(
+          padding: const EdgeInsets.only(right: 8),
+          child: TextButton(
+            onPressed: () {
+              setState(() {
+                if (allSelected) {
+                  _selectedClassIds.clear();
+                } else {
+                  _selectedClassIds.addAll(_classes.map((c) => c.id));
+                }
+              });
             },
+            child: Text(allSelected ? '取消全选' : '全选'),
           ),
         ),
-        const SizedBox(height: 8),
-      ],
+      ),
+      child: Wrap(
+        spacing: 12,
+        runSpacing: 10,
+        children: _classes.map((c) {
+          final selected = _selectedClassIds.contains(c.id);
+          return FilterChip(
+            label: Text(c.displayName, style: const TextStyle(fontSize: 15)),
+            selected: selected,
+            onSelected: (val) {
+              setState(() {
+                if (val) {
+                  _selectedClassIds.add(c.id);
+                } else {
+                  _selectedClassIds.remove(c.id);
+                }
+              });
+            },
+            showCheckmark: true,
+          );
+        }).toList(),
+      ),
     );
   }
 }
