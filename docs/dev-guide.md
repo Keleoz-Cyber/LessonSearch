@@ -1,6 +1,6 @@
 # 查课 App 开发文档
 
-> 版本：0.3.3 | 更新日期：2026-04-04 | 仓库：https://github.com/Keleoz-Cyber/LessonSearch
+> 版本：0.3.6 | 更新日期：2026-04-04 | 仓库：https://github.com/Keleoz-Cyber/LessonSearch
 
 ---
 
@@ -647,17 +647,14 @@ git push origin main
 
 ### 已知限制
 
-1. 本地 SQLite 数据库升级需要卸载重装（未实现 Drift migration）
-2. 检查更新功能为占位，未实现
-3. 文本模板目前是代码常量，未做数据库配置化
-4. 同步失败的记录没有 UI 提示详情
-5. 暂不支持跨设备同步（登录后不会从服务端拉取数据）
+1. 文本模板目前是代码常量，未做数据库配置化
+2. 同步失败的记录没有 UI 提示详情
+3. 暂不支持跨设备同步（登录后不会从服务端拉取数据）
 
 ### 后续可做
 
-- Drift schema migration（避免卸载重装）
 - 文本模板从数据库加载，支持用户自定义
-- 检查更新功能（GitHub Release 或自建）
+- 检查更新功能（GitHub Release 已实现）
 - 数据导出（Excel/PDF）
 - 跨设备同步（登录后从服务端拉取数据）
 - 统计分析（缺勤趋势、班级对比）
