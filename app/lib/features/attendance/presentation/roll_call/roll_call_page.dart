@@ -113,99 +113,106 @@ class _RollCallPageState extends ConsumerState<RollCallPage> {
     final student = state.currentStudent;
     if (student == null) return const SizedBox();
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(state.currentClassName),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => _showExitDialog(),
-        ),
-        actions: [
-          Center(
-            child: Padding(
-              padding: const EdgeInsets.only(right: 16),
-              child: Text(
-                '${state.processedCount + 1} / ${state.totalCount}',
-                style: Theme.of(context).textTheme.titleMedium,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        await _showExitDialog();
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(state.currentClassName),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => _showExitDialog(),
+          ),
+          actions: [
+            Center(
+              child: Padding(
+                padding: EdgeInsets.only(right: 16),
+                child: Text(
+                  '${state.processedCount + 1} / ${state.totalCount}',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
               ),
             ),
-          ),
-        ],
-      ),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-          child: Column(
-            children: [
-              const Spacer(flex: 2),
+          ],
+        ),
+        body: SafeArea(
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+            child: Column(
+              children: [
+                Spacer(flex: 2),
 
-              // 学生姓名
-              FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(
-                  student.name,
-                  style: Theme.of(context).textTheme.displayMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-
-              // 拼音
-              FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(
-                  student.pinyin ?? '',
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    color: Colors.grey[500],
-                    letterSpacing: 2,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
-
-              // 班级 + 学号
-              Text(
-                '${state.currentClassName} · ${student.studentNo}',
-                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  color: Colors.grey[400],
-                  fontFamily: 'monospace',
-                ),
-                textAlign: TextAlign.center,
-              ),
-
-              const Spacer(flex: 3),
-
-              // 操作按钮
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () => _showFinishDialog(),
-                      icon: const Icon(Icons.stop),
-                      label: const Text('结束查课'),
-                      style: OutlinedButton.styleFrom(
-                        minimumSize: const Size.fromHeight(52),
-                        foregroundColor: Colors.red,
-                      ),
+                // 学生姓名
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    student.name,
+                    style: Theme.of(context).textTheme.displayMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    flex: 2,
-                    child: FilledButton.icon(
-                      onPressed: () =>
-                          ref.read(rollCallProvider.notifier).nextStudent(),
-                      icon: const Icon(Icons.navigate_next),
-                      label: Text(state.hasNext ? '下一位' : '最后一位'),
-                      style: FilledButton.styleFrom(
-                        minimumSize: const Size.fromHeight(52),
-                      ),
+                ),
+                SizedBox(height: 12),
+
+                // 拼音
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    student.pinyin ?? '',
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      color: Colors.grey[500],
+                      letterSpacing: 2,
                     ),
                   ),
-                ],
-              ),
-            ],
+                ),
+                SizedBox(height: 24),
+
+                // 班级 + 学号
+                Text(
+                  '${state.currentClassName} · ${student.studentNo}',
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    color: Colors.grey[400],
+                    fontFamily: 'monospace',
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+
+                Spacer(flex: 3),
+
+                // 操作按钮
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () => _showFinishDialog(),
+                        icon: Icon(Icons.stop),
+                        label: Text('结束查课'),
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: Size.fromHeight(52),
+                          foregroundColor: Colors.red,
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: 16),
+                    Expanded(
+                      flex: 2,
+                      child: FilledButton.icon(
+                        onPressed: () =>
+                            ref.read(rollCallProvider.notifier).nextStudent(),
+                        icon: Icon(Icons.navigate_next),
+                        label: Text(state.hasNext ? '下一位' : '最后一位'),
+                        style: FilledButton.styleFrom(
+                          minimumSize: Size.fromHeight(52),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),

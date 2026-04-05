@@ -88,100 +88,106 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
     final currentClass = state.currentClass;
     final students = state.currentStudents;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(currentClass?.displayName ?? ''),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => _showExitDialog(context),
-        ),
-        actions: [
-          Center(
-            child: Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: Text(
-                '${state.processedStudents}/${state.totalStudents}',
-                style: Theme.of(context).textTheme.titleMedium,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        await _showExitDialog(context);
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(currentClass?.displayName ?? ''),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => _showExitDialog(context),
+          ),
+          actions: [
+            Center(
+              child: Padding(
+                padding: EdgeInsets.only(right: 8),
+                child: Text(
+                  '${state.processedStudents}/${state.totalStudents}',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
               ),
             ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.check_circle_outline),
-            tooltip: '确认名单',
-            onPressed: () => _showFinishDialog(context, state),
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          // 班级切换标签
-          if (state.classes.length > 1)
-            SizedBox(
-              height: 48,
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                itemCount: state.classes.length,
-                itemBuilder: (context, index) {
-                  final cls = state.classes[index];
-                  final isActive = index == state.currentClassIndex;
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 4,
-                      vertical: 6,
+            IconButton(
+              icon: const Icon(Icons.check_circle_outline),
+              tooltip: '确认名单',
+              onPressed: () => _showFinishDialog(context, state),
+            ),
+          ],
+        ),
+        body: Column(
+          children: [
+            // 班级切换标签
+            if (state.classes.length > 1)
+              SizedBox(
+                height: 48,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  padding: EdgeInsets.symmetric(horizontal: 8),
+                  itemCount: state.classes.length,
+                  itemBuilder: (context, index) {
+                    final cls = state.classes[index];
+                    final isActive = index == state.currentClassIndex;
+                    return Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+                      child: ChoiceChip(
+                        label: Text(cls.displayName),
+                        selected: isActive,
+                        onSelected: (_) => ref
+                            .read(nameCheckProvider.notifier)
+                            .switchClass(index),
+                      ),
+                    );
+                  },
+                ),
+              ),
+
+            // 学生列表
+            Expanded(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final crossAxisCount = constraints.maxWidth > 400 ? 2 : 1;
+                  final itemWidth =
+                      (constraints.maxWidth -
+                          12 * 2 -
+                          8 * (crossAxisCount - 1)) /
+                      crossAxisCount;
+                  final itemHeight = 56.0;
+                  return GridView.builder(
+                    padding: EdgeInsets.all(12),
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: crossAxisCount,
+                      mainAxisSpacing: 8,
+                      crossAxisSpacing: 8,
+                      childAspectRatio: itemWidth / itemHeight,
                     ),
-                    child: ChoiceChip(
-                      label: Text(cls.displayName),
-                      selected: isActive,
-                      onSelected: (_) => ref
-                          .read(nameCheckProvider.notifier)
-                          .switchClass(index),
-                    ),
+                    itemCount: students.length,
+                    itemBuilder: (context, index) {
+                      final sw = students[index];
+                      final isFocused = _focusedIndex == index;
+
+                      return _StudentCard(
+                        key: ValueKey('${sw.student.id}-${sw.status}'),
+                        name: sw.student.name,
+                        studentNo: sw.student.studentNo,
+                        status: sw.status,
+                        remark: sw.remark,
+                        isFocused: isFocused,
+                        onTap: () => setState(() => _focusedIndex = index),
+                      );
+                    },
                   );
                 },
               ),
             ),
 
-          // 学生列表
-          Expanded(
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final crossAxisCount = constraints.maxWidth > 400 ? 2 : 1;
-                final itemWidth =
-                    (constraints.maxWidth - 12 * 2 - 8 * (crossAxisCount - 1)) /
-                    crossAxisCount;
-                final itemHeight = 56.0;
-                return GridView.builder(
-                  padding: const EdgeInsets.all(12),
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: crossAxisCount,
-                    mainAxisSpacing: 8,
-                    crossAxisSpacing: 8,
-                    childAspectRatio: itemWidth / itemHeight,
-                  ),
-                  itemCount: students.length,
-                  itemBuilder: (context, index) {
-                    final sw = students[index];
-                    final isFocused = _focusedIndex == index;
-
-                    return _StudentCard(
-                      key: ValueKey('${sw.student.id}-${sw.status}'),
-                      name: sw.student.name,
-                      studentNo: sw.student.studentNo,
-                      status: sw.status,
-                      remark: sw.remark,
-                      isFocused: isFocused,
-                      onTap: () => setState(() => _focusedIndex = index),
-                    );
-                  },
-                );
-              },
-            ),
-          ),
-
-          // 底部操作栏
-          _buildBottomBar(context, state, students),
-        ],
+            // 底部操作栏
+            _buildBottomBar(context, state, students),
+          ],
+        ),
       ),
     );
   }
