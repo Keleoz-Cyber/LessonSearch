@@ -294,7 +294,6 @@ class _SelectionPageState extends ConsumerState<SelectionPage> {
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {
-          // 计算每个芯片的宽度：总宽度 - padding - spacing
           final chipWidth = (constraints.maxWidth - 24 - 12) / 2;
           return Wrap(
             spacing: 12,
@@ -303,23 +302,56 @@ class _SelectionPageState extends ConsumerState<SelectionPage> {
               final selected = _selectedClassIds.contains(c.id);
               return SizedBox(
                 width: chipWidth,
-                child: FilterChip(
-                  label: Text(
-                    c.displayName,
-                    style: const TextStyle(fontSize: 15),
-                    overflow: TextOverflow.ellipsis,
+                height: 40,
+                child: Material(
+                  color: selected
+                      ? Theme.of(context).colorScheme.primaryContainer
+                      : Theme.of(context).colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(8),
+                  child: InkWell(
+                    onTap: () {
+                      setState(() {
+                        if (selected) {
+                          _selectedClassIds.remove(c.id);
+                        } else {
+                          _selectedClassIds.add(c.id);
+                        }
+                      });
+                    },
+                    borderRadius: BorderRadius.circular(8),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          if (selected) ...[
+                            Icon(
+                              Icons.check,
+                              size: 16,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onPrimaryContainer,
+                            ),
+                            const SizedBox(width: 4),
+                          ],
+                          Flexible(
+                            child: Text(
+                              c.displayName,
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: selected
+                                    ? Theme.of(
+                                        context,
+                                      ).colorScheme.onPrimaryContainer
+                                    : Theme.of(context).colorScheme.onSurface,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
-                  selected: selected,
-                  onSelected: (val) {
-                    setState(() {
-                      if (val) {
-                        _selectedClassIds.add(c.id);
-                      } else {
-                        _selectedClassIds.remove(c.id);
-                      }
-                    });
-                  },
-                  showCheckmark: true,
                 ),
               );
             }).toList(),
