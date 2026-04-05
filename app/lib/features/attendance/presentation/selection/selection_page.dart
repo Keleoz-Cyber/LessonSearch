@@ -174,13 +174,12 @@ class _SelectionPageState extends ConsumerState<SelectionPage> {
             ),
 
             // 班级选择
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-              child: _buildClassSelector(),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                child: _buildClassSelector(),
+              ),
             ),
-
-            // 占位符，撑开剩余空间
-            const Spacer(),
 
             // 底部按钮区域
             Padding(
