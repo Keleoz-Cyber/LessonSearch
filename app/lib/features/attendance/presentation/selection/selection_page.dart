@@ -209,7 +209,7 @@ class _SelectionPageState extends ConsumerState<SelectionPage> {
   Widget _buildMultiSelectClasses() {
     if (_classes.isEmpty) {
       return Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
         child: InputDecorator(
           decoration: const InputDecoration(
             labelText: '班级（多选）',
@@ -231,6 +231,7 @@ class _SelectionPageState extends ConsumerState<SelectionPage> {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -258,6 +259,7 @@ class _SelectionPageState extends ConsumerState<SelectionPage> {
           const SizedBox(height: 8),
           Expanded(
             child: Container(
+              width: double.infinity,
               decoration: BoxDecoration(
                 border: Border.all(
                   color: Theme.of(context).colorScheme.outline,
