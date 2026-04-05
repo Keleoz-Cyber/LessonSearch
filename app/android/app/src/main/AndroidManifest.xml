@@ -41,5 +41,9 @@
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
         </intent>
+        <!-- 微信 -->
+        <package android:name="com.tencent.mm"/>
+        <!-- QQ -->
+        <package android:name="com.tencent.mobileqq"/>
     </queries>
 </manifest>
