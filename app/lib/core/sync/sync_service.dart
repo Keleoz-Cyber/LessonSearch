@@ -15,7 +15,6 @@ class SyncService {
   bool _isSyncing = false;
   static const _maxRetries = 5;
   static const _interval = Duration(seconds: 30);
-  static const _batchSize = 10;
 
   final ValueNotifier<SyncState> state = ValueNotifier(SyncState.idle);
 
@@ -49,9 +48,7 @@ class SyncService {
       var successCount = 0;
       var failCount = 0;
 
-      final batch = items.take(_batchSize).toList();
-
-      for (final item in batch) {
+      for (final item in items) {
         try {
           await _processItem(
             item.entityType,
