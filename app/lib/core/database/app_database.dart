@@ -35,8 +35,19 @@ class AppDatabase extends _$AppDatabase {
       },
       onUpgrade: (Migrator m, int from, int to) async {
         if (from < 2) {
-          await m.createTable(users);
-          await m.addColumn(attendanceTasks, attendanceTasks.userId);
+          // v2 新增 users 表和 attendanceTasks.userId 列
+          // 先尝试创建表（如果不存在）
+          try {
+            await m.createTable(users);
+          } catch (_) {
+            // 表已存在，忽略
+          }
+          // 添加 userId 列（如果不存在）
+          try {
+            await m.addColumn(attendanceTasks, attendanceTasks.userId);
+          } catch (_) {
+            // 列已存在，忽略
+          }
         }
       },
     );

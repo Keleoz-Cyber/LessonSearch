@@ -71,7 +71,7 @@ class TaskResumeChecker {
           'classNames': classNames,
           'gradeId': task.selectedGradeId ?? 0,
           'majorId': task.selectedMajorId ?? 0,
-          'resumeTaskId': task.id, // 标记为恢复模式
+          'resumeTaskId': task.id,
         },
       );
     }

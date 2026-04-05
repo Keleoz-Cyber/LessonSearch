@@ -97,9 +97,15 @@ class SyncService {
     String action,
     String? payloadJson,
   ) async {
-    final payload = payloadJson != null
-        ? jsonDecode(payloadJson) as Map<String, dynamic>
-        : <String, dynamic>{};
+    Map<String, dynamic> payload;
+    try {
+      payload = payloadJson != null
+          ? jsonDecode(payloadJson) as Map<String, dynamic>
+          : <String, dynamic>{};
+    } catch (e) {
+      debugPrint('[Sync] JSON 解析失败: $entityType/$entityId - $e');
+      rethrow;
+    }
 
     switch (entityType) {
       case 'task':
