@@ -14,22 +14,20 @@
 //   {leave_list}   — 请假名单（姓名 学号）
 //   {other_list}   — 其他名单（姓名 学号 备注）
 
-/// 总群汇报模板
+/// 总群汇报模板（按班级分组）
 const defaultGroupReportTemplate = '''
 {date} 考勤汇报
-班级：{class_names}
-应到：{total}人，实到：{present}人
-缺勤：{absent}人，迟到：{late}人，请假：{leave}人，其他：{other}人
----
-缺勤名单：
-{absent_list}
-迟到名单：
-{late_list}
-请假名单：
-{leave_list}
-其他：
-{other_list}
+{class_reports}
 ''';
+
+/// 单个班级汇报模板
+const classReportTemplate = '''
+{class_name}：
+应到 {total} 人，实到 {present} 人
+{absent_section}
+{late_section}
+{leave_section}
+{other_section}''';
 
 /// 学委汇报模板（按班级分组）
 const defaultCommitteeReportTemplate = '''
@@ -116,27 +114,56 @@ class ClassStats {
   });
 }
 
-/// 生成总群汇报文本
-String generateGroupReport(AttendanceStats stats, {String template = defaultGroupReportTemplate}) {
+/// 生成总群汇报文本（按班级分组）
+String generateGroupReport(
+  List<ClassStats> classStatsList,
+  String date, {
+  String template = defaultGroupReportTemplate,
+}) {
+  final classReports = StringBuffer();
+  for (var i = 0; i < classStatsList.length; i++) {
+    final cs = classStatsList[i];
+    final absentSection = cs.absent > 0
+        ? '缺勤（${cs.absent}人）：${_formatNames(cs.absentStudents)}'
+        : '';
+    final lateSection = cs.late_ > 0
+        ? '迟到（${cs.late_}人）：${_formatNames(cs.lateStudents)}'
+        : '';
+    final leaveSection = cs.leave > 0
+        ? '请假（${cs.leave}人）：${_formatNames(cs.leaveStudents)}'
+        : '';
+    final otherSection = cs.other > 0
+        ? '其他（${cs.other}人）：${_formatNamesWithRemark(cs.otherStudents)}'
+        : '';
+
+    final report = classReportTemplate
+        .replaceAll('{class_name}', cs.className)
+        .replaceAll('{total}', '${cs.total}')
+        .replaceAll('{present}', '${cs.present}')
+        .replaceAll('{absent_section}', absentSection)
+        .replaceAll('{late_section}', lateSection)
+        .replaceAll('{leave_section}', leaveSection)
+        .replaceAll('{other_section}', otherSection)
+        .trim();
+
+    classReports.writeln(report);
+    if (i < classStatsList.length - 1) {
+      classReports.writeln();
+    }
+  }
+
   return template
-      .replaceAll('{date}', stats.date)
-      .replaceAll('{class_names}', stats.classNames.join('、'))
-      .replaceAll('{total}', '${stats.total}')
-      .replaceAll('{present}', '${stats.present}')
-      .replaceAll('{absent}', '${stats.absent}')
-      .replaceAll('{late}', '${stats.late_}')
-      .replaceAll('{leave}', '${stats.leave}')
-      .replaceAll('{other}', '${stats.other}')
-      .replaceAll('{absent_list}', _formatStudentList(stats.absentStudents))
-      .replaceAll('{late_list}', _formatStudentList(stats.lateStudents))
-      .replaceAll('{leave_list}', _formatStudentList(stats.leaveStudents))
-      .replaceAll('{other_list}', _formatStudentListWithRemark(stats.otherStudents))
+      .replaceAll('{date}', date)
+      .replaceAll('{class_reports}', classReports.toString().trim())
       .trim();
 }
 
 /// 生成学委汇报文本（按班级分组）
-String generateCommitteeReport(List<ClassStats> classStatsList, String date,
-    {String template = defaultCommitteeReportTemplate}) {
+String generateCommitteeReport(
+  List<ClassStats> classStatsList,
+  String date, {
+  String template = defaultCommitteeReportTemplate,
+}) {
   final buffer = StringBuffer();
   for (final cs in classStatsList) {
     final text = template
@@ -159,19 +186,6 @@ String generateCommitteeReport(List<ClassStats> classStatsList, String date,
   return buffer.toString().trim();
 }
 
-String _formatStudentList(List<StudentRecord> students) {
-  if (students.isEmpty) return '无';
-  return students.map((s) => '${s.name}（${s.studentNo}）').join('\n');
-}
-
-String _formatStudentListWithRemark(List<StudentRecord> students) {
-  if (students.isEmpty) return '无';
-  return students.map((s) {
-    final remarkStr = s.remark != null ? ' - ${s.remark}' : '';
-    return '${s.name}（${s.studentNo}）$remarkStr';
-  }).join('\n');
-}
-
 String _formatNames(List<StudentRecord> students) {
   if (students.isEmpty) return '无';
   return students.map((s) => s.name).join('、');
@@ -179,7 +193,9 @@ String _formatNames(List<StudentRecord> students) {
 
 String _formatNamesWithRemark(List<StudentRecord> students) {
   if (students.isEmpty) return '无';
-  return students.map((s) {
-    return s.remark != null ? '${s.name}(${s.remark})' : s.name;
-  }).join('、');
+  return students
+      .map((s) {
+        return s.remark != null ? '${s.name}(${s.remark})' : s.name;
+      })
+      .join('、');
 }

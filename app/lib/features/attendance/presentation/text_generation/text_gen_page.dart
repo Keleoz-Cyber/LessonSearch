@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../shared/providers.dart';
 import '../../../../shared/widgets/toast.dart';
@@ -42,19 +43,10 @@ class _TextGenPageState extends ConsumerState<TextGenPage>
     final taskTime = state.task?.createdAt ?? DateTime.now();
     final date = taskTime.toString().substring(0, 16);
 
-    final allAbsent = <StudentRecord>[];
-    final allLate = <StudentRecord>[];
-    final allLeave = <StudentRecord>[];
-    final allOther = <StudentRecord>[];
     final classStatsList = <ClassStats>[];
-    final classNames = <String>[];
-
-    var totalAll = 0;
-    var presentAll = 0;
 
     for (final cls in state.classes) {
       final students = state.studentsByClass[cls.id] ?? [];
-      classNames.add(cls.displayName);
 
       final classAbsent = <StudentRecord>[];
       final classLate = <StudentRecord>[];
@@ -75,24 +67,17 @@ class _TextGenPageState extends ConsumerState<TextGenPage>
             classPresent++;
           case AttendanceStatus.absent:
             classAbsent.add(record);
-            allAbsent.add(record);
           case AttendanceStatus.late_:
             classLate.add(record);
-            allLate.add(record);
-            classPresent++; // 迟到算实到
+            classPresent++;
           case AttendanceStatus.leave:
             classLeave.add(record);
-            allLeave.add(record);
           case AttendanceStatus.other:
             classOther.add(record);
-            allOther.add(record);
           case AttendanceStatus.pending:
             classPresent++;
         }
       }
-
-      totalAll += students.length;
-      presentAll += classPresent;
 
       classStatsList.add(
         ClassStats(
@@ -111,31 +96,27 @@ class _TextGenPageState extends ConsumerState<TextGenPage>
       );
     }
 
-    final stats = AttendanceStats(
-      date: date,
-      classNames: classNames,
-      total: totalAll,
-      present: presentAll,
-      absent: allAbsent.length,
-      late_: allLate.length,
-      leave: allLeave.length,
-      other: allOther.length,
-      absentStudents: allAbsent,
-      lateStudents: allLate,
-      leaveStudents: allLeave,
-      otherStudents: allOther,
-    );
-
     setState(() {
-      _groupReport = generateGroupReport(stats);
+      _groupReport = generateGroupReport(classStatsList, date);
       _committeeReport = generateCommitteeReport(classStatsList, date);
       _generated = true;
     });
   }
 
-  void _copy(String text) {
+  void _copyAndOpenApp(String text, bool isWechat) async {
     Clipboard.setData(ClipboardData(text: text));
     Toast.show(context, '已复制到剪贴板');
+
+    await Future.delayed(const Duration(milliseconds: 300));
+
+    final uri = Uri.parse(isWechat ? 'weixin://' : 'mqq://');
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+    } else {
+      if (mounted) {
+        Toast.show(context, isWechat ? '未安装微信' : '未安装QQ');
+      }
+    }
   }
 
   Future<void> _finish() async {
@@ -187,8 +168,8 @@ class _TextGenPageState extends ConsumerState<TextGenPage>
         body: TabBarView(
           controller: _tabController,
           children: [
-            _buildTextView(_groupReport, '总群汇报'),
-            _buildTextView(_committeeReport, '学委汇报'),
+            _buildTextView(_groupReport, isWechat: true),
+            _buildTextView(_committeeReport, isWechat: false),
           ],
         ),
         bottomNavigationBar: SafeArea(
@@ -208,7 +189,7 @@ class _TextGenPageState extends ConsumerState<TextGenPage>
     );
   }
 
-  Widget _buildTextView(String text, String label) {
+  Widget _buildTextView(String text, {required bool isWechat}) {
     return Column(
       children: [
         Expanded(
@@ -222,12 +203,13 @@ class _TextGenPageState extends ConsumerState<TextGenPage>
         ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: OutlinedButton.icon(
-            onPressed: () => _copy(text),
-            icon: const Icon(Icons.copy),
-            label: Text('复制$label'),
-            style: OutlinedButton.styleFrom(
+          child: FilledButton.icon(
+            onPressed: () => _copyAndOpenApp(text, isWechat),
+            icon: Icon(isWechat ? Icons.wechat : Icons.message),
+            label: Text(isWechat ? '复制并打开微信' : '复制并打开QQ'),
+            style: FilledButton.styleFrom(
               minimumSize: const Size.fromHeight(44),
+              backgroundColor: isWechat ? Colors.green : Colors.blue,
             ),
           ),
         ),

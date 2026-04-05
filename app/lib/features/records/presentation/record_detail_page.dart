@@ -74,14 +74,8 @@ class _RecordDetailPageState extends ConsumerState<RecordDetailPage> {
     }
 
     final classStatsList = <ClassStats>[];
-    final allAbsent = <StudentRecord>[];
-    final allLate = <StudentRecord>[];
-    final allLeave = <StudentRecord>[];
-    final allOther = <StudentRecord>[];
-    final classNames = <String>[];
 
     for (final entry in byClass.entries) {
-      classNames.add(entry.key);
       final students = entry.value;
       final absent = students
           .where((s) => s.status == AttendanceStatus.absent)
@@ -96,7 +90,11 @@ class _RecordDetailPageState extends ConsumerState<RecordDetailPage> {
           .where((s) => s.status == AttendanceStatus.other)
           .toList();
       final present =
-          students.length - absent.length - leave.length - other.length;
+          students.length -
+          absent.length -
+          late_.length -
+          leave.length -
+          other.length;
 
       toRecord(RecordEntry e) => StudentRecord(
         name: e.studentName,
@@ -104,11 +102,6 @@ class _RecordDetailPageState extends ConsumerState<RecordDetailPage> {
         className: e.className,
         remark: e.remark,
       );
-
-      allAbsent.addAll(absent.map(toRecord));
-      allLate.addAll(late_.map(toRecord));
-      allLeave.addAll(leave.map(toRecord));
-      allOther.addAll(other.map(toRecord));
 
       classStatsList.add(
         ClassStats(
@@ -127,26 +120,7 @@ class _RecordDetailPageState extends ConsumerState<RecordDetailPage> {
       );
     }
 
-    final stats = AttendanceStats(
-      date: date,
-      classNames: classNames,
-      total: _entries.length,
-      present:
-          _entries.length -
-          allAbsent.length -
-          allLeave.length -
-          allOther.length,
-      absent: allAbsent.length,
-      late_: allLate.length,
-      leave: allLeave.length,
-      other: allOther.length,
-      absentStudents: allAbsent,
-      lateStudents: allLate,
-      leaveStudents: allLeave,
-      otherStudents: allOther,
-    );
-
-    final groupReport = generateGroupReport(stats);
+    final groupReport = generateGroupReport(classStatsList, date);
     final committeeReport = generateCommitteeReport(classStatsList, date);
 
     showModalBottomSheet(
