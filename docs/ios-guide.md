@@ -2,7 +2,7 @@
 
 > 本文档面向负责 iOS 适配的开发者，基于当前 Android 版本的代码进行适配。
 > 仓库地址：https://github.com/Keleoz-Cyber/LessonSearch
-> 当前版本：0.3.7
+> 当前版本：0.3.8
 
 ---
 
