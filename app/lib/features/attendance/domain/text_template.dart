@@ -123,28 +123,40 @@ String generateGroupReport(
   final classReports = StringBuffer();
   for (var i = 0; i < classStatsList.length; i++) {
     final cs = classStatsList[i];
-    final absentSection = cs.absent > 0
-        ? '缺勤（${cs.absent}人）：\n${_formatNamesWithId(cs.absentStudents)}'
-        : '';
-    final lateSection = cs.late_ > 0
-        ? '迟到（${cs.late_}人）：\n${_formatNamesWithId(cs.lateStudents)}'
-        : '';
-    final leaveSection = cs.leave > 0
-        ? '请假（${cs.leave}人）：\n${_formatNamesWithId(cs.leaveStudents)}'
-        : '';
-    final otherSection = cs.other > 0
-        ? '其他（${cs.other}人）：\n${_formatNamesWithIdAndRemark(cs.otherStudents)}'
-        : '';
 
-    final report = classReportTemplate
-        .replaceAll('{class_name}', cs.className)
-        .replaceAll('{total}', '${cs.total}')
-        .replaceAll('{present}', '${cs.present}')
-        .replaceAll('{absent_section}', absentSection)
-        .replaceAll('{late_section}', lateSection)
-        .replaceAll('{leave_section}', leaveSection)
-        .replaceAll('{other_section}', otherSection)
-        .trim();
+    // 全勤时只显示全勤，不显示各状态
+    String report;
+    if (cs.present == cs.total) {
+      report =
+          '''${cs.className}：
+应到 ${cs.total} 人，实到 ${cs.present} 人
+全勤''';
+    } else {
+      final absentSection = cs.absent > 0
+          ? '缺勤（${cs.absent}人）：\n${_formatNamesWithId(cs.absentStudents)}'
+          : '';
+      final lateSection = cs.late_ > 0
+          ? '迟到（${cs.late_}人）：\n${_formatNamesWithId(cs.lateStudents)}'
+          : '';
+      final leaveSection = cs.leave > 0
+          ? '请假（${cs.leave}人）：\n${_formatNamesWithId(cs.leaveStudents)}'
+          : '';
+      final otherSection = cs.other > 0
+          ? '其他（${cs.other}人）：\n${_formatNamesWithIdAndRemark(cs.otherStudents)}'
+          : '';
+
+      final sections = [
+        absentSection,
+        lateSection,
+        leaveSection,
+        otherSection,
+      ].where((s) => s.isNotEmpty).join('\n');
+
+      report =
+          '''${cs.className}：
+应到 ${cs.total} 人，实到 ${cs.present} 人
+$sections''';
+    }
 
     classReports.writeln(report);
     if (i < classStatsList.length - 1) {
