@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../shared/providers.dart';
-import '../../../attendance/application/name_check_notifier.dart';
 import '../../../attendance/domain/models.dart';
 
 /// 记名确认页：展示异常名单（未到/请假/其他），按班级分组
@@ -52,94 +51,103 @@ class ConfirmationPage extends ConsumerWidget {
       (sum, list) => sum + list.length,
     );
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('确认名单')),
-      body: Column(
-        children: [
-          // 统计摘要
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            color: Theme.of(
-              context,
-            ).colorScheme.primaryContainer.withValues(alpha: 0.3),
-            child: Text(
-              '共 $totalStudents 人，异常 $abnormalCount 人'
-              '${abnormalCount == 0 ? "（全部到齐）" : ""}',
-              style: Theme.of(context).textTheme.titleMedium,
-              textAlign: TextAlign.center,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        ref.read(nameCheckProvider.notifier).resumeEditing();
+        context.pop();
+      },
+      child: Scaffold(
+        appBar: AppBar(title: const Text('确认名单')),
+        body: Column(
+          children: [
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              color: Theme.of(
+                context,
+              ).colorScheme.primaryContainer.withValues(alpha: 0.3),
+              child: Text(
+                '共 $totalStudents 人，异常 $abnormalCount 人'
+                '${abnormalCount == 0 ? "（全部到齐）" : ""}',
+                style: Theme.of(context).textTheme.titleMedium,
+                textAlign: TextAlign.center,
+              ),
             ),
-          ),
 
-          // 异常名单
-          Expanded(
-            child: abnormalByClass.isEmpty
-                ? const Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.check_circle, size: 64, color: Colors.green),
-                        SizedBox(height: 16),
-                        Text('全部到齐，没有异常记录'),
-                      ],
-                    ),
-                  )
-                : ListView(
-                    padding: const EdgeInsets.all(16),
-                    children: abnormalByClass.entries.map((entry) {
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+            Expanded(
+              child: abnormalByClass.isEmpty
+                  ? const Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          Padding(
-                            padding: const EdgeInsets.only(top: 8, bottom: 8),
-                            child: Text(
-                              entry.key,
-                              style: Theme.of(context).textTheme.titleSmall
-                                  ?.copyWith(fontWeight: FontWeight.bold),
-                            ),
+                          Icon(
+                            Icons.check_circle,
+                            size: 64,
+                            color: Colors.green,
                           ),
-                          ...entry.value.map((e) => _AbnormalRow(entry: e)),
-                          const Divider(),
+                          SizedBox(height: 16),
+                          Text('全部到齐，没有异常记录'),
                         ],
-                      );
-                    }).toList(),
-                  ),
-          ),
-
-          // 底部按钮
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () {
-                      ref.read(nameCheckProvider.notifier).resumeEditing();
-                      context.pop();
-                    },
-                    style: OutlinedButton.styleFrom(
-                      minimumSize: const Size.fromHeight(48),
+                      ),
+                    )
+                  : ListView(
+                      padding: const EdgeInsets.all(16),
+                      children: abnormalByClass.entries.map((entry) {
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.only(top: 8, bottom: 8),
+                              child: Text(
+                                entry.key,
+                                style: Theme.of(context).textTheme.titleSmall
+                                    ?.copyWith(fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                            ...entry.value.map((e) => _AbnormalRow(entry: e)),
+                            const Divider(),
+                          ],
+                        );
+                      }).toList(),
                     ),
-                    child: const Text('重新编辑'),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  flex: 2,
-                  child: FilledButton(
-                    onPressed: () {
-                      context.push('/text-gen', extra: {'taskId': task.id});
-                    },
-                    style: FilledButton.styleFrom(
-                      minimumSize: const Size.fromHeight(48),
-                    ),
-                    child: const Text('确认名单'),
-                  ),
-                ),
-              ],
             ),
-          ),
-        ],
+
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () {
+                        ref.read(nameCheckProvider.notifier).resumeEditing();
+                        context.pop();
+                      },
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size.fromHeight(48),
+                      ),
+                      child: const Text('重新编辑'),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    flex: 2,
+                    child: FilledButton(
+                      onPressed: () {
+                        context.push('/text-gen', extra: {'taskId': task.id});
+                      },
+                      style: FilledButton.styleFrom(
+                        minimumSize: const Size.fromHeight(48),
+                      ),
+                      child: const Text('确认名单'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
