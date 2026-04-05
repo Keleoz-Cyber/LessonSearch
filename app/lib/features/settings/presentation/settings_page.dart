@@ -254,14 +254,17 @@ class SettingsPage extends ConsumerWidget {
 
   Future<void> _checkUpdate(BuildContext context, WidgetRef ref) async {
     try {
+      debugPrint('[CheckUpdate] 开始检查更新...');
       final apiClient = ref.read(apiClientProvider);
       final response = await apiClient.checkUpdate();
+      debugPrint('[CheckUpdate] 响应: $response');
 
       final latestVersion = response['version'] as String;
       final downloadUrl = response['download_url'] as String;
       final releaseNotes = response['release_notes'] as String;
 
       const currentVersion = '0.4.0';
+      debugPrint('[CheckUpdate] 当前版本: $currentVersion, 最新版本: $latestVersion');
 
       if (latestVersion == currentVersion) {
         if (context.mounted) {
@@ -300,9 +303,11 @@ class SettingsPage extends ConsumerWidget {
           ),
         );
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
+      debugPrint('[CheckUpdate] 错误: $e');
+      debugPrint('[CheckUpdate] 堆栈: $stackTrace');
       if (context.mounted) {
-        Toast.show(context, '检查更新失败');
+        Toast.show(context, '检查更新失败: $e');
       }
     }
   }
