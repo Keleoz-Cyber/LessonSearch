@@ -597,7 +597,96 @@ git push origin main
 
 ---
 
-## 十、部署
+## 十一、版本发布流程
+
+### 11.1 版本号管理
+
+版本号定义在 `app/pubspec.yaml` 中：
+```yaml
+version: 0.4.0+17
+```
+
+格式：`主版本.次版本.修订版+构建号`
+
+### 11.2 发布前检查清单
+
+1. **更新版本号**
+   - 编辑 `app/pubspec.yaml` 中的 `version`
+   - 编辑 `app/lib/features/settings/presentation/settings_page.dart` 中的 `currentVersion`
+
+2. **更新公告**
+   - 编辑 `app/lib/core/announcement/announcement_config.dart`
+   - `announcementVersion` +1
+   - 更新 `announcementContent` 和 `updateNotes`
+
+3. **更新文档**
+   - `docs/dev-guide.md` 版本号
+   - `docs/ios-guide.md` 版本号
+   - `docs/tasks.md` 版本号和更新日志
+
+### 11.3 构建 APK
+
+**使用自动化脚本（推荐）：**
+```powershell
+.\build_release.ps1
+```
+
+**手动构建：**
+```powershell
+cd app
+flutter build apk --release
+# APK 位置：app/build/app/outputs/flutter-apk/app-release.apk
+```
+
+**APK 命名规范：**
+- GitHub 文件名：`kaoqin-helper-vX.X.X.apk`（英文，GitHub 不支持中文文件名）
+- 下载后建议重命名为：`考勤助手vX.X.X.apk`
+- 示例：`kaoqin-helper-v0.4.0.apk` → `考勤助手v0.4.0.apk`
+
+### 11.4 发布到 GitHub
+
+1. **提交代码：**
+   ```powershell
+   git add .
+   git commit -m "release: vX.X.X"
+   git push origin main
+   ```
+
+2. **创建 Release：**
+   ```powershell
+   gh release create vX.X.X --title "vX.X.X 版本标题" --prerelease
+   gh release upload vX.X.X 考勤助手vX.X.X.apk
+   ```
+
+3. **更新服务端版本信息：**
+   ```bash
+   # SSH 到服务器
+   ssh root@47.94.142.242
+   
+   # 更新版本缓存
+   cd /opt/lesson-search
+   source venv/bin/activate
+   # 服务端会自动从 GitHub 获取最新版本信息
+   ```
+
+### 11.5 版本类型
+
+- **Pre-release（预发布）**：内测版本，不会通过 `/releases/latest` API 返回
+- **Latest（正式版）**：稳定版本，用户检查更新时会收到通知
+
+设置预发布：
+```powershell
+gh release edit vX.X.X --prerelease
+```
+
+取消预发布（设为正式版）：
+```powershell
+gh release edit vX.X.X --prerelease=false
+```
+
+---
+
+## 十二、部署
 
 详见 `docs/deploy-guide.md`，关键点：
 
@@ -609,7 +698,7 @@ git push origin main
 
 ---
 
-## 十一、数据流示例
+## 十三、数据流示例
 
 ### 记名完整链路
 
@@ -643,7 +732,7 @@ git push origin main
 
 ---
 
-## 十二、已知限制与后续计划
+## 十四、已知限制与后续计划
 
 ### 已知限制
 
