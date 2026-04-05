@@ -273,4 +273,30 @@ class AttendanceLocalDataSource {
       ),
     );
   }
+
+  Future<List<SyncQueueData>> getFailedSyncItems() async {
+    return await (_db.select(_db.syncQueue)
+          ..where(
+            (s) =>
+                s.syncStatus.equals('failed') &
+                s.retryCount.isBiggerOrEqualValue(5),
+          )
+          ..orderBy([(s) => OrderingTerm.desc(s.id)]))
+        .get();
+  }
+
+  Future<void> retryAllFailed() async {
+    await (_db.update(
+      _db.syncQueue,
+    )..where((s) => s.syncStatus.equals('failed'))).write(
+      const SyncQueueCompanion(
+        syncStatus: Value('pending'),
+        retryCount: Value(0),
+      ),
+    );
+  }
+
+  Future<void> clearSyncQueue() async {
+    await _db.delete(_db.syncQueue).go();
+  }
 }

@@ -3,9 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/sync/sync_service.dart';
 import '../../shared/providers.dart';
-import '../attendance/domain/models.dart';
 
-/// 临时测试页：验证 Flutter → Drift → SyncQueue → SyncService → 服务端 的完整链路
 class SyncTestPage extends ConsumerStatefulWidget {
   const SyncTestPage({super.key});
 
@@ -14,90 +12,129 @@ class SyncTestPage extends ConsumerStatefulWidget {
 }
 
 class _SyncTestPageState extends ConsumerState<SyncTestPage> {
-  final _logs = <String>[];
-  String? _taskId;
+  List<String> _logs = [];
+  int _syncQueueCount = 0;
+  int _failedCount = 0;
+  int _taskCount = 0;
+  int _recordCount = 0;
+  bool _loading = false;
 
-  void _log(String msg) {
-    setState(() => _logs.add('[${DateTime.now().toString().substring(11, 19)}] $msg'));
+  @override
+  void initState() {
+    super.initState();
+    _loadStats();
+    _loadLogs();
   }
 
-  Future<void> _createTask() async {
-    try {
-      final repo = ref.read(attendanceRepositoryProvider);
-      final task = await repo.createTask(
-        type: TaskType.rollCall,
-        classIds: [1],
-        selectedGradeId: 1,
-      );
-      _taskId = task.id;
-      _log('任务已创建: ${task.id.substring(0, 8)}...');
-      _log('已入队 SyncQueue，等待同步...');
-
-      // 立即触发同步
-      final sync = ref.read(syncServiceProvider);
-      await sync.syncNow();
-      _log('同步完成，检查服务端数据库');
-    } catch (e) {
-      _log('创建失败: $e');
-    }
-  }
-
-  Future<void> _markStudentPresent() async {
-    if (_taskId == null) {
-      _log('请先创建任务');
-      return;
-    }
-    try {
-      final repo = ref.read(attendanceRepositoryProvider);
-      final record = await repo.createRecord(
-        taskId: _taskId!,
-        studentId: 1,
-        classId: 1,
-        status: AttendanceStatus.present,
-      );
-      _log('记录已创建: student=1, status=present, localId=${record.id}');
-
-      final sync = ref.read(syncServiceProvider);
-      await sync.syncNow();
-      _log('同步完成');
-    } catch (e) {
-      _log('记录失败: $e');
-    }
-  }
-
-  Future<void> _checkSyncQueue() async {
+  Future<void> _loadStats() async {
     try {
       final local = ref.read(attendanceLocalDSProvider);
-      final items = await local.getPendingSyncItems();
-      _log('待同步队列: ${items.length} 条');
-      for (final item in items) {
-        _log('  #${item.id} ${item.entityType}/${item.action} retry=${item.retryCount} status=${item.syncStatus}');
-      }
+      final pendingItems = await local.getPendingSyncItems();
+      final failedItems = await local.getFailedSyncItems();
+
+      final db = ref.read(databaseProvider);
+      final taskCount = await (db.select(db.attendanceTasks)).get();
+      final recordCount = await (db.select(db.attendanceRecords)).get();
+
+      setState(() {
+        _syncQueueCount = pendingItems.length;
+        _failedCount = failedItems.length;
+        _taskCount = taskCount.length;
+        _recordCount = recordCount.length;
+      });
     } catch (e) {
-      _log('查询失败: $e');
+      _addLog('加载统计失败: $e', isError: true);
     }
   }
 
-  Future<void> _completeTask() async {
-    if (_taskId == null) {
-      _log('请先创建任务');
-      return;
-    }
-    try {
-      final repo = ref.read(attendanceRepositoryProvider);
-      final task = await repo.getTask(_taskId!);
-      if (task == null) {
-        _log('任务不存在');
-        return;
-      }
-      await repo.updateTaskStatus(task, status: TaskStatus.completed, phase: TaskPhase.confirming);
-      _log('任务已标记完成');
+  Future<void> _loadLogs() async {
+    final savedLogs =
+        ref.read(sharedPreferencesProvider).getStringList('debug_logs') ?? [];
+    setState(() {
+      _logs = savedLogs;
+    });
+  }
 
+  void _addLog(String msg, {bool isError = false}) {
+    final timestamp = DateTime.now().toString().substring(11, 19);
+    final log = '[$timestamp] ${isError ? "❌ " : ""}$msg';
+    setState(() {
+      _logs.insert(0, log);
+      if (_logs.length > 100) _logs.removeLast();
+    });
+    _saveLogs();
+  }
+
+  Future<void> _saveLogs() async {
+    await ref
+        .read(sharedPreferencesProvider)
+        .setStringList('debug_logs', _logs);
+  }
+
+  Future<void> _syncNow() async {
+    setState(() => _loading = true);
+    try {
       final sync = ref.read(syncServiceProvider);
       await sync.syncNow();
-      _log('同步完成');
+      _addLog('手动同步完成');
+      await _loadStats();
     } catch (e) {
-      _log('更新失败: $e');
+      _addLog('同步失败: $e', isError: true);
+    } finally {
+      setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _retryFailed() async {
+    if (_failedCount == 0) {
+      _addLog('没有失败记录');
+      return;
+    }
+    setState(() => _loading = true);
+    try {
+      final local = ref.read(attendanceLocalDSProvider);
+      await local.retryAllFailed();
+      _addLog('已重试 $_failedCount 条失败记录');
+      await _loadStats();
+    } catch (e) {
+      _addLog('重试失败: $e', isError: true);
+    } finally {
+      setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _clearLogs() async {
+    setState(() => _logs.clear());
+    await _saveLogs();
+  }
+
+  Future<void> _clearSyncQueue() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('确认清空'),
+        content: const Text('确定要清空同步队列吗？这不会删除本地任务数据。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('确认'),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+
+    try {
+      final local = ref.read(attendanceLocalDSProvider);
+      await local.clearSyncQueue();
+      _addLog('已清空同步队列');
+      await _loadStats();
+    } catch (e) {
+      _addLog('清空失败: $e', isError: true);
     }
   }
 
@@ -107,57 +144,164 @@ class _SyncTestPageState extends ConsumerState<SyncTestPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('联调测试'),
+        title: const Text('调试工具'),
         actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 12),
-            child: Icon(
-              syncState == SyncState.syncing
-                  ? Icons.sync
-                  : syncState == SyncState.error
-                      ? Icons.sync_problem
-                      : Icons.cloud_done,
-              color: syncState == SyncState.error ? Colors.red : null,
+          if (_loading)
+            const Padding(
+              padding: EdgeInsets.only(right: 16),
+              child: SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            )
+          else
+            IconButton(
+              icon: Icon(
+                syncState == SyncState.syncing
+                    ? Icons.sync
+                    : syncState == SyncState.error
+                    ? Icons.sync_problem
+                    : Icons.check_circle,
+                color: syncState == SyncState.error ? Colors.red : null,
+              ),
+              tooltip: '同步状态',
+              onPressed: () {},
             ),
-          ),
         ],
       ),
       body: Column(
         children: [
+          // 统计卡片
           Padding(
             padding: const EdgeInsets.all(12),
+            child: Row(
+              children: [
+                _StatCard(label: '任务', count: _taskCount, color: Colors.blue),
+                const SizedBox(width: 8),
+                _StatCard(
+                  label: '记录',
+                  count: _recordCount,
+                  color: Colors.green,
+                ),
+                const SizedBox(width: 8),
+                _StatCard(
+                  label: '待同步',
+                  count: _syncQueueCount,
+                  color: Colors.orange,
+                ),
+                const SizedBox(width: 8),
+                _StatCard(label: '失败', count: _failedCount, color: Colors.red),
+              ],
+            ),
+          ),
+
+          // 操作按钮
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Wrap(
               spacing: 8,
               runSpacing: 8,
               children: [
-                ElevatedButton(onPressed: _createTask, child: const Text('1. 创建任务')),
-                ElevatedButton(onPressed: _markStudentPresent, child: const Text('2. 标记学生到课')),
-                ElevatedButton(onPressed: _completeTask, child: const Text('3. 完成任务')),
-                OutlinedButton(onPressed: _checkSyncQueue, child: const Text('查看队列')),
+                FilledButton.icon(
+                  onPressed: _loading ? null : _syncNow,
+                  icon: const Icon(Icons.sync, size: 18),
+                  label: const Text('立即同步'),
+                ),
+                if (_failedCount > 0)
+                  FilledButton.icon(
+                    onPressed: _loading ? null : _retryFailed,
+                    icon: const Icon(Icons.refresh, size: 18),
+                    label: Text('重试失败 ($_failedCount)'),
+                    style: FilledButton.styleFrom(backgroundColor: Colors.red),
+                  ),
                 OutlinedButton(
-                  onPressed: () => setState(() => _logs.clear()),
-                  child: const Text('清空日志'),
+                  onPressed: _clearSyncQueue,
+                  child: const Text('清空队列'),
                 ),
               ],
             ),
           ),
+
+          const SizedBox(height: 12),
           const Divider(height: 1),
-          Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.all(12),
-              itemCount: _logs.length,
-              itemBuilder: (context, index) {
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 4),
-                  child: Text(
-                    _logs[index],
-                    style: const TextStyle(fontFamily: 'monospace', fontSize: 13),
-                  ),
-                );
-              },
+
+          // 日志区域
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('操作日志', style: Theme.of(context).textTheme.titleSmall),
+                TextButton(onPressed: _clearLogs, child: const Text('清空')),
+              ],
             ),
           ),
+          Expanded(
+            child: _logs.isEmpty
+                ? const Center(
+                    child: Text('暂无日志', style: TextStyle(color: Colors.grey)),
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    itemCount: _logs.length,
+                    itemBuilder: (context, index) {
+                      final log = _logs[index];
+                      final isError = log.contains('❌');
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 2),
+                        child: Text(
+                          log,
+                          style: TextStyle(
+                            fontFamily: 'monospace',
+                            fontSize: 12,
+                            color: isError ? Colors.red : null,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+          ),
         ],
+      ),
+    );
+  }
+}
+
+class _StatCard extends StatelessWidget {
+  final String label;
+  final int count;
+  final Color color;
+
+  const _StatCard({
+    required this.label,
+    required this.count,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Column(
+          children: [
+            Text(
+              '$count',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(label, style: TextStyle(fontSize: 11, color: color)),
+          ],
+        ),
       ),
     );
   }
