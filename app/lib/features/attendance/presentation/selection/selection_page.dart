@@ -292,26 +292,39 @@ class _SelectionPageState extends ConsumerState<SelectionPage> {
           ),
         ),
       ),
-      child: Wrap(
-        spacing: 12,
-        runSpacing: 10,
-        children: _classes.map((c) {
-          final selected = _selectedClassIds.contains(c.id);
-          return FilterChip(
-            label: Text(c.displayName, style: const TextStyle(fontSize: 15)),
-            selected: selected,
-            onSelected: (val) {
-              setState(() {
-                if (val) {
-                  _selectedClassIds.add(c.id);
-                } else {
-                  _selectedClassIds.remove(c.id);
-                }
-              });
-            },
-            showCheckmark: true,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          // 计算每个芯片的宽度：总宽度 - padding - spacing
+          final chipWidth = (constraints.maxWidth - 24 - 12) / 2;
+          return Wrap(
+            spacing: 12,
+            runSpacing: 10,
+            children: _classes.map((c) {
+              final selected = _selectedClassIds.contains(c.id);
+              return SizedBox(
+                width: chipWidth,
+                child: FilterChip(
+                  label: Text(
+                    c.displayName,
+                    style: const TextStyle(fontSize: 15),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  selected: selected,
+                  onSelected: (val) {
+                    setState(() {
+                      if (val) {
+                        _selectedClassIds.add(c.id);
+                      } else {
+                        _selectedClassIds.remove(c.id);
+                      }
+                    });
+                  },
+                  showCheckmark: true,
+                ),
+              );
+            }).toList(),
           );
-        }).toList(),
+        },
       ),
     );
   }
