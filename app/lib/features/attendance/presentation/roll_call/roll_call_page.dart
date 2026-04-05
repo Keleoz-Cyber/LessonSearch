@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../shared/providers.dart';
 import '../../../../shared/widgets/loading_overlay.dart';
+import '../../../../shared/widgets/toast.dart';
 
 class RollCallPage extends ConsumerStatefulWidget {
   final List<int> classIds;
@@ -246,10 +247,12 @@ class _RollCallPageState extends ConsumerState<RollCallPage> {
     if (!mounted) return;
     switch (result) {
       case 'save':
-        // 保存当前进度到数据库
-        final s = ref.read(rollCallProvider);
-        if (s.task != null) {
+        try {
           await ref.read(rollCallProvider.notifier).saveProgress();
+        } catch (e) {
+          if (mounted) {
+            Toast.show(context, '保存失败: $e');
+          }
         }
         if (mounted) context.pop();
       case 'abandon':
@@ -282,7 +285,13 @@ class _RollCallPageState extends ConsumerState<RollCallPage> {
       ),
     );
     if (confirm == true) {
-      await ref.read(rollCallProvider.notifier).finishRollCall();
+      try {
+        await ref.read(rollCallProvider.notifier).finishRollCall();
+      } catch (e) {
+        if (mounted) {
+          Toast.show(context, '结束失败: $e');
+        }
+      }
     }
   }
 }

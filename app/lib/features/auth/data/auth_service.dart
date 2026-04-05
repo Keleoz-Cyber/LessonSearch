@@ -26,18 +26,18 @@ class AuthService {
     required String email,
     String? nickname,
   }) async {
-    await _prefs.setString(_tokenKey, token);
-    await _prefs.setInt(_userIdKey, userId);
-    await _prefs.setString(_userEmailKey, email);
+    final commits = <Future<bool>>[];
+    commits.add(_prefs.setString(_tokenKey, token));
+    commits.add(_prefs.setInt(_userIdKey, userId));
+    commits.add(_prefs.setString(_userEmailKey, email));
     if (nickname != null) {
-      await _prefs.setString(_userNicknameKey, nickname);
+      commits.add(_prefs.setString(_userNicknameKey, nickname));
     }
+    await Future.wait(commits);
   }
 
   Future<void> clearAuth() async {
-    await _prefs.remove(_tokenKey);
-    await _prefs.remove(_userIdKey);
-    await _prefs.remove(_userEmailKey);
-    await _prefs.remove(_userNicknameKey);
+    final keys = [_tokenKey, _userIdKey, _userEmailKey, _userNicknameKey];
+    await Future.wait(keys.map((k) => _prefs.remove(k)));
   }
 }

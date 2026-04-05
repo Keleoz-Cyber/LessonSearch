@@ -313,24 +313,19 @@ class NameCheckNotifier extends StateNotifier<NameCheckState> {
     // 收集所有未处理的学生，批量写入
     final pendingItems =
         <({int studentId, int classId, AttendanceStatus status})>[];
-    final updatedMap = Map<int, List<StudentWithStatus>>.from(
-      state.studentsByClass,
-    );
 
     for (final entry in state.studentsByClass.entries) {
       final classId = entry.key;
-      final students = List<StudentWithStatus>.from(entry.value);
-      for (var i = 0; i < students.length; i++) {
-        if (students[i].status == AttendanceStatus.pending) {
+      final students = entry.value;
+      for (final student in students) {
+        if (student.status == AttendanceStatus.pending) {
           pendingItems.add((
-            studentId: students[i].student.id,
+            studentId: student.student.id,
             classId: classId,
             status: AttendanceStatus.present,
           ));
-          students[i] = students[i].copyWith(status: AttendanceStatus.present);
         }
       }
-      updatedMap[classId] = students;
     }
 
     // 批量写入 DB + SyncQueue（一个事务）
@@ -346,6 +341,21 @@ class NameCheckNotifier extends StateNotifier<NameCheckState> {
       status: TaskStatus.completed,
       phase: TaskPhase.confirming,
     );
+
+    // 数据库操作成功后，更新 UI 状态
+    final updatedMap = Map<int, List<StudentWithStatus>>.from(
+      state.studentsByClass,
+    );
+    for (final entry in updatedMap.entries) {
+      final classId = entry.key;
+      final students = List<StudentWithStatus>.from(entry.value);
+      for (var i = 0; i < students.length; i++) {
+        if (students[i].status == AttendanceStatus.pending) {
+          students[i] = students[i].copyWith(status: AttendanceStatus.present);
+        }
+      }
+      updatedMap[classId] = students;
+    }
 
     state = state.copyWith(studentsByClass: updatedMap, isFinished: true);
   }

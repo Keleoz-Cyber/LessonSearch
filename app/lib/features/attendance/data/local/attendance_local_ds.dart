@@ -210,16 +210,38 @@ class AttendanceLocalDataSource {
     required String action,
     Map<String, dynamic>? payload,
   }) async {
-    await _db
-        .into(_db.syncQueue)
-        .insert(
-          SyncQueueCompanion.insert(
-            entityType: entityType,
-            entityId: entityId,
-            action: action,
-            payload: Value(payload != null ? jsonEncode(payload) : null),
-          ),
-        );
+    // 检查是否已存在相同的 pending item
+    final existing =
+        await (_db.select(_db.syncQueue)..where(
+              (s) =>
+                  s.entityType.equals(entityType) &
+                  s.entityId.equals(entityId) &
+                  s.action.equals(action) &
+                  s.syncStatus.equals('pending'),
+            ))
+            .getSingleOrNull();
+
+    if (existing != null) {
+      // 更新已有记录的 payload
+      await (_db.update(
+        _db.syncQueue,
+      )..where((s) => s.id.equals(existing.id))).write(
+        SyncQueueCompanion(
+          payload: Value(payload != null ? jsonEncode(payload) : null),
+        ),
+      );
+    } else {
+      await _db
+          .into(_db.syncQueue)
+          .insert(
+            SyncQueueCompanion.insert(
+              entityType: entityType,
+              entityId: entityId,
+              action: action,
+              payload: Value(payload != null ? jsonEncode(payload) : null),
+            ),
+          );
+    }
   }
 
   /// 批量入队同步（事务内执行）
