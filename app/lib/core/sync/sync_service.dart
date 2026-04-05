@@ -14,7 +14,7 @@ class SyncService {
   Timer? _timer;
   bool _isSyncing = false;
   static const _maxRetries = 5;
-  static const _interval = Duration(seconds: 30);
+  static const _interval = Duration(seconds: 10);
 
   final ValueNotifier<SyncState> state = ValueNotifier(SyncState.idle);
 
