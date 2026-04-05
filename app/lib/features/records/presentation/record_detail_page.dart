@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../shared/providers.dart';
 import '../../../shared/widgets/toast.dart';
@@ -494,8 +495,8 @@ class _TextSheet extends StatelessWidget {
               Expanded(
                 child: TabBarView(
                   children: [
-                    _copyableText(context, groupReport, '总群汇报'),
-                    _copyableText(context, committeeReport, '学委汇报'),
+                    _copyableText(context, groupReport, isWechat: true),
+                    _copyableText(context, committeeReport, isWechat: false),
                   ],
                 ),
               ),
@@ -506,7 +507,11 @@ class _TextSheet extends StatelessWidget {
     );
   }
 
-  Widget _copyableText(BuildContext context, String text, String label) {
+  Widget _copyableText(
+    BuildContext context,
+    String text, {
+    required bool isWechat,
+  }) {
     return Column(
       children: [
         Expanded(
@@ -520,15 +525,27 @@ class _TextSheet extends StatelessWidget {
         ),
         Padding(
           padding: const EdgeInsets.all(12),
-          child: OutlinedButton.icon(
-            onPressed: () {
+          child: FilledButton.icon(
+            onPressed: () async {
               Clipboard.setData(ClipboardData(text: text));
-              Toast.show(context, '已复制$label');
+              Toast.show(context, '已复制到剪贴板');
+
+              await Future.delayed(const Duration(milliseconds: 300));
+
+              final uri = Uri.parse(isWechat ? 'weixin://' : 'mqq://');
+              if (await canLaunchUrl(uri)) {
+                await launchUrl(uri);
+              } else {
+                if (context.mounted) {
+                  Toast.show(context, isWechat ? '未安装微信' : '未安装QQ');
+                }
+              }
             },
-            icon: const Icon(Icons.copy),
-            label: Text('复制$label'),
-            style: OutlinedButton.styleFrom(
+            icon: Icon(isWechat ? Icons.wechat : Icons.message),
+            label: Text(isWechat ? '复制并打开微信' : '复制并打开QQ'),
+            style: FilledButton.styleFrom(
               minimumSize: const Size.fromHeight(44),
+              backgroundColor: isWechat ? Colors.green : Colors.blue,
             ),
           ),
         ),
