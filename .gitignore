@@ -52,3 +52,6 @@ desktop.ini
 # === 导入脚本输出 ===
 scripts/output/
 scripts/reports/
+
+# === 重构临时目录 ===
+server/app/
