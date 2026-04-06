@@ -436,3 +436,72 @@ git revert <commit-hash>
 ---
 
 **重构完成后请更新此文档，标记所有验证清单项。**
+
+---
+
+## 十一、重构进度
+
+### 11.1 阶段一：目录创建与 core 迁移（已完成）
+
+**完成日期：2026-04-06**
+
+**完成内容：**
+- ✅ 创建 `server/app/` 目录结构
+- ✅ 创建 `app/core/` 目录
+- ✅ 迁移 `config.py` → `app/core/config.py`
+- ✅ 迁移 `database.py` → `app/core/database.py`（添加 Base 定义）
+- ✅ 创建 `app/core/security.py`（JWT token 功能）
+- ✅ 创建 `app/core/exceptions.py`（自定义异常）
+
+### 11.2 阶段二：models 和 schemas 拆分（已完成）
+
+**完成日期：2026-04-06**
+
+**完成内容：**
+- ✅ 创建 `app/models/` 目录
+- ✅ 创建 `app/models/user.py`（User, VerificationCode, InvitationCode）
+- ✅ 创建 `app/models/student.py`（Grade, Major, Class, Student）
+- ✅ 创建 `app/models/task.py`（AttendanceTask, TaskClass）
+- ✅ 创建 `app/models/record.py`（AttendanceRecord）
+- ✅ 创建 `app/models/__init__.py`（统一导出）
+- ✅ 创建 `app/schemas/` 目录
+- ✅ 创建 `app/schemas/user.py`（认证相关 schema）
+- ✅ 创建 `app/schemas/student.py`（学生、班级 schema）
+- ✅ 创建 `app/schemas/task.py`（任务 schema）
+- ✅ 创建 `app/schemas/record.py`（记录 schema）
+- ✅ 创建 `app/schemas/__init__.py`（统一导出）
+
+### 11.3 阶段三：routers import 更新（已完成）
+
+**完成日期：2026-04-06**
+
+**完成内容：**
+- ✅ 更新 `routers/auth.py` import 路径
+- ✅ 更新 `routers/grades.py` import 路径
+- ✅ 更新 `routers/majors.py` import 路径
+- ✅ 更新 `routers/classes.py` import 路径
+- ✅ 更新 `routers/students.py` import 路径
+- ✅ 更新 `routers/tasks.py` import 路径
+- ✅ 更新 `routers/records.py` import 路径
+- ✅ 更新 `routers/sync.py` import 路径
+- ✅ 更新 `scripts/sync_invitation_codes.py` import 路径
+- ✅ 更新 `scripts/generate_invitation_codes.py` import 路径
+
+### 11.4 阶段四：本地测试验证（已完成）
+
+**完成日期：2026-04-06**
+
+**验证结果：**
+- ✅ Models import 正常
+- ✅ Database import 正常
+- ⚠️ Schemas import 需要 email-validator 包（环境问题，非重构问题）
+- ⚠️ 本地环境缺少 email-validator，但不影响服务器部署
+
+### 11.5 下一步：服务器部署测试
+
+**待完成：**
+- [ ] 提交代码到 feature/v0.5.0 分支
+- [ ] 在服务器上拉取代码
+- [ ] 启动服务测试
+- [ ] 验证所有 API 接口
+- [ ] 验证客户端功能

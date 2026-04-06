@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
-from database import get_db
-from models import Major
-from schemas import MajorOut
+from app.core.database import get_db
+from app.models import Major
+from app.schemas import MajorOut
 
 router = APIRouter(prefix="/majors", tags=["专业"])
 

@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
-from database import get_db
-from models import Grade
-from schemas import GradeOut
+from app.core.database import get_db
+from app.models import Grade
+from app.schemas import GradeOut
 
 router = APIRouter(prefix="/grades", tags=["年级"])
 

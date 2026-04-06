@@ -6,10 +6,10 @@ from fastapi import APIRouter, Depends, HTTPException, Header
 from sqlalchemy.orm import Session
 import jwt
 
-from database import get_db
-from models import User, VerificationCode, InvitationCode
-from schemas import SendCodeRequest, LoginRequest, RegisterRequest, LoginResponse, UserOut
-from config import (
+from app.core.database import get_db
+from app.models import User, VerificationCode, InvitationCode
+from app.schemas import SendCodeRequest, LoginRequest, RegisterRequest, LoginResponse, UserOut
+from app.core.config import (
     JWT_SECRET,
     JWT_EXPIRE_HOURS,
     SMTP_HOST,

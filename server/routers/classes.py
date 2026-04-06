@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session, joinedload
 
-from database import get_db
-from models import Class, Student
-from schemas import ClassOut, ClassBrief
+from app.core.database import get_db
+from app.models import Class, Student
+from app.schemas import ClassOut, ClassBrief
 
 router = APIRouter(prefix="/classes", tags=["班级"])
 
