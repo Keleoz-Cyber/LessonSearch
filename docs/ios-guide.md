@@ -113,7 +113,7 @@ open ios/Runner.xcworkspace
 
 1. **选择 Runner target** → General
 2. **Bundle Identifier**: 改为 `com.lessonsearch.lessonSearch`（或你自己的）
-3. **Display Name**: `查课`（会显示在手机桌面）
+3. **Display Name**: `考勤助手`（会显示在手机桌面）
 4. **Deployment Target**: 建议 iOS 15.0+
 5. **Signing & Capabilities**:
    - Team: 选择你的 Apple ID 或开发者账号
@@ -233,9 +233,105 @@ iOS 默认使用 San Francisco 字体，拼音中的声调符号（如 zhāng）
 
 ---
 
-## 六、打包发布
+## 六、自动构建（推荐）
 
-### 6.1 测试版（TestFlight）
+项目已配置 GitHub Actions 自动构建，无需本地 Mac 环境。
+
+### 6.1 获取构建产物
+
+**方法一：从 Release 下载**
+1. 打开 https://github.com/Keleoz-Cyber/LessonSearch/releases
+2. 下载 `kaoqin-helper-unsigned.ipa`
+
+**方法二：从 Actions Artifacts 下载**
+1. 打开 https://github.com/Keleoz-Cyber/LessonSearch/actions
+2. 选择最新的构建记录
+3. 在 Artifacts 中下载 `app-release`
+
+### 6.2 本地签名方法
+
+GitHub Actions 构建的 IPA 未签名，需要本地签名后才能安装。
+
+**工具选择：**
+
+| 工具 | 平台 | 难度 | 推荐度 |
+|------|------|------|--------|
+| AltStore | Windows/Mac | 简单 | ⭐⭐⭐⭐⭐ |
+| Sideloadly | Windows/Mac | 简单 | ⭐⭐⭐⭐ |
+| 爱思助手 | Windows | 简单 | ⭐⭐⭐ |
+| iOS App Signer | Mac | 中等 | ⭐⭐⭐ |
+
+### 6.3 使用 AltStore 签名（推荐）
+
+**安装 AltStore：**
+1. 访问 https://altstore.io
+2. 下载 Windows 或 Mac 版本
+3. 安装并打开 AltServer
+
+**签名步骤：**
+1. 连接 iPhone 到电脑
+2. 打开 AltStore → My Apps
+3. 点击左上角 **+** 按钮
+4. 选择下载的 `kaoqin-helper-unsigned.ipa`
+5. 输入 Apple ID 和密码
+6. 等待签名并安装
+
+**首次使用：**
+- iPhone 上：设置 → 通用 → VPN与设备管理 → 信任开发者
+
+### 6.4 使用 Sideloadly 签名
+
+1. 下载：https://sideloadly.io
+2. 安装并打开 Sideloadly
+3. 连接 iPhone 到电脑
+4. 拖入 IPA 文件
+5. 输入 Apple ID
+6. 点击 Start 开始签名
+
+### 6.5 使用爱思助手签名
+
+1. 下载：https://www.i4.cn
+2. 安装并打开爱思助手
+3. 连接 iPhone 到电脑
+4. 选择"应用游戏" → "导入安装"
+5. 选择 IPA 文件
+6. 等待安装完成
+
+### 6.6 免费签名限制
+
+使用免费 Apple ID 签名有以下限制：
+- **7 天有效期**：每周需要重新签名
+- **3 个 App 上限**：同时只能有 3 个签名 App
+- **无推送通知**：无法使用 APNs
+- **无 App Store 分发**：只能通过工具安装
+
+**解决方案：**
+- 购买 Apple Developer 账号（￥688/年）
+- 或每周重新签名
+
+### 6.7 触发自动构建
+
+**手动触发构建：**
+1. 修改代码并推送到 `main` 分支
+2. GitHub Actions 自动构建 APK
+3. 查看构建结果：Actions → Build APK
+
+**发布新版本：**
+```bash
+# 创建 tag 并推送
+git tag v0.5.0
+git push origin v0.5.0
+
+# GitHub Actions 自动构建并发布
+```
+
+---
+
+## 七、手动打包（备选）
+
+如果没有网络或需要自定义配置，可以手动打包。
+
+### 7.1 测试版（TestFlight）
 
 ```bash
 flutter build ipa
@@ -243,7 +339,7 @@ flutter build ipa
 
 产物在 `build/ios/ipa/` 目录下，使用 Xcode → Product → Archive 上传到 App Store Connect，然后通过 TestFlight 分发。
 
-### 6.2 正式版
+### 7.2 正式版
 
 需要在 App Store Connect 中：
 1. 创建 App
@@ -252,7 +348,7 @@ flutter build ipa
 
 ---
 
-## 七、项目架构概览（快速了解代码）
+## 八、项目架构概览（快速了解代码）
 
 ```
 app/lib/
@@ -290,7 +386,7 @@ app/lib/
 
 ---
 
-## 八、联系方式
+## 九、联系方式
 
 - 仓库：https://github.com/Keleoz-Cyber/LessonSearch
 - 开发文档：`docs/dev-guide.md`
