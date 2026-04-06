@@ -27,20 +27,58 @@ def _send_email(to: str, code: str):
         raise HTTPException(status_code=500, detail="SMTP 未配置")
 
     subject = "考勤助手APP验证码 ✨"
+    
     body = f"""
-亲爱的学习部成员，欢迎使用考勤助手APP！ 😊
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="margin: 0; padding: 0; background-color: #f4f7f6; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;">
+        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background: linear-gradient(135deg, #8E2DE2 0%, #4A00E0 100%); padding: 40px 15px;">
+            <tr>
+                <td align="center">
+                    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width: 500px; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 8px 20px rgba(0,0,0,0.15);">
+                        <tr>
+                            <td style="padding: 40px 30px;">
+                                <h2 style="margin-top: 0; color: #333333; text-align: center; font-size: 24px;">
+                                    欢迎使用考勤助手 👋
+                                </h2>
+                                <p style="color: #666666; font-size: 16px; line-height: 1.6; margin-bottom: 25px; text-align: center;">
+                                    您好！感谢您使用我们的服务。您的验证码如下：
+                                </p>
+                                
+                                <div style="background-color: #f8f9fa; border: 1px dashed #cba4f4; border-radius: 8px; padding: 20px; text-align: center; margin-bottom: 25px;">
+                                    <span style="display: inline-block; font-size: 36px; font-weight: bold; color: #6a11cb; letter-spacing: 10px; margin: 0;">{code}</span>
+                                </div>
+                                
+                                <p style="color: #666666; font-size: 14px; line-height: 1.6; text-align: center; margin-bottom: 30px;">
+                                    该验证码在 <strong style="color: #e53e3e;">5分钟</strong> 内有效。请勿将验证码泄露给他人。 ⏱️
+                                </p>
+                                
+                                <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                                    <tr>
+                                        <td style="border-top: 1px solid #eeeeee; padding-top: 20px;">
+                                            <p style="color: #999999; font-size: 12px; line-height: 1.5; text-align: center; margin: 0;">
+                                                如果这不是您的操作，请忽略此邮件，您的账户是安全的。<br>
+                                                如有任何问题，请联系学习部管理员。 📧<br><br>
+                                                —— 考勤助手团队 敬上 ✨
+                                            </p>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+    </body>
+    </html>
+    """
 
-您的验证码是：【{code}】 🔐
-
-验证码有效期5分钟，请尽快完成验证哦～ ⏰
-
-如有疑问，请联系学习部相关负责人。
-
-祝您使用愉快！ 💝
-——— 考勤助手团队 🎓
-"""
-
-    msg = MIMEText(body, "plain", "utf-8")
+    msg = MIMEText(body, "html", "utf-8")
     msg["Subject"] = subject
     msg["From"] = SMTP_USER
     msg["To"] = to
