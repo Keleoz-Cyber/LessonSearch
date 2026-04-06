@@ -1,7 +1,7 @@
 name: lesson_search
 description: "考勤助手 - 课堂考勤查课工具"
 publish_to: 'none'
-version: 0.5.0+18
+version: 0.4.0+17
 
 environment:
   sdk: ^3.11.0
@@ -51,7 +51,7 @@ dev_dependencies:
 
 flutter_launcher_icons:
   android: true
-  ios: false
+  ios: true
   image_path: "assets/icon.png"
   adaptive_icon_background: "#FFFFFF"
   adaptive_icon_foreground: "assets/icon_foreground.png"

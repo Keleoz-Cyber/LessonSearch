@@ -32,11 +32,6 @@ jobs:
         cd app
         flutter pub get
     
-    - name: Create iOS platform
-      run: |
-        cd app
-        flutter create --platforms ios .
-    
     - name: Install iOS dependencies
       run: |
         cd app/ios
