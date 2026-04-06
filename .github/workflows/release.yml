@@ -1,0 +1,67 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: macos-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup Java
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+    
+    - name: Setup Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: '3.43.0'
+        channel: 'stable'
+    
+    - name: Install dependencies
+      run: |
+        cd app
+        flutter pub get
+    
+    - name: Build Android APK
+      run: |
+        cd app
+        flutter build apk --release
+    
+    - name: Build iOS IPA (unsigned)
+      run: |
+        cd app
+        flutter build ios --release --no-codesign
+    
+    - name: Create IPA from build
+      run: |
+        cd app/build/ios/iphoneos
+        mkdir -p Payload
+        mv Runner.app Payload/
+        zip -r ../../../kaoqin-helper-unsigned.ipa Payload
+        cd ../../..
+    
+    - name: Get version from tag
+      id: get_version
+      run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+    
+    - name: Rename APK
+      run: |
+        VERSION=${{ steps.get_version.outputs.VERSION }}
+        cp app/build/app/outputs/flutter-apk/app-release.apk kaoqin-helper-${VERSION}.apk
+    
+    - name: Upload to Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          kaoqin-helper-${{ steps.get_version.outputs.VERSION }}.apk
+          kaoqin-helper-unsigned.ipa
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
