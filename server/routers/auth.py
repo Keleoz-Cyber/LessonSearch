@@ -26,8 +26,19 @@ def _send_email(to: str, code: str):
     if not SMTP_USER or not SMTP_PASSWORD:
         raise HTTPException(status_code=500, detail="SMTP 未配置")
 
-    subject = "Code"
-    body = f"Your code: {code}"
+    subject = "考勤助手APP验证码 ✨"
+    body = f"""
+亲爱的学习部成员，欢迎使用考勤助手APP！ 😊
+
+您的验证码是：【{code}】 🔐
+
+验证码有效期5分钟，请尽快完成验证哦～ ⏰
+
+如有疑问，请联系学习部相关负责人。
+
+祝您使用愉快！ 💝
+——— 考勤助手团队 🎓
+"""
 
     msg = MIMEText(body, "plain", "utf-8")
     msg["Subject"] = subject
