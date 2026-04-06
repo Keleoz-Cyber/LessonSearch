@@ -35,35 +35,37 @@ def _send_email(to: str, code: str):
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
     </head>
-    <body style="margin: 0; padding: 0; background-color: #f4f7f6; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;">
-        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background: linear-gradient(135deg, #8E2DE2 0%, #4A00E0 100%); padding: 40px 15px;">
+    <body style="margin: 0; padding: 0; background-color: #fff0f5; font-family: 'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif;">
+        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 99%, #fecfef 100%); padding: 50px 15px;">
             <tr>
                 <td align="center">
-                    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width: 500px; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 8px 20px rgba(0,0,0,0.15);">
+                    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width: 480px; background-color: #ffffff; border-radius: 24px; overflow: hidden; box-shadow: 0 12px 30px rgba(255, 154, 158, 0.4);">
                         <tr>
-                            <td style="padding: 40px 30px;">
-                                <h2 style="margin-top: 0; color: #333333; text-align: center; font-size: 24px;">
-                                    欢迎使用考勤助手 👋
+                            <td style="padding: 45px 30px; text-align: center;">
+                                <div style="font-size: 48px; margin-bottom: 10px; line-height: 1;">💌</div>
+                                
+                                <h2 style="margin-top: 0; color: #ff6b81; font-size: 26px; font-weight: bold;">
+                                    你好呀！欢迎使用考勤助手 ✨
                                 </h2>
-                                <p style="color: #666666; font-size: 16px; line-height: 1.6; margin-bottom: 25px; text-align: center;">
-                                    您好！感谢您使用我们的服务。您的验证码如下：
+                                <p style="color: #7a7a7a; font-size: 16px; line-height: 1.6; margin-bottom: 30px;">
+                                    超级开心遇见你！🥰 你的专属魔法验证码已经准备好啦：
                                 </p>
                                 
-                                <div style="background-color: #f8f9fa; border: 1px dashed #cba4f4; border-radius: 8px; padding: 20px; text-align: center; margin-bottom: 25px;">
-                                    <span style="display: inline-block; font-size: 36px; font-weight: bold; color: #6a11cb; letter-spacing: 10px; margin: 0;">{code}</span>
+                                <div style="background-color: #fff4f6; border: 2px dashed #ffb8c6; border-radius: 16px; padding: 25px; margin-bottom: 30px;">
+                                    <span style="display: inline-block; font-size: 40px; font-weight: 900; color: #ff4757; letter-spacing: 12px; margin: 0; font-family: 'Courier New', Courier, monospace;">{code}</span>
                                 </div>
                                 
-                                <p style="color: #666666; font-size: 14px; line-height: 1.6; text-align: center; margin-bottom: 30px;">
-                                    该验证码在 <strong style="color: #e53e3e;">5分钟</strong> 内有效。请勿将验证码泄露给他人。 ⏱️
+                                <p style="color: #7a7a7a; font-size: 15px; line-height: 1.6; margin-bottom: 35px;">
+                                    💡 这个魔法代码在 <strong style="color: #ff4757;">5分钟</strong> 内有效哦，<br>千万不要偷偷告诉别人呀！🤫
                                 </p>
                                 
                                 <table width="100%" cellpadding="0" cellspacing="0" border="0">
                                     <tr>
-                                        <td style="border-top: 1px solid #eeeeee; padding-top: 20px;">
-                                            <p style="color: #999999; font-size: 12px; line-height: 1.5; text-align: center; margin: 0;">
-                                                如果这不是您的操作，请忽略此邮件，您的账户是安全的。<br>
-                                                如有任何问题，请联系学习部管理员。 📧<br><br>
-                                                —— 考勤助手团队 敬上 ✨
+                                        <td style="border-top: 2px dotted #ffeeee; padding-top: 25px;">
+                                            <p style="color: #b2bec3; font-size: 13px; line-height: 1.6; margin: 0;">
+                                                如果这不是你本人的操作，请不用理会，你的账号超级安全哒！🛡️<br>
+                                                如果有任何小问号，随时呼唤学习部管理员哦。<br><br>
+                                                <span style="color: #ff9a9e; font-weight: bold;">—— 考勤助手团队 欢快地敬上 🎈</span>
                                             </p>
                                         </td>
                                     </tr>
