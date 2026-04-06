@@ -14,5 +14,9 @@ flutter build apk --release
 # 重命名 APK
 cp build/app/outputs/flutter-apk/app-release.apk "build/app/outputs/flutter-apk/kaoqin-helper-v${VERSION}.apk"
 
+# 删除原始文件
+rm -f build/app/outputs/flutter-apk/app-release.apk
+rm -f build/app/outputs/flutter-apk/app-release.apk.sha1
+
 echo "APK 已生成: build/app/outputs/flutter-apk/kaoqin-helper-v${VERSION}.apk"
 ls -la "build/app/outputs/flutter-apk/kaoqin-helper-v${VERSION}.apk"

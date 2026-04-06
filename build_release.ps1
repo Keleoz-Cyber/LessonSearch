@@ -14,7 +14,10 @@ flutter build apk --release
 $source = "build\app\outputs\flutter-apk\app-release.apk"
 $dest = "build\app\outputs\flutter-apk\kaoqin-helper-v$version.apk"
 
+# 复制并删除原始文件
 Copy-Item $source $dest -Force
+Remove-Item $source -Force
+Remove-Item "build\app\outputs\flutter-apk\app-release.apk.sha1" -Force -ErrorAction SilentlyContinue
 
 Write-Host "APK 已生成: $dest"
 Get-Item $dest
