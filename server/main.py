@@ -1,10 +1,12 @@
 from fastapi import FastAPI
 from routers import grades, majors, classes, students, tasks, records, auth, app_version, sync
+from app.core.database import Base
+from app.models import *  # 确保所有模型被导入以创建表
 
 app = FastAPI(
-    title="查课 API",
-    description="查课 App 服务端接口",
-    version="0.2.0",
+    title="考勤助手 API",
+    description="考勤助手 App 服务端接口",
+    version="0.5.0",
 )
 
 app.include_router(auth.router, prefix="/api")
