@@ -215,4 +215,117 @@ ________________________________________
 •	周次计算规则 
 具体页面布局、按钮文案、交互样式、视觉实现方式，由后续设计与开发实现阶段确认。
 ________________________________________
+十一、技术实现细节（2026-04-06 更新）
+
+1. 角色系统实现
+•	超级管理员初始账号：服务器直接创建
+•	邀请码功能：仅用于注册认证，不区分角色
+•	角色分配：超级管理员可分配角色
+•	User 表修改：增加 role 字段（super_admin / admin / member）
+
+2. 周次配置实现
+•	权限：仅超级管理员可设定第1周起始日期
+•	学期结束处理：手动重置
+•	数据库设计：新建 week_config 表
+
+3. 数据库设计
+
+-- 用户表修改
+ALTER TABLE users ADD COLUMN role VARCHAR(20) DEFAULT 'member';
+
+-- 周次配置表
+CREATE TABLE week_config (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    start_date DATE NOT NULL,
+    semester_name VARCHAR(50),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 提交记录表
+CREATE TABLE submissions (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    user_id INT NOT NULL,
+    week_number INT NOT NULL,
+    status VARCHAR(20) DEFAULT 'pending', -- pending/approved/rejected
+    reviewer_id INT,
+    review_time DATETIME,
+    review_note TEXT,
+    submitted_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (reviewer_id) REFERENCES users(id)
+);
+
+-- 提交-考勤记录关联表
+CREATE TABLE submission_records (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    submission_id INT NOT NULL,
+    record_id INT NOT NULL,
+    FOREIGN KEY (submission_id) REFERENCES submissions(id),
+    FOREIGN KEY (record_id) REFERENCES attendance_records(id)
+);
+
+4. 提交记录字段
+•	包含：查课记录功能所有所需字段
+•	根据 Excel 导出内容判断所需字段
+•	不上传图片/附件
+
+5. 撤销记录处理
+•	撤销待审核记录后：数据保留本地
+•	从审核队列移除
+•	不参与本周汇总
+
+6. 审核流程实现
+•	审核记录：记录审核人、审核时间
+•	审核不通过原因：可选填写
+
+7. 数据迁移
+•	v0.4.0 数据不迁移
+•	v0.5.0 从零开始
+
+8. 权限控制实现
+•	API 层：中间件/依赖注入检查角色权限
+•	前端层：路由守卫 + 页面按钮级别控制
+•	API 层强制校验，前端层优化体验
+
+9. 导出功能实现
+•	支持按周次导出历史周考勤表
+•	Excel 模板待确定（用户后续提供）
+•	导出字段：姓名、学号、班级、迟到次数、旷课次数、累计
+•	累计规则：2次迟到=1累计，1次旷课=1累计
+
+________________________________________
+十二、开发顺序
+
+阶段一：角色系统
+•	User 表增加 role 字段
+•	API 权限中间件
+•	前端路由守卫
+
+阶段二：周次配置
+•	week_config 表
+•	周次计算逻辑
+•	周次设置 API
+
+阶段三：提交功能
+•	submissions 表
+•	submission_records 表
+•	提交 API
+•	撤销 API
+
+阶段四：审核功能
+•	审核 API
+•	状态流转
+•	审核记录查询
+
+阶段五：汇总导出
+•	汇总逻辑
+•	Excel 导出功能
+•	历史周数据查询
+
+________________________________________
+十三、待确认事项
+
+•	Excel 导出模板格式（用户后续提供）
+•	超级管理员初始账号创建方式（服务器直接创建）
+•	周次重置的具体操作流程
 
