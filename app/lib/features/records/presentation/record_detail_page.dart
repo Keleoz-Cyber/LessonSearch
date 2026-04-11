@@ -63,7 +63,14 @@ class _RecordDetailPageState extends ConsumerState<RecordDetailPage> {
   }) async {
     final repo = ref.read(recordsRepositoryProvider);
     await repo.updateRecord(recordId, newStatus, remark: remark);
-    await _load();
+
+    // 直接更新列表项，不重新加载整个列表（保持滚动位置）
+    setState(() {
+      _entries[index] = _entries[index].copyWith(
+        status: newStatus,
+        remark: remark,
+      );
+    });
   }
 
   void _generateText() {
