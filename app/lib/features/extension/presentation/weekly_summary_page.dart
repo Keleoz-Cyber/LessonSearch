@@ -8,17 +8,12 @@ import 'package:path_provider/path_provider.dart';
 
 import '../../../shared/providers.dart';
 import '../../../shared/widgets/toast.dart';
-import '../../../core/network/api_client.dart';
 import '../data/submission_service.dart';
 
 final currentWeekProvider = FutureProvider<Map<String, dynamic>>((ref) async {
   final api = ref.watch(apiClientProvider);
   final res = await api.dio.get('/week/current');
   return res.data as Map<String, dynamic>;
-});
-
-final mySubmissionsProvider = FutureProvider<List<dynamic>>((ref) {
-  return ref.watch(submissionServiceProvider).getMySubmissions();
 });
 
 final pendingSubmissionsProvider = FutureProvider<List<dynamic>>((ref) {
@@ -56,12 +51,21 @@ class _WeeklySummaryPageState extends ConsumerState<WeeklySummaryPage>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(_onTabChanged);
   }
 
   @override
   void dispose() {
+    _tabController.removeListener(_onTabChanged);
     _tabController.dispose();
     super.dispose();
+  }
+
+  void _onTabChanged() {
+    if (_tabController.index == 0 && mounted) {
+      ref.invalidate(pendingSubmissionsProvider);
+      ref.invalidate(myDutyProvider);
+    }
   }
 
   @override
@@ -72,16 +76,6 @@ class _WeeklySummaryPageState extends ConsumerState<WeeklySummaryPage>
     return Scaffold(
       appBar: AppBar(
         title: const Text('周名单汇总'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () {
-              ref.invalidate(currentWeekProvider);
-              ref.invalidate(pendingSubmissionsProvider);
-              ref.invalidate(myDutyProvider);
-            },
-          ),
-        ],
         bottom: TabBar(
           controller: _tabController,
           tabs: const [
@@ -153,167 +147,174 @@ class _CurrentWeekTab extends ConsumerWidget {
     final endDate = DateTime.parse(weekData['end_date'] as String);
     final semesterName = weekData['semester_name'] as String?;
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          '第 $weekNumber 周',
-                          style: Theme.of(context).textTheme.titleLarge,
+    return RefreshIndicator(
+      onRefresh: () async {
+        ref.invalidate(pendingSubmissionsProvider);
+        ref.invalidate(myDutyProvider);
+      },
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            '第 $weekNumber 周',
+                            style: Theme.of(context).textTheme.titleLarge,
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.green.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: const Text(
+                            '进行中',
+                            style: TextStyle(color: Colors.green),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    if (semesterName != null)
+                      Text(
+                        semesterName,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                       ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.green.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: const Text(
-                          '进行中',
-                          style: TextStyle(color: Colors.green),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  if (semesterName != null)
                     Text(
-                      semesterName,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      '${DateFormat('MM月dd日').format(startDate)} - ${DateFormat('MM月dd日').format(endDate)}',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                     ),
-                  Text(
-                    '${DateFormat('MM月dd日').format(startDate)} - ${DateFormat('MM月dd日').format(endDate)}',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 16),
+            const SizedBox(height: 16),
 
-          if (isAdmin) ...[
-            Text('待审核提交', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 8),
-            pendingAsync.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, _) => Text('加载失败: $e'),
-              data: (pending) {
-                if (pending.isEmpty) {
-                  return const Card(
+            if (isAdmin) ...[
+              Text('待审核提交', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 8),
+              pendingAsync.when(
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (e, _) => Text('加载失败: $e'),
+                data: (pending) {
+                  if (pending.isEmpty) {
+                    return const Card(
+                      child: Padding(
+                        padding: EdgeInsets.all(16),
+                        child: Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.check_circle_outline,
+                                size: 48,
+                                color: Colors.green,
+                              ),
+                              SizedBox(height: 8),
+                              Text('暂无待审核提交'),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  }
+
+                  return Column(
+                    children: pending
+                        .map((s) => _PendingSubmissionCard(submission: s))
+                        .toList(),
+                  );
+                },
+              ),
+              const SizedBox(height: 16),
+              FilledButton.icon(
+                icon: const Icon(Icons.download),
+                label: const Text('导出并发布本周汇总'),
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size.fromHeight(48),
+                ),
+                onPressed: () => _showExportDialog(context, ref, weekNumber),
+              ),
+            ] else ...[
+              myDutyAsync.when(
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (e, _) => Text('加载职务状态失败'),
+                data: (duty) {
+                  final hasDuty = duty['has_duty'] as bool? ?? false;
+                  if (!hasDuty) {
+                    return const Card(
+                      child: Padding(
+                        padding: EdgeInsets.all(24),
+                        child: Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.info_outline,
+                                size: 48,
+                                color: Colors.grey,
+                              ),
+                              SizedBox(height: 16),
+                              Text('您没有被分配查课职务'),
+                              SizedBox(height: 8),
+                              Text(
+                                '无需提交考勤记录',
+                                style: TextStyle(color: Colors.grey),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  }
+
+                  return Card(
                     child: Padding(
-                      padding: EdgeInsets.all(16),
+                      padding: const EdgeInsets.all(24),
                       child: Center(
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(
-                              Icons.check_circle_outline,
+                            const Icon(
+                              Icons.check_circle,
                               size: 48,
                               color: Colors.green,
                             ),
-                            SizedBox(height: 8),
-                            Text('暂无待审核提交'),
-                          ],
-                        ),
-                      ),
-                    ),
-                  );
-                }
-
-                return Column(
-                  children: pending
-                      .map((s) => _PendingSubmissionCard(submission: s))
-                      .toList(),
-                );
-              },
-            ),
-            const SizedBox(height: 16),
-            FilledButton.icon(
-              icon: const Icon(Icons.download),
-              label: const Text('导出并发布本周汇总'),
-              style: FilledButton.styleFrom(
-                minimumSize: const Size.fromHeight(48),
-              ),
-              onPressed: () => _showExportDialog(context, ref, weekNumber),
-            ),
-          ] else ...[
-            myDutyAsync.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, _) => Text('加载职务状态失败'),
-              data: (duty) {
-                final hasDuty = duty['has_duty'] as bool? ?? false;
-                if (!hasDuty) {
-                  return const Card(
-                    child: Padding(
-                      padding: EdgeInsets.all(24),
-                      child: Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.info_outline,
-                              size: 48,
-                              color: Colors.grey,
-                            ),
-                            SizedBox(height: 16),
-                            Text('您没有被分配查课职务'),
-                            SizedBox(height: 8),
+                            const SizedBox(height: 16),
+                            const Text('您已被分配查课职务'),
+                            const SizedBox(height: 8),
                             Text(
-                              '无需提交考勤记录',
-                              style: TextStyle(color: Colors.grey),
+                              '分配时间: ${duty['assigned_at'] != null ? DateFormat('yyyy-MM-dd').format(DateTime.parse(duty['assigned_at'])) : '未知'}',
+                              style: const TextStyle(color: Colors.grey),
                             ),
                           ],
                         ),
                       ),
                     ),
                   );
-                }
-
-                return Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
-                            Icons.check_circle,
-                            size: 48,
-                            color: Colors.green,
-                          ),
-                          const SizedBox(height: 16),
-                          const Text('您已被分配查课职务'),
-                          const SizedBox(height: 8),
-                          Text(
-                            '分配时间: ${duty['assigned_at'] != null ? DateFormat('yyyy-MM-dd').format(DateTime.parse(duty['assigned_at'])) : '未知'}',
-                            style: const TextStyle(color: Colors.grey),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
+                },
+              ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }
