@@ -149,6 +149,17 @@ class AttendanceRepository {
     );
   }
 
+  /// 删除单条考勤记录（用于点名撤销）
+  Future<void> deleteRecord(int recordId) async {
+    await _local.deleteRecord(recordId);
+    await _local.enqueueSync(
+      entityType: 'record',
+      entityId: recordId.toString(),
+      action: 'delete',
+      payload: {},
+    );
+  }
+
   /// 获取任务的所有记录
   Future<List<AttendanceRecord>> getRecordsByTask(String taskId) {
     return _local.getRecordsByTask(taskId);

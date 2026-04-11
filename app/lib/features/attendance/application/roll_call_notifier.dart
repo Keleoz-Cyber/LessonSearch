@@ -10,6 +10,7 @@ class RollCallState {
   final List<StudentInfo> students;
   final Map<int, String> classNameMap;
   final int currentIndex;
+  final Map<int, int> calledRecordIds; // studentId -> recordId（已点学生的记录ID）
   final int? finalCount; // 提前结束时记录实际已点人数
   final bool isLoading;
   final bool isFinished;
@@ -20,6 +21,7 @@ class RollCallState {
     this.students = const [],
     this.classNameMap = const {},
     this.currentIndex = 0,
+    this.calledRecordIds = const {},
     this.finalCount,
     this.isLoading = false,
     this.isFinished = false,
@@ -28,6 +30,23 @@ class RollCallState {
 
   StudentInfo? get currentStudent =>
       currentIndex < students.length ? students[currentIndex] : null;
+
+  /// 上一位学生
+  StudentInfo? get prevStudent =>
+      currentIndex > 0 ? students[currentIndex - 1] : null;
+
+  /// 上三位学生列表
+  List<StudentInfo> get prevThreeStudents {
+    final start = currentIndex - 3;
+    if (start < 0) {
+      return students.sublist(0, currentIndex);
+    }
+    return students.sublist(start, currentIndex);
+  }
+
+  /// 下一位学生
+  StudentInfo? get nextStudent =>
+      currentIndex < students.length - 1 ? students[currentIndex + 1] : null;
 
   String get currentClassName {
     final s = currentStudent;
@@ -38,12 +57,17 @@ class RollCallState {
   int get totalCount => students.length;
   int get processedCount => finalCount ?? currentIndex;
   bool get hasNext => currentIndex < students.length - 1;
+  bool get hasPrev => currentIndex > 0;
+
+  /// 检查学生是否已点
+  bool isCalled(int studentId) => calledRecordIds.containsKey(studentId);
 
   RollCallState copyWith({
     AttendanceTask? task,
     List<StudentInfo>? students,
     Map<int, String>? classNameMap,
     int? currentIndex,
+    Map<int, int>? calledRecordIds,
     int? finalCount,
     bool? isLoading,
     bool? isFinished,
@@ -54,6 +78,7 @@ class RollCallState {
       students: students ?? this.students,
       classNameMap: classNameMap ?? this.classNameMap,
       currentIndex: currentIndex ?? this.currentIndex,
+      calledRecordIds: calledRecordIds ?? this.calledRecordIds,
       finalCount: finalCount ?? this.finalCount,
       isLoading: isLoading ?? this.isLoading,
       isFinished: isFinished ?? this.isFinished,
@@ -81,6 +106,15 @@ class RollCallNotifier extends StateNotifier<RollCallState> {
         return;
       }
 
+      // 加载已有的考勤记录
+      final existingRecords = await _attendanceRepo.getRecordsByTask(taskId);
+      final calledRecordIds = <int, int>{};
+      for (final r in existingRecords) {
+        if (r.id != null) {
+          calledRecordIds[r.studentId] = r.id!;
+        }
+      }
+
       await _studentRepo.ensureStudentsBatch(task.classIds);
       final classMap = await _studentRepo.getClassMap();
       final studentsMap = await _studentRepo.getStudentsByClasses(
@@ -106,6 +140,7 @@ class RollCallNotifier extends StateNotifier<RollCallState> {
         students: allStudents,
         classNameMap: classNameMap,
         currentIndex: resumeIndex < allStudents.length ? resumeIndex : 0,
+        calledRecordIds: calledRecordIds,
         isLoading: false,
       );
     } catch (e) {
@@ -187,12 +222,18 @@ class RollCallNotifier extends StateNotifier<RollCallState> {
     final task = state.task;
     if (student == null || task == null) return;
 
-    await _attendanceRepo.createRecord(
+    // 创建考勤记录并存储 recordId
+    final record = await _attendanceRepo.createRecord(
       taskId: task.id,
       studentId: student.id,
       classId: student.classId,
       status: AttendanceStatus.present,
     );
+
+    final newCalledRecordIds = Map<int, int>.from(state.calledRecordIds);
+    if (record.id != null) {
+      newCalledRecordIds[student.id] = record.id!;
+    }
 
     if (state.hasNext) {
       final newIndex = state.currentIndex + 1;
@@ -200,12 +241,50 @@ class RollCallNotifier extends StateNotifier<RollCallState> {
         task,
         currentStudentIndex: newIndex,
       );
-      state = state.copyWith(task: updated, currentIndex: newIndex);
+      state = state.copyWith(
+        task: updated,
+        currentIndex: newIndex,
+        calledRecordIds: newCalledRecordIds,
+      );
     } else {
       // 最后一个学生，已点人数 = currentIndex + 1
-      state = state.copyWith(finalCount: state.currentIndex + 1);
+      state = state.copyWith(
+        finalCount: state.currentIndex + 1,
+        calledRecordIds: newCalledRecordIds,
+      );
       await finishRollCall();
     }
+  }
+
+  /// 上一位（撤销当前学生的点名记录，回退界面）
+  Future<void> prevStudent() async {
+    if (!state.hasPrev) return;
+
+    final student = state.currentStudent;
+    final task = state.task;
+    if (student == null || task == null) return;
+
+    // 删除当前学生的考勤记录
+    final recordId = state.calledRecordIds[student.id];
+    if (recordId != null) {
+      await _attendanceRepo.deleteRecord(recordId);
+    }
+
+    // 回退索引
+    final newIndex = state.currentIndex - 1;
+    final newCalledRecordIds = Map<int, int>.from(state.calledRecordIds);
+    newCalledRecordIds.remove(student.id);
+
+    final updated = await _attendanceRepo.updateTaskStatus(
+      task,
+      currentStudentIndex: newIndex,
+    );
+
+    state = state.copyWith(
+      task: updated,
+      currentIndex: newIndex,
+      calledRecordIds: newCalledRecordIds,
+    );
   }
 
   /// 保存当前进度（保存退出时调用）

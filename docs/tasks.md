@@ -42,9 +42,43 @@
 
 ---
 
+### P25：v0.5.0 Bug修复与改进 ✅ (2026-04-11)
+
+**Bug修复（4项）：**
+
+| 编号 | 问题 | 修复方案 |
+|------|------|----------|
+| B1 | 记名重新编辑自动跳转班级 | 新增 `isEditing` 状态标记，编辑模式下不自动跳转 |
+| B2 | iOS 微信/QQ检测失败 | 添加 `LSApplicationQueriesSchemes` 声明 |
+| B3 | 查课记录编辑滚动位置丢失 | 用 `recordId` 直接更新条目，不全量刷新 |
+| B4 | 查课记录编辑索引错位 | 用 `recordId` 查找正确条目，不依赖列表索引 |
+
+**功能改进（4项）：**
+
+| 编号 | 改进 | 说明 |
+|------|------|------|
+| I1 | 点名记录两列布局 | 使用 Wrap + LayoutBuilder 实现响应式两列 |
+| I2 | 学委汇报按班级分开复制 | 文本生成页+查课记录页，每个班级独立卡片 |
+| I3 | 状态标签统一 | "到"改为"到课"，与其他两字状态统一 |
+| I4 | 点名上一个+预览界面 | 上一个按钮撤销记录，预览区显示已点+下一位 |
+
+**涉及文件：**
+- `name_check_notifier.dart` - 新增 isEditing 状态
+- `name_check_page.dart` - 编辑模式检查
+- `Info.plist` - iOS URL Scheme声明
+- `record_detail_page.dart` - 滚动位置保持+学委分开复制+两列布局
+- `records_repository.dart` - RecordEntry copyWith方法
+- `text_gen_page.dart` - 学委汇报按班级分开复制
+- `roll_call_notifier.dart` - prevStudent方法+预览getter
+- `roll_call_page.dart` - 上一个按钮+预览界面
+- `attendance_repository.dart` - deleteRecord方法
+- `attendance_local_ds.dart` - deleteRecord方法
+
+---
+
 ## 待实施
 
-### P25：v0.5.0 功能开发（按阶段实施）
+### P26：v0.5.0 功能开发（按阶段实施）
 
 详见 `docs/v0.5.0功能开发计划.md`
 

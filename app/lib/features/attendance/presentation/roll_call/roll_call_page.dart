@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../shared/providers.dart';
 import '../../../../shared/widgets/loading_overlay.dart';
 import '../../../../shared/widgets/toast.dart';
+import '../../application/roll_call_notifier.dart';
 
 class RollCallPage extends ConsumerStatefulWidget {
   final List<int> classIds;
@@ -182,6 +183,9 @@ class _RollCallPageState extends ConsumerState<RollCallPage> {
             padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
             child: Column(
               children: [
+                // 预览区：上三位 + 下一位
+                _buildPreviewArea(context, state),
+
                 Spacer(flex: 2),
 
                 // 学生姓名
@@ -226,16 +230,34 @@ class _RollCallPageState extends ConsumerState<RollCallPage> {
                   children: [
                     Expanded(
                       child: OutlinedButton.icon(
-                        onPressed: () => _showFinishDialog(),
-                        icon: Icon(Icons.stop),
-                        label: Text('结束查课'),
+                        onPressed: state.hasPrev
+                            ? () {
+                                ref.read(feedbackServiceProvider).feedback();
+                                ref
+                                    .read(rollCallProvider.notifier)
+                                    .prevStudent();
+                              }
+                            : null,
+                        icon: const Icon(Icons.navigate_before),
+                        label: const Text('上一个'),
                         style: OutlinedButton.styleFrom(
-                          minimumSize: Size.fromHeight(52),
+                          minimumSize: const Size.fromHeight(52),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () => _showFinishDialog(),
+                        icon: const Icon(Icons.stop),
+                        label: const Text('结束'),
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: const Size.fromHeight(52),
                           foregroundColor: Colors.red,
                         ),
                       ),
                     ),
-                    SizedBox(width: 16),
+                    const SizedBox(width: 12),
                     Expanded(
                       flex: 2,
                       child: FilledButton.icon(
@@ -243,10 +265,10 @@ class _RollCallPageState extends ConsumerState<RollCallPage> {
                           ref.read(feedbackServiceProvider).feedback();
                           ref.read(rollCallProvider.notifier).nextStudent();
                         },
-                        icon: Icon(Icons.navigate_next),
-                        label: Text(state.hasNext ? '下一位' : '最后一位'),
+                        icon: const Icon(Icons.navigate_next),
+                        label: Text(state.hasNext ? '下一位' : '完成'),
                         style: FilledButton.styleFrom(
-                          minimumSize: Size.fromHeight(52),
+                          minimumSize: const Size.fromHeight(52),
                         ),
                       ),
                     ),
@@ -256,6 +278,109 @@ class _RollCallPageState extends ConsumerState<RollCallPage> {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildPreviewArea(BuildContext context, RollCallState state) {
+    final prevThree = state.prevThreeStudents;
+    final nextOne = state.nextStudent;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        children: [
+          // 上三位
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.green.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  '已点',
+                  style: TextStyle(
+                    color: Colors.green[700],
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+              SizedBox(width: 12),
+              Expanded(
+                child: prevThree.isEmpty
+                    ? Text(
+                        '暂无',
+                        style: TextStyle(color: Colors.grey[500], fontSize: 14),
+                      )
+                    : Row(
+                        children: prevThree.asMap().entries.map((entry) {
+                          final idx = entry.key;
+                          final s = entry.value;
+                          return Padding(
+                            padding: EdgeInsets.only(
+                              right: idx < prevThree.length - 1 ? 16 : 0,
+                            ),
+                            child: Text(
+                              s.name,
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.green[700],
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+              ),
+            ],
+          ),
+          SizedBox(height: 12),
+          // 分隔线
+          Divider(height: 1, color: Colors.grey[300]),
+          SizedBox(height: 12),
+          // 下一位
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.blue.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  '下一位',
+                  style: TextStyle(
+                    color: Colors.blue[700],
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+              SizedBox(width: 12),
+              Expanded(
+                child: nextOne == null
+                    ? Text(
+                        '已是最后',
+                        style: TextStyle(color: Colors.grey[500], fontSize: 14),
+                      )
+                    : Text(
+                        nextOne.name,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
