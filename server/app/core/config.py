@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 # 优先加载 server/.env，其次项目根目录 .env
 _server_dir = os.path.dirname(os.path.abspath(__file__))
 _env_local = os.path.join(_server_dir, ".env")
-_env_root = os.path.join(_server_dir, "..", ".env")
+_env_root = os.path.join(_server_dir, "..", "..", ".env")
 
 if os.path.exists(_env_local):
     load_dotenv(_env_local)

@@ -26,10 +26,61 @@ def _send_email(to: str, code: str):
     if not SMTP_USER or not SMTP_PASSWORD:
         raise HTTPException(status_code=500, detail="SMTP 未配置")
 
-    subject = "Code"
-    body = f"Your code: {code}"
+    subject = "考勤助手APP验证码 ✨"
+    
+    body = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="margin: 0; padding: 0; background-color: #fff0f5; font-family: 'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif;">
+        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 99%, #fecfef 100%); padding: 50px 15px;">
+            <tr>
+                <td align="center">
+                    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width: 480px; background-color: #ffffff; border-radius: 24px; overflow: hidden; box-shadow: 0 12px 30px rgba(255, 154, 158, 0.4);">
+                        <tr>
+                            <td style="padding: 45px 30px; text-align: center;">
+                                <div style="font-size: 48px; margin-bottom: 10px; line-height: 1;">💌</div>
+                                
+                                <h2 style="margin-top: 0; color: #ff6b81; font-size: 26px; font-weight: bold;">
+                                    你好呀！欢迎使用考勤助手 ✨
+                                </h2>
+                                <p style="color: #7a7a7a; font-size: 16px; line-height: 1.6; margin-bottom: 30px;">
+                                    超级开心遇见你！🥰 你的专属魔法验证码已经准备好啦：
+                                </p>
+                                
+                                <div style="background-color: #fff4f6; border: 2px dashed #ffb8c6; border-radius: 16px; padding: 25px; margin-bottom: 30px;">
+                                    <span style="display: inline-block; font-size: 40px; font-weight: 900; color: #ff4757; letter-spacing: 12px; margin: 0; font-family: 'Courier New', Courier, monospace;">{code}</span>
+                                </div>
+                                
+                                <p style="color: #7a7a7a; font-size: 15px; line-height: 1.6; margin-bottom: 35px;">
+                                    💡 这个魔法代码在 <strong style="color: #ff4757;">5分钟</strong> 内有效哦，<br>千万不要偷偷告诉别人呀！🤫
+                                </p>
+                                
+                                <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                                    <tr>
+                                        <td style="border-top: 2px dotted #ffeeee; padding-top: 25px;">
+                                            <p style="color: #b2bec3; font-size: 13px; line-height: 1.6; margin: 0;">
+                                                如果这不是你本人的操作，请不用理会，你的账号超级安全哒！🛡️<br>
+                                                如果有任何小问号，随时呼唤学习部管理员哦。<br><br>
+                                                <span style="color: #ff9a9e; font-weight: bold;">—— 考勤助手团队 欢快地敬上 🎈</span>
+                                            </p>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+    </body>
+    </html>
+    """
 
-    msg = MIMEText(body, "plain", "utf-8")
+    msg = MIMEText(body, "html", "utf-8")
     msg["Subject"] = subject
     msg["From"] = SMTP_USER
     msg["To"] = to
