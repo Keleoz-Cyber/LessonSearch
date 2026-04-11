@@ -57,7 +57,6 @@ class _RecordDetailPageState extends ConsumerState<RecordDetailPage> {
 
   Future<void> _updateStatus(
     int recordId,
-    int index,
     AttendanceStatus newStatus, {
     String? remark,
   }) async {
@@ -66,10 +65,13 @@ class _RecordDetailPageState extends ConsumerState<RecordDetailPage> {
 
     // 直接更新列表项，不重新加载整个列表（保持滚动位置）
     setState(() {
-      _entries[index] = _entries[index].copyWith(
-        status: newStatus,
-        remark: remark,
-      );
+      final index = _entries.indexWhere((e) => e.recordId == recordId);
+      if (index >= 0) {
+        _entries[index] = _entries[index].copyWith(
+          status: newStatus,
+          remark: remark,
+        );
+      }
     });
   }
 
@@ -306,15 +308,12 @@ class _RecordDetailPageState extends ConsumerState<RecordDetailPage> {
                         ),
                       ),
                     ),
-                    ...entry.value.asMap().entries.map((e) {
-                      final idx = e.key;
-                      final record = e.value;
+                    ...entry.value.map((record) {
                       return _RecordRow(
                         entry: record,
                         editing: _editing,
                         onStatusChanged: (status, {remark}) => _updateStatus(
                           record.recordId,
-                          idx,
                           status,
                           remark: remark,
                         ),
