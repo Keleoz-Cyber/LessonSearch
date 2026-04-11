@@ -110,12 +110,20 @@ class _SubmissionPageState extends ConsumerState<SubmissionPage>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(_onTabChanged);
   }
 
   @override
   void dispose() {
+    _tabController.removeListener(_onTabChanged);
     _tabController.dispose();
     super.dispose();
+  }
+
+  void _onTabChanged() {
+    if (_tabController.index == 1 && mounted) {
+      ref.invalidate(mySubmissionsProvider);
+    }
   }
 
   Future<void> _submit(int weekNumber) async {
