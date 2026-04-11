@@ -18,7 +18,8 @@ final myDutyProvider = FutureProvider<Map<String, dynamic>>((ref) async {
   final api = ref.watch(apiClientProvider);
   try {
     final res = await api.dio.get('/duties/my');
-    return res.data as Map<String, dynamic>;
+    final data = res.data as Map<String, dynamic>;
+    return {'has_duty': true, ...data};
   } catch (e) {
     return {'has_duty': false};
   }

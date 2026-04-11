@@ -29,7 +29,8 @@ final myDutyProvider = FutureProvider<Map<String, dynamic>>((ref) async {
   final api = ref.watch(apiClientProvider);
   try {
     final res = await api.dio.get('/duties/my');
-    return res.data as Map<String, dynamic>;
+    final data = res.data as Map<String, dynamic>;
+    return {'has_duty': true, ...data};
   } catch (e) {
     return {'has_duty': false};
   }
@@ -318,10 +319,10 @@ class _CurrentWeekTab extends ConsumerWidget {
                             color: Colors.green,
                           ),
                           const SizedBox(height: 16),
-                          const Text('本周已提交'),
+                          const Text('您已被分配查课职务'),
                           const SizedBox(height: 8),
                           Text(
-                            '提交数: ${duty['submission_count']} 待审核: ${duty['pending_count']}',
+                            '分配时间: ${duty['assigned_at'] != null ? DateFormat('yyyy-MM-dd').format(DateTime.parse(duty['assigned_at'])) : '未知'}',
                             style: const TextStyle(color: Colors.grey),
                           ),
                         ],
