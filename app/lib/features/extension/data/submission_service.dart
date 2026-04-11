@@ -54,4 +54,14 @@ class SubmissionService {
       data: {'note': note},
     );
   }
+
+  Future<Map<String, dynamic>> getExportStatus(int weekNumber) async {
+    final res = await _api.dio.get('/submissions/export-status/$weekNumber');
+    return res.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> getWeekSummary(int weekNumber) async {
+    final res = await _api.dio.get('/submissions/week-summary/$weekNumber');
+    return res.data as Map<String, dynamic>;
+  }
 }
