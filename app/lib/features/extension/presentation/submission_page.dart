@@ -8,7 +8,6 @@ import '../../../shared/widgets/toast.dart';
 import '../../../core/network/api_client.dart';
 import '../../../features/attendance/domain/models.dart';
 import '../data/submission_service.dart';
-import '../presentation/weekly_summary_page.dart';
 
 final currentWeekProvider = FutureProvider<Map<String, dynamic>>((ref) async {
   final api = ref.watch(apiClientProvider);
@@ -36,6 +35,10 @@ final submittedTaskIdsProvider = FutureProvider<Set<String>>((ref) async {
   } catch (e) {
     return {};
   }
+});
+
+final mySubmissionsProvider = FutureProvider<List<dynamic>>((ref) {
+  return ref.watch(submissionServiceProvider).getMySubmissions();
 });
 
 final localNameCheckTasksProvider = FutureProvider<List<Map<String, dynamic>>>((
@@ -97,9 +100,23 @@ class SubmissionPage extends ConsumerStatefulWidget {
   ConsumerState<SubmissionPage> createState() => _SubmissionPageState();
 }
 
-class _SubmissionPageState extends ConsumerState<SubmissionPage> {
+class _SubmissionPageState extends ConsumerState<SubmissionPage>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
   List<String> _selectedTaskIds = [];
   bool _loading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
 
   Future<void> _submit(int weekNumber) async {
     if (_selectedTaskIds.isEmpty) {
@@ -118,9 +135,11 @@ class _SubmissionPageState extends ConsumerState<SubmissionPage> {
 
       if (mounted) {
         Toast.show(context, '提交成功，等待审核');
+        _selectedTaskIds = [];
+        ref.invalidate(submittedTaskIdsProvider);
+        ref.invalidate(localNameCheckTasksProvider);
         ref.invalidate(mySubmissionsProvider);
-        ref.invalidate(pendingSubmissionsProvider);
-        context.push('/extension/weekly-summary');
+        _tabController.animateTo(1);
       }
     } catch (e) {
       if (mounted) {
@@ -137,10 +156,18 @@ class _SubmissionPageState extends ConsumerState<SubmissionPage> {
   Widget build(BuildContext context) {
     final currentWeekAsync = ref.watch(currentWeekProvider);
     final myDutyAsync = ref.watch(myDutyProvider);
-    final adminsAsync = ref.watch(adminsProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('名单提交')),
+      appBar: AppBar(
+        title: const Text('名单提交'),
+        bottom: TabBar(
+          controller: _tabController,
+          tabs: const [
+            Tab(text: '提交任务'),
+            Tab(text: '我的提交'),
+          ],
+        ),
+      ),
       body: currentWeekAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(
@@ -180,183 +207,19 @@ class _SubmissionPageState extends ConsumerState<SubmissionPage> {
                 return _buildNoDutyView(context);
               }
 
-              final tasksAsync = ref.watch(localNameCheckTasksProvider);
-
-              return SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              '第 $weekNumber 周',
-                              style: Theme.of(context).textTheme.titleLarge,
-                            ),
-                            const SizedBox(height: 8),
-                            adminsAsync.when(
-                              loading: () => const Text('加载管理员列表...'),
-                              error: (e, _) => const Text('待审核管理员'),
-                              data: (admins) {
-                                if (admins.isEmpty) return const Text('待审核管理员');
-                                final names = admins
-                                    .map((a) => a['real_name'] ?? a['email'])
-                                    .join('、');
-                                return Text(
-                                  '待审核管理员: $names',
-                                  style: Theme.of(context).textTheme.bodySmall
-                                      ?.copyWith(
-                                        color: Theme.of(
-                                          context,
-                                        ).colorScheme.onSurfaceVariant,
-                                      ),
-                                );
-                              },
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      '本周记名任务（本地）',
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    const SizedBox(height: 8),
-                    tasksAsync.when(
-                      loading: () =>
-                          const Center(child: CircularProgressIndicator()),
-                      error: (e, _) => Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(
-                              Icons.error_outline,
-                              size: 48,
-                              color: Colors.grey,
-                            ),
-                            const SizedBox(height: 16),
-                            Text('加载失败: $e'),
-                          ],
-                        ),
-                      ),
-                      data: (tasks) {
-                        if (tasks.isEmpty) {
-                          return Card(
-                            child: Padding(
-                              padding: const EdgeInsets.all(24),
-                              child: Center(
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const Icon(
-                                      Icons.inbox_outlined,
-                                      size: 48,
-                                      color: Colors.grey,
-                                    ),
-                                    const SizedBox(height: 16),
-                                    const Text('暂无本周记名任务'),
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      '请先创建记名任务后再提交',
-                                      style: TextStyle(color: Colors.grey),
-                                    ),
-                                    const SizedBox(height: 16),
-                                    FilledButton(
-                                      onPressed: () =>
-                                          context.go('/name-check/select'),
-                                      child: const Text('创建记名任务'),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          );
-                        }
-
-                        return Card(
-                          child: ListView.builder(
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            itemCount: tasks.length,
-                            itemBuilder: (context, index) {
-                              final task = tasks[index] as Map<String, dynamic>;
-                              final taskId = task['id'] as String;
-                              final isSelected = _selectedTaskIds.contains(
-                                taskId,
-                              );
-
-                              return CheckboxListTile(
-                                value: isSelected,
-                                onChanged: (checked) {
-                                  if (checked == true) {
-                                    setState(() {
-                                      _selectedTaskIds = [
-                                        ..._selectedTaskIds,
-                                        taskId,
-                                      ];
-                                    });
-                                  } else {
-                                    setState(() {
-                                      _selectedTaskIds = _selectedTaskIds
-                                          .where((id) => id != taskId)
-                                          .toList();
-                                    });
-                                  }
-                                },
-                                title: Text(
-                                  (task['class_names'] as List?)?.join(', ') ??
-                                      '未知班级',
-                                ),
-                                subtitle: Text(
-                                  '${task['record_count']} 条记录 · ${DateFormat('yyyy-MM-dd HH:mm').format(DateTime.parse(task['created_at'] as String))}',
-                                ),
-                              );
-                            },
-                          ),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    if (_selectedTaskIds.isNotEmpty)
-                      Text(
-                        '已选择 ${_selectedTaskIds.length} 个任务',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Theme.of(context).colorScheme.primary,
-                        ),
-                      ),
-                    const SizedBox(height: 16),
-                    FilledButton(
-                      onPressed: _loading ? null : () => _submit(weekNumber),
-                      style: FilledButton.styleFrom(
-                        minimumSize: const Size.fromHeight(48),
-                      ),
-                      child: _loading
-                          ? const SizedBox(
-                              width: 24,
-                              height: 24,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Text('提交审核'),
-                    ),
-                    const SizedBox(height: 24),
-                    Text('说明', style: Theme.of(context).textTheme.titleSmall),
-                    const SizedBox(height: 8),
-                    Text(
-                      '• 只有记名任务需要提交，点名任务不参与提交\n'
-                      '• 只能提交本周任务，不支持跨周提交\n'
-                      '• 提交后等待管理员审核\n'
-                      '• 已提交的记录将被锁定，不可修改',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
-                ),
+              return TabBarView(
+                controller: _tabController,
+                children: [
+                  _SubmitTaskTab(
+                    weekNumber: weekNumber,
+                    selectedTaskIds: _selectedTaskIds,
+                    loading: _loading,
+                    onSelectionChanged: (ids) =>
+                        setState(() => _selectedTaskIds = ids),
+                    onSubmit: () => _submit(weekNumber),
+                  ),
+                  _MySubmissionsTab(),
+                ],
               );
             },
           );
@@ -382,6 +245,364 @@ class _SubmissionPageState extends ConsumerState<SubmissionPage> {
               onPressed: () => context.push('/extension/weekly-summary'),
               child: const Text('查看周名单汇总'),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SubmitTaskTab extends ConsumerWidget {
+  final int weekNumber;
+  final List<String> selectedTaskIds;
+  final bool loading;
+  final void Function(List<String>) onSelectionChanged;
+  final VoidCallback onSubmit;
+
+  const _SubmitTaskTab({
+    required this.weekNumber,
+    required this.selectedTaskIds,
+    required this.loading,
+    required this.onSelectionChanged,
+    required this.onSubmit,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final adminsAsync = ref.watch(adminsProvider);
+    final tasksAsync = ref.watch(localNameCheckTasksProvider);
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '第 $weekNumber 周',
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                  const SizedBox(height: 8),
+                  adminsAsync.when(
+                    loading: () => const Text('加载管理员列表...'),
+                    error: (e, _) => const Text('待审核管理员'),
+                    data: (admins) {
+                      if (admins.isEmpty) return const Text('待审核管理员');
+                      final names = admins
+                          .map((a) => a['real_name'] ?? a['email'])
+                          .join('、');
+                      return Text(
+                        '待审核管理员: $names',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text('本周记名任务', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 8),
+          tasksAsync.when(
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (e, _) => Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.error_outline, size: 48, color: Colors.grey),
+                  const SizedBox(height: 16),
+                  Text('加载失败: $e'),
+                ],
+              ),
+            ),
+            data: (tasks) {
+              if (tasks.isEmpty) {
+                return Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.inbox_outlined,
+                            size: 48,
+                            color: Colors.grey,
+                          ),
+                          const SizedBox(height: 16),
+                          const Text('暂无可提交的任务'),
+                          const SizedBox(height: 8),
+                          Text(
+                            '所有本周任务已提交或未创建',
+                            style: TextStyle(color: Colors.grey),
+                          ),
+                          const SizedBox(height: 16),
+                          FilledButton(
+                            onPressed: () => context.go('/name-check/select'),
+                            child: const Text('创建记名任务'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              }
+
+              return Card(
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: tasks.length,
+                  itemBuilder: (context, index) {
+                    final task = tasks[index] as Map<String, dynamic>;
+                    final taskId = task['id'] as String;
+                    final isSelected = selectedTaskIds.contains(taskId);
+
+                    return CheckboxListTile(
+                      value: isSelected,
+                      onChanged: (checked) {
+                        if (checked == true) {
+                          onSelectionChanged([...selectedTaskIds, taskId]);
+                        } else {
+                          onSelectionChanged(
+                            selectedTaskIds
+                                .where((id) => id != taskId)
+                                .toList(),
+                          );
+                        }
+                      },
+                      title: Text(
+                        (task['class_names'] as List?)?.join(', ') ?? '未知班级',
+                      ),
+                      subtitle: Text(
+                        '${task['record_count']} 条记录 · ${DateFormat('yyyy-MM-dd HH:mm').format(DateTime.parse(task['created_at'] as String))}',
+                      ),
+                    );
+                  },
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 16),
+          if (selectedTaskIds.isNotEmpty)
+            Text(
+              '已选择 ${selectedTaskIds.length} 个任务',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Theme.of(context).colorScheme.primary,
+              ),
+            ),
+          const SizedBox(height: 16),
+          FilledButton(
+            onPressed: loading ? null : onSubmit,
+            style: FilledButton.styleFrom(
+              minimumSize: const Size.fromHeight(48),
+            ),
+            child: loading
+                ? const SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Text('提交审核'),
+          ),
+          const SizedBox(height: 24),
+          Text('说明', style: Theme.of(context).textTheme.titleSmall),
+          const SizedBox(height: 8),
+          Text(
+            '• 只有记名任务需要提交\n'
+            '• 只能提交本周任务\n'
+            '• 已提交的任务不可重复提交',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MySubmissionsTab extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final submissionsAsync = ref.watch(mySubmissionsProvider);
+
+    return RefreshIndicator(
+      onRefresh: () async {
+        ref.invalidate(mySubmissionsProvider);
+      },
+      child: submissionsAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, _) => ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: [
+            SizedBox(height: 200),
+            Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.error_outline, size: 48, color: Colors.grey),
+                  const SizedBox(height: 16),
+                  Text('加载失败: $e'),
+                  const SizedBox(height: 16),
+                  FilledButton(
+                    onPressed: () => ref.invalidate(mySubmissionsProvider),
+                    child: const Text('重试'),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        data: (submissions) {
+          if (submissions.isEmpty) {
+            return ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              children: const [
+                SizedBox(height: 200),
+                Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.inbox_outlined, size: 64, color: Colors.grey),
+                      SizedBox(height: 16),
+                      Text('暂无提交记录', style: TextStyle(color: Colors.grey)),
+                    ],
+                  ),
+                ),
+              ],
+            );
+          }
+
+          return ListView.builder(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(16),
+            itemCount: submissions.length,
+            itemBuilder: (context, index) {
+              final submission = submissions[index] as Map<String, dynamic>;
+              return _SubmissionCard(submission: submission);
+            },
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _SubmissionCard extends StatelessWidget {
+  final Map<String, dynamic> submission;
+
+  const _SubmissionCard({required this.submission});
+
+  Color _getStatusColor() {
+    final status = submission['status'] as String;
+    switch (status) {
+      case 'pending':
+        return Colors.orange;
+      case 'approved':
+        return Colors.green;
+      case 'rejected':
+        return Colors.red;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  String _getStatusText() {
+    final status = submission['status'] as String;
+    switch (status) {
+      case 'pending':
+        return '待审核';
+      case 'approved':
+        return '已通过';
+      case 'rejected':
+        return '已拒绝';
+      case 'cancelled':
+        return '已撤销';
+      default:
+        return status;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final submittedAt = DateTime.parse(submission['submitted_at'] as String);
+    final reviewerName = submission['reviewer_name'] as String?;
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    '第 ${submission['week_number']} 周',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: _getStatusColor().withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Text(
+                    _getStatusText(),
+                    style: TextStyle(
+                      color: _getStatusColor(),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              DateFormat('yyyy-MM-dd HH:mm').format(submittedAt),
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+            if (reviewerName != null) ...[
+              const SizedBox(height: 4),
+              Text(
+                '审核人: $reviewerName',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+            if (submission['review_note'] != null) ...[
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  '备注: ${submission['review_note']}',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ),
+            ],
           ],
         ),
       ),
