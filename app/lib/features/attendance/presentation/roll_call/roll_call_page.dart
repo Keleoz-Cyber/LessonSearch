@@ -229,7 +229,7 @@ class _RollCallPageState extends ConsumerState<RollCallPage> {
                 Row(
                   children: [
                     Expanded(
-                      child: OutlinedButton.icon(
+                      child: OutlinedButton(
                         onPressed: state.hasPrev
                             ? () {
                                 ref.read(feedbackServiceProvider).feedback();
@@ -238,37 +238,55 @@ class _RollCallPageState extends ConsumerState<RollCallPage> {
                                     .prevStudent();
                               }
                             : null,
-                        icon: Icon(Icons.navigate_before),
-                        label: Text('上一个'),
                         style: OutlinedButton.styleFrom(
-                          minimumSize: Size.fromHeight(52),
+                          minimumSize: const Size.fromHeight(52),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.navigate_before, size: 20),
+                            SizedBox(width: 4),
+                            Text('上一个'),
+                          ],
                         ),
                       ),
                     ),
-                    SizedBox(width: 8),
+                    SizedBox(width: 12),
                     Expanded(
-                      child: OutlinedButton.icon(
+                      child: OutlinedButton(
                         onPressed: () => _showFinishDialog(),
-                        icon: Icon(Icons.stop),
-                        label: Text('结束'),
                         style: OutlinedButton.styleFrom(
-                          minimumSize: Size.fromHeight(52),
+                          minimumSize: const Size.fromHeight(52),
                           foregroundColor: Colors.red,
                         ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.stop, size: 20),
+                            SizedBox(width: 4),
+                            Text('结束'),
+                          ],
+                        ),
                       ),
                     ),
-                    SizedBox(width: 8),
+                    SizedBox(width: 12),
                     Expanded(
                       flex: 2,
-                      child: FilledButton.icon(
+                      child: FilledButton(
                         onPressed: () {
                           ref.read(feedbackServiceProvider).feedback();
                           ref.read(rollCallProvider.notifier).nextStudent();
                         },
-                        icon: Icon(Icons.navigate_next),
-                        label: Text(state.hasNext ? '下一位' : '完成'),
                         style: FilledButton.styleFrom(
-                          minimumSize: Size.fromHeight(52),
+                          minimumSize: const Size.fromHeight(52),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.navigate_next, size: 20),
+                            SizedBox(width: 4),
+                            Text(state.hasNext ? '下一位' : '完成'),
+                          ],
                         ),
                       ),
                     ),
@@ -287,85 +305,98 @@ class _RollCallPageState extends ConsumerState<RollCallPage> {
     final nextOne = state.nextStudent;
 
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Theme.of(
-          context,
-        ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(8),
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(12),
       ),
-      child: Row(
+      child: Column(
         children: [
           // 上三位
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.green.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
                   '已点',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.labelSmall?.copyWith(color: Colors.grey[600]),
-                ),
-                const SizedBox(height: 4),
-                if (prevThree.isEmpty)
-                  Text(
-                    '无',
-                    style: TextStyle(color: Colors.grey[400], fontSize: 13),
-                  )
-                else
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 2,
-                    children: prevThree.map((s) {
-                      final isCalled = state.isCalled(s.id);
-                      return Text(
-                        s.name,
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: isCalled
-                              ? Colors.green[700]
-                              : Colors.grey[600],
-                          fontWeight: isCalled
-                              ? FontWeight.w500
-                              : FontWeight.normal,
-                        ),
-                      );
-                    }).toList(),
+                  style: TextStyle(
+                    color: Colors.green[700],
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
                   ),
-              ],
-            ),
+                ),
+              ),
+              SizedBox(width: 12),
+              Expanded(
+                child: prevThree.isEmpty
+                    ? Text(
+                        '暂无',
+                        style: TextStyle(color: Colors.grey[500], fontSize: 14),
+                      )
+                    : Row(
+                        children: prevThree.asMap().entries.map((entry) {
+                          final idx = entry.key;
+                          final s = entry.value;
+                          return Padding(
+                            padding: EdgeInsets.only(
+                              right: idx < prevThree.length - 1 ? 16 : 0,
+                            ),
+                            child: Text(
+                              s.name,
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.green[700],
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+              ),
+            ],
           ),
-          // 分隔
-          Container(width: 1, height: 40, color: Colors.grey[300]),
-          const SizedBox(width: 12),
+          SizedBox(height: 12),
+          // 分隔线
+          Divider(height: 1, color: Colors.grey[300]),
+          SizedBox(height: 12),
           // 下一位
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '下一位',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.labelSmall?.copyWith(color: Colors.grey[600]),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.blue.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(6),
                 ),
-                const SizedBox(height: 4),
-                if (nextOne == null)
-                  Text(
-                    '无',
-                    style: TextStyle(color: Colors.grey[400], fontSize: 13),
-                  )
-                else
-                  Text(
-                    nextOne.name,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                    ),
+                child: Text(
+                  '下一位',
+                  style: TextStyle(
+                    color: Colors.blue[700],
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
                   ),
-              ],
-            ),
+                ),
+              ),
+              SizedBox(width: 12),
+              Expanded(
+                child: nextOne == null
+                    ? Text(
+                        '已是最后',
+                        style: TextStyle(color: Colors.grey[500], fontSize: 14),
+                      )
+                    : Text(
+                        nextOne.name,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+              ),
+            ],
           ),
         ],
       ),
