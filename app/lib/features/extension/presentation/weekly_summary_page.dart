@@ -72,6 +72,17 @@ class _WeeklySummaryPageState extends ConsumerState<WeeklySummaryPage>
     return Scaffold(
       appBar: AppBar(
         title: const Text('周名单汇总'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () {
+              ref.invalidate(currentWeekProvider);
+              ref.invalidate(mySubmissionsProvider);
+              ref.invalidate(pendingSubmissionsProvider);
+              ref.invalidate(myDutyProvider);
+            },
+          ),
+        ],
         bottom: TabBar(
           controller: _tabController,
           tabs: const [

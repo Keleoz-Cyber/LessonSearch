@@ -8,6 +8,7 @@ import '../../../shared/widgets/toast.dart';
 import '../../../core/network/api_client.dart';
 import '../../../features/attendance/domain/models.dart';
 import '../data/submission_service.dart';
+import '../presentation/weekly_summary_page.dart';
 
 final currentWeekProvider = FutureProvider<Map<String, dynamic>>((ref) async {
   final api = ref.watch(apiClientProvider);
@@ -101,6 +102,8 @@ class _SubmissionPageState extends ConsumerState<SubmissionPage> {
 
       if (mounted) {
         Toast.show(context, '提交成功，等待审核');
+        ref.invalidate(mySubmissionsProvider);
+        ref.invalidate(pendingSubmissionsProvider);
         context.push('/extension/weekly-summary');
       }
     } catch (e) {
@@ -360,7 +363,7 @@ class _SubmissionPageState extends ConsumerState<SubmissionPage> {
             Text('无需提交考勤记录', style: TextStyle(color: Colors.grey)),
             const SizedBox(height: 24),
             FilledButton(
-              onPressed: () => context.go('/extension/weekly-summary'),
+              onPressed: () => context.push('/extension/weekly-summary'),
               child: const Text('查看周名单汇总'),
             ),
           ],
