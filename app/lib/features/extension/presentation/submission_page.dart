@@ -325,29 +325,24 @@ class _SubmitTaskTab extends ConsumerWidget {
             ),
             data: (tasks) {
               if (tasks.isEmpty) {
-                return Card(
+                return const Card(
                   child: Padding(
-                    padding: const EdgeInsets.all(24),
+                    padding: EdgeInsets.all(24),
                     child: Center(
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(
+                          Icon(
                             Icons.inbox_outlined,
                             size: 48,
                             color: Colors.grey,
                           ),
-                          const SizedBox(height: 16),
-                          const Text('暂无可提交的任务'),
-                          const SizedBox(height: 8),
+                          SizedBox(height: 16),
+                          Text('暂无可提交的任务'),
+                          SizedBox(height: 8),
                           Text(
-                            '所有本周任务已提交或未创建',
+                            '请先在首页完成记名任务',
                             style: TextStyle(color: Colors.grey),
-                          ),
-                          const SizedBox(height: 16),
-                          FilledButton(
-                            onPressed: () => context.go('/name-check/select'),
-                            child: const Text('创建记名任务'),
                           ),
                         ],
                       ),

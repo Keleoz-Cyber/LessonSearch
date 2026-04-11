@@ -8,6 +8,7 @@ import '../../../../shared/providers.dart';
 import '../../../../shared/widgets/toast.dart';
 import '../../../attendance/domain/models.dart';
 import '../../../attendance/domain/text_template.dart';
+import '../../../extension/presentation/submission_page.dart';
 
 class TextGenPage extends ConsumerStatefulWidget {
   final String taskId;
@@ -149,6 +150,8 @@ class _TextGenPageState extends ConsumerState<TextGenPage>
   }
 
   Future<void> _finish() async {
+    ref.invalidate(localNameCheckTasksProvider);
+    ref.invalidate(submittedTaskIdsProvider);
     context.go('/');
   }
 
@@ -181,7 +184,11 @@ class _TextGenPageState extends ConsumerState<TextGenPage>
       onPopInvokedWithResult: (didPop, _) async {
         if (didPop) return;
         final shouldPop = await _onWillPop();
-        if (shouldPop && context.mounted) context.go('/');
+        if (shouldPop && context.mounted) {
+          ref.invalidate(localNameCheckTasksProvider);
+          ref.invalidate(submittedTaskIdsProvider);
+          context.go('/');
+        }
       },
       child: Scaffold(
         appBar: AppBar(
