@@ -131,14 +131,14 @@ class _RecordDetailPageState extends ConsumerState<RecordDetailPage> {
     }
 
     final groupReport = generateGroupReport(classStatsList, date);
-    final committeeReport = generateCommitteeReport(classStatsList, date);
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       builder: (ctx) => _TextSheet(
         groupReport: groupReport,
-        committeeReport: committeeReport,
+        classStatsList: classStatsList,
+        date: date,
       ),
     );
   }
@@ -508,9 +508,14 @@ class _RollCallItem extends StatelessWidget {
 
 class _TextSheet extends StatelessWidget {
   final String groupReport;
-  final String committeeReport;
+  final List<ClassStats> classStatsList;
+  final String date;
 
-  const _TextSheet({required this.groupReport, required this.committeeReport});
+  const _TextSheet({
+    required this.groupReport,
+    required this.classStatsList,
+    required this.date,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -533,8 +538,8 @@ class _TextSheet extends StatelessWidget {
               Expanded(
                 child: TabBarView(
                   children: [
-                    _copyableText(context, groupReport, isWechat: true),
-                    _copyableText(context, committeeReport, isWechat: false),
+                    _buildGroupReportView(context),
+                    _buildCommitteeReportView(context),
                   ],
                 ),
               ),
@@ -545,18 +550,14 @@ class _TextSheet extends StatelessWidget {
     );
   }
 
-  Widget _copyableText(
-    BuildContext context,
-    String text, {
-    required bool isWechat,
-  }) {
+  Widget _buildGroupReportView(BuildContext context) {
     return Column(
       children: [
         Expanded(
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(16),
             child: SelectableText(
-              text,
+              groupReport,
               style: const TextStyle(fontSize: 14, height: 1.6),
             ),
           ),
@@ -565,29 +566,121 @@ class _TextSheet extends StatelessWidget {
           padding: const EdgeInsets.all(12),
           child: FilledButton.icon(
             onPressed: () async {
-              Clipboard.setData(ClipboardData(text: text));
+              Clipboard.setData(ClipboardData(text: groupReport));
               Toast.show(context, '已复制到剪贴板');
 
               await Future.delayed(const Duration(milliseconds: 300));
 
-              final uri = Uri.parse(isWechat ? 'weixin://' : 'mqq://');
+              final uri = Uri.parse('weixin://');
               if (await canLaunchUrl(uri)) {
                 await launchUrl(uri);
               } else {
                 if (context.mounted) {
-                  Toast.show(context, isWechat ? '未安装微信' : '未安装QQ');
+                  Toast.show(context, '未安装微信');
                 }
               }
             },
-            icon: Icon(isWechat ? Icons.wechat : Icons.message),
-            label: Text(isWechat ? '复制并打开微信' : '复制并打开QQ'),
+            icon: const Icon(Icons.wechat),
+            label: const Text('复制并打开微信'),
             style: FilledButton.styleFrom(
               minimumSize: const Size.fromHeight(44),
-              backgroundColor: isWechat ? Colors.green : Colors.blue,
+              backgroundColor: Colors.green,
             ),
           ),
         ),
       ],
     );
+  }
+
+  Widget _buildCommitteeReportView(BuildContext context) {
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: classStatsList.length,
+      itemBuilder: (context, index) {
+        final cs = classStatsList[index];
+        final text = _generateClassCommitteeReport(cs);
+
+        return Card(
+          margin: const EdgeInsets.only(bottom: 12),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        cs.className,
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    FilledButton.icon(
+                      onPressed: () async {
+                        Clipboard.setData(ClipboardData(text: text));
+                        Toast.show(context, '已复制到剪贴板');
+
+                        await Future.delayed(const Duration(milliseconds: 300));
+
+                        final uri = Uri.parse('mqq://');
+                        if (await canLaunchUrl(uri)) {
+                          await launchUrl(uri);
+                        } else {
+                          if (context.mounted) {
+                            Toast.show(context, '未安装QQ');
+                          }
+                        }
+                      },
+                      icon: const Icon(Icons.copy, size: 18),
+                      label: const Text('复制'),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: Colors.blue,
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                SelectableText(
+                  text,
+                  style: const TextStyle(fontSize: 14, height: 1.5),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  String _generateClassCommitteeReport(ClassStats cs) {
+    return defaultCommitteeReportTemplate
+        .replaceAll('{date}', date)
+        .replaceAll('{class_name}', cs.className)
+        .replaceAll('{total}', '${cs.total}')
+        .replaceAll('{present}', '${cs.present}')
+        .replaceAll('{absent}', '${cs.absent}')
+        .replaceAll('{late}', '${cs.late_}')
+        .replaceAll('{leave}', '${cs.leave}')
+        .replaceAll('{other}', '${cs.other}')
+        .replaceAll('{absent_names}', _formatNames(cs.absentStudents))
+        .replaceAll('{late_names}', _formatNames(cs.lateStudents))
+        .replaceAll('{leave_names}', _formatNames(cs.leaveStudents))
+        .replaceAll('{other_names}', _formatNamesWithRemark(cs.otherStudents))
+        .trim();
+  }
+
+  String _formatNames(List<StudentRecord> students) {
+    if (students.isEmpty) return '无';
+    return students.map((s) => s.name).join('、');
+  }
+
+  String _formatNamesWithRemark(List<StudentRecord> students) {
+    if (students.isEmpty) return '无';
+    return students
+        .map((s) => s.remark != null ? '${s.name}(${s.remark})' : s.name)
+        .join('、');
   }
 }
