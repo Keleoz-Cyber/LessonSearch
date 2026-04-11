@@ -26,7 +26,7 @@ class SubmissionService {
     required List<String> taskIds,
   }) async {
     final res = await _api.dio.post(
-      '/submissions',
+      '/submissions/',
       data: {'week_number': weekNumber, 'task_ids': taskIds},
     );
     return res.data as Map<String, dynamic>;
