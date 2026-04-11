@@ -2,18 +2,27 @@
 提交审核API
 """
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from typing import List
+from datetime import datetime
+from io import BytesIO
+import openpyxl
+from openpyxl.styles import Font, Alignment, Border, Side
 
 from app.core.database import get_db
 from app.core.security import get_current_user
-from app.models import User, Submission, SubmissionRecord, AttendanceRecord, AttendanceTask
+from app.models import User, Submission, SubmissionRecord, AttendanceRecord, AttendanceTask, Student, Class, Major
+from app.models.week import WeekExport
 from app.schemas.submission import (
     CreateSubmissionRequest,
     SubmissionResponse,
     SubmissionDetailResponse,
     ApproveSubmissionRequest,
-    RejectSubmissionRequest
+    RejectSubmissionRequest,
+    WeekSummaryResponse,
+    ExportStatusResponse
 )
 from app.routers.week import get_current_week_config, calculate_week_number
 
@@ -285,3 +294,229 @@ async def cancel_submission(
     db.commit()
     
     return {"message": "提交已撤销", "submission_id": submission_id}
+
+
+@router.get("/week-summary/{week_number}", response_model=WeekSummaryResponse)
+async def get_week_summary(
+    week_number: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """获取周汇总统计"""
+    submissions = db.query(Submission).filter(
+        Submission.week_number == week_number
+    ).all()
+    
+    pending = len([s for s in submissions if s.status == "pending"])
+    approved = len([s for s in submissions if s.status == "approved"])
+    rejected = len([s for s in submissions if s.status == "rejected"])
+    
+    # 统计迟到和缺勤
+    late_count = 0
+    absent_count = 0
+    
+    approved_submissions = [s for s in submissions if s.status == "approved"]
+    for sub in approved_submissions:
+        submission_records = db.query(SubmissionRecord).filter(
+            SubmissionRecord.submission_id == sub.id
+        ).all()
+        
+        for sr in submission_records:
+            record = db.query(AttendanceRecord).filter(
+                AttendanceRecord.id == sr.record_id
+            ).first()
+            if record:
+                if record.status == "late":
+                    late_count += 1
+                elif record.status == "absent":
+                    absent_count += 1
+    
+    # 检查是否已发布
+    export = db.query(WeekExport).filter(
+        WeekExport.week_number == week_number
+    ).order_by(WeekExport.exported_at.desc()).first()
+    
+    return WeekSummaryResponse(
+        week_number=week_number,
+        total_submissions=len(submissions),
+        pending_count=pending,
+        approved_count=approved,
+        rejected_count=rejected,
+        late_count=late_count,
+        absent_count=absent_count,
+        is_published=export is not None
+    )
+
+
+@router.get("/export-status/{week_number}", response_model=ExportStatusResponse)
+async def get_export_status(
+    week_number: int,
+    db: Session = Depends(get_db)
+):
+    """获取周导出状态"""
+    export = db.query(WeekExport).filter(
+        WeekExport.week_number == week_number
+    ).order_by(WeekExport.exported_at.desc()).first()
+    
+    if not export:
+        return ExportStatusResponse(
+            week_number=week_number,
+            is_published=False
+        )
+    
+    exporter = db.query(User).filter(User.id == export.exported_by).first()
+    
+    return ExportStatusResponse(
+        week_number=week_number,
+        is_published=True,
+        exported_at=export.exported_at,
+        exported_by_name=exporter.real_name if exporter else None
+    )
+
+
+@router.get("/export/{week_number}")
+async def export_week_excel(
+    week_number: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """导出周考勤Excel（管理员）"""
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="需要管理员权限")
+    
+    # 获取所有已通过的提交
+    submissions = db.query(Submission).filter(
+        Submission.week_number == week_number,
+        Submission.status == "approved"
+    ).all()
+    
+    if not submissions:
+        raise HTTPException(status_code=400, detail="该周无已审核通过的提交")
+    
+    # 收集所有记录
+    records_data = []
+    for sub in submissions:
+        submission_records = db.query(SubmissionRecord).filter(
+            SubmissionRecord.submission_id == sub.id
+        ).all()
+        
+        for sr in submission_records:
+            record = db.query(AttendanceRecord).filter(
+                AttendanceRecord.id == sr.record_id
+            ).first()
+            if record and record.status in ("late", "absent"):
+                student = db.query(Student).filter(
+                    Student.id == record.student_id
+                ).first()
+                if student:
+                    class_ = db.query(Class).filter(Class.id == student.class_id).first()
+                    major = None
+                    if class_:
+                        major = db.query(Major).filter(Major.id == class_.major_id).first()
+                    
+                    records_data.append({
+                        "student_id": student.id,
+                        "name": student.name,
+                        "student_no": student.student_no,
+                        "class_name": class_.display_name if class_ else "未知",
+                        "major_short_name": major.short_name if major else "",
+                        "class_code": class_.class_code if class_ else "",
+                        "status": record.status,
+                    })
+    
+    # 按学生聚合
+    student_stats = {}
+    for r in records_data:
+        sid = r["student_id"]
+        if sid not in student_stats:
+            student_stats[sid] = {
+                "name": r["name"],
+                "student_no": r["student_no"],
+                "class_name": r["class_name"],
+                "major_short_name": r["major_short_name"],
+                "class_code": r["class_code"],
+                "late": 0,
+                "absent": 0,
+            }
+        if r["status"] == "late":
+            student_stats[sid]["late"] += 1
+        elif r["status"] == "absent":
+            student_stats[sid]["absent"] += 1
+    
+    # 排序
+    sorted_students = sorted(
+        student_stats.values(),
+        key=lambda x: (x["major_short_name"], int(x["class_code"]) if x["class_code"].isdigit() else 0, x["student_no"])
+    )
+    
+    # 创建Excel
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = f"第{week_number}周考勤"
+    
+    # 表头
+    headers = ["序号", "姓名", "班级", "学号", "迟到/早退", "旷课", "累计"]
+    ws.append(headers)
+    
+    # 设置表头样式
+    for cell in ws[1]:
+        cell.font = Font(bold=True)
+        cell.alignment = Alignment(horizontal="center")
+    
+    # 数据行
+    for i, s in enumerate(sorted_students, 1):
+        row = [
+            i,
+            s["name"],
+            s["class_name"],
+            s["student_no"],
+            s["late"],
+            s["absent"],
+            None,  # 累计用公式
+        ]
+        ws.append(row)
+        
+        # 累计公式
+        ws.cell(row=i+1, column=7).value = f"=ROUNDDOWN(E{i+1}/2+F{i+1},0)"
+    
+    # 边框
+    thin_border = Border(
+        left=Side(style='thin'),
+        right=Side(style='thin'),
+        top=Side(style='thin'),
+        bottom=Side(style='thin')
+    )
+    for row in ws.iter_rows(min_row=1, max_row=ws.max_row, min_col=1, max_col=7):
+        for cell in row:
+            cell.border = thin_border
+            cell.alignment = Alignment(horizontal="center")
+    
+    # 列宽
+    ws.column_dimensions['A'].width = 6
+    ws.column_dimensions['B'].width = 12
+    ws.column_dimensions['C'].width = 12
+    ws.column_dimensions['D'].width = 16
+    ws.column_dimensions['E'].width = 12
+    ws.column_dimensions['F'].width = 8
+    ws.column_dimensions['G'].width = 8
+    
+    # 保存到BytesIO
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
+    
+    # 记录导出
+    export = WeekExport(
+        week_number=week_number,
+        exported_by=current_user.id
+    )
+    db.add(export)
+    db.commit()
+    
+    # 返回文件
+    filename = f"第{week_number}周周考勤表.xlsx"
+    return StreamingResponse(
+        output,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename*=UTF-8''{filename}"}
+    )

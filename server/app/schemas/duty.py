@@ -24,3 +24,11 @@ class DutyAssignmentResponse(BaseModel):
 class DutyAssignmentListResponse(BaseModel):
     total: int
     items: List[DutyAssignmentResponse]
+
+
+class CreateDutyAssignmentRequest(BaseModel):
+    user_id: int
+
+
+class DeactivateDutyRequest(BaseModel):
+    pass

@@ -89,16 +89,22 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         userId: response['user']['id'],
         email: response['user']['email'],
         nickname: response['user']['nickname'],
+        realName: response['user']['real_name'],
+        role: response['user']['role'],
       );
 
-      // 刷新登录状态
       ref.invalidate(authServiceProvider);
       ref.invalidate(isLoggedInProvider);
       ref.invalidate(userEmailProvider);
       ref.invalidate(apiClientProvider);
 
       if (mounted) {
-        context.pop();
+        final realName = response['user']['real_name'];
+        if (realName == null || realName.toString().trim().isEmpty) {
+          context.go('/real-name');
+        } else {
+          context.go('/');
+        }
       }
     } on DioException catch (e) {
       final detail = e.response?.data['detail'] ?? '';

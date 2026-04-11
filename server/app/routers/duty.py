@@ -4,11 +4,12 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
+from datetime import datetime
 
 from app.core.database import get_db
 from app.core.security import get_current_user
-from app.models import User, DutyAssignment
-from app.schemas.duty import DutyAssignmentResponse, DutyAssignmentListResponse
+from app.models import User, DutyAssignment, Submission
+from app.schemas.duty import DutyAssignmentResponse, DutyAssignmentListResponse, CreateDutyAssignmentRequest
 
 router = APIRouter(prefix="/duties", tags=["duties"])
 
@@ -128,3 +129,69 @@ async def get_unsubmitted_users(
             ))
     
     return result
+
+
+@router.post("/", response_model=DutyAssignmentResponse)
+async def create_duty_assignment(
+    body: CreateDutyAssignmentRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """分配查课职务（管理员）"""
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="需要管理员权限")
+    
+    user = db.query(User).filter(User.id == body.user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="用户不存在")
+    
+    # 检查是否已有职务
+    existing = db.query(DutyAssignment).filter(
+        DutyAssignment.user_id == body.user_id,
+        DutyAssignment.is_active == True
+    ).first()
+    
+    if existing:
+        raise HTTPException(status_code=400, detail="用户已有查课职务")
+    
+    duty = DutyAssignment(
+        user_id=body.user_id,
+        assigned_by=current_user.id,
+        is_active=True
+    )
+    db.add(duty)
+    db.commit()
+    db.refresh(duty)
+    
+    return DutyAssignmentResponse(
+        id=duty.id,
+        user_id=duty.user_id,
+        user_name=user.real_name,
+        user_email=user.email,
+        assigned_by=duty.assigned_by,
+        assigned_by_name=current_user.real_name,
+        assigned_at=duty.assigned_at,
+        is_active=duty.is_active,
+        deactivated_at=duty.deactivated_at
+    )
+
+
+@router.delete("/{duty_id}")
+async def deactivate_duty_assignment(
+    duty_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """取消查课职务（管理员）"""
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="需要管理员权限")
+    
+    duty = db.query(DutyAssignment).filter(DutyAssignment.id == duty_id).first()
+    if not duty:
+        raise HTTPException(status_code=404, detail="职务分配不存在")
+    
+    duty.is_active = False
+    duty.deactivated_at = datetime.now()
+    db.commit()
+    
+    return {"message": "职务已取消", "duty_id": duty_id}

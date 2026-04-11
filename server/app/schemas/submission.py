@@ -48,3 +48,21 @@ class ApproveSubmissionRequest(BaseModel):
 
 class RejectSubmissionRequest(BaseModel):
     note: str
+
+
+class WeekSummaryResponse(BaseModel):
+    week_number: int
+    total_submissions: int
+    pending_count: int
+    approved_count: int
+    rejected_count: int
+    late_count: int
+    absent_count: int
+    is_published: bool
+
+
+class ExportStatusResponse(BaseModel):
+    week_number: int
+    is_published: bool
+    exported_at: Optional[datetime] = None
+    exported_by_name: Optional[str] = None

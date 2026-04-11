@@ -22,3 +22,8 @@ class CurrentWeekResponse(BaseModel):
     start_date: date
     end_date: date
     semester_name: Optional[str] = None
+
+
+class UpdateWeekConfigRequest(BaseModel):
+    start_date: date
+    semester_name: Optional[str] = None

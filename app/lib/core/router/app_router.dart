@@ -8,7 +8,10 @@ import '../../features/attendance/presentation/confirmation/confirmation_page.da
 import '../../features/attendance/presentation/text_generation/text_gen_page.dart';
 import '../../features/auth/presentation/login_page.dart';
 import '../../features/auth/presentation/register_page.dart';
+import '../../features/auth/presentation/real_name_page.dart';
 import '../../features/extension/presentation/extension_page.dart';
+import '../../features/extension/presentation/submission_page.dart';
+import '../../features/extension/presentation/weekly_summary_page.dart';
 import '../../features/records/presentation/records_list_page.dart';
 import '../../features/records/presentation/record_detail_page.dart';
 import '../../features/settings/presentation/settings_page.dart';
@@ -24,28 +27,40 @@ final appRouter = GoRouter(
       builder: (context, state) => const HomePage(),
     ),
 
-    // 登录
     GoRoute(
       path: '/login',
       name: 'login',
       builder: (context, state) => const LoginPage(),
     ),
 
-    // 注册
     GoRoute(
       path: '/register',
       name: 'register',
       builder: (context, state) => const RegisterPage(),
     ),
 
-    // 扩展功能
+    GoRoute(
+      path: '/real-name',
+      name: 'real-name',
+      builder: (context, state) => const RealNamePage(),
+    ),
+
     GoRoute(
       path: '/extension',
       name: 'extension',
       builder: (context, state) => const ExtensionPage(),
     ),
+    GoRoute(
+      path: '/extension/submission',
+      name: 'submission',
+      builder: (context, state) => const SubmissionPage(),
+    ),
+    GoRoute(
+      path: '/extension/weekly-summary',
+      name: 'weekly-summary',
+      builder: (context, state) => const WeeklySummaryPage(),
+    ),
 
-    // 点名
     GoRoute(
       path: '/roll-call/select',
       name: 'roll-call-select',
@@ -67,7 +82,6 @@ final appRouter = GoRouter(
       },
     ),
 
-    // 记名
     GoRoute(
       path: '/name-check/select',
       name: 'name-check-select',
@@ -89,14 +103,12 @@ final appRouter = GoRouter(
       },
     ),
 
-    // 确认页
     GoRoute(
       path: '/confirmation',
       name: 'confirmation',
       builder: (context, state) => const ConfirmationPage(),
     ),
 
-    // 文本生成
     GoRoute(
       path: '/text-gen',
       name: 'text-gen',
@@ -106,7 +118,6 @@ final appRouter = GoRouter(
       },
     ),
 
-    // 查课记录
     GoRoute(
       path: '/records',
       name: 'records',
@@ -119,14 +130,12 @@ final appRouter = GoRouter(
           RecordDetailPage(taskId: state.pathParameters['id']!),
     ),
 
-    // 设置
     GoRoute(
       path: '/settings',
       name: 'settings',
       builder: (context, state) => const SettingsPage(),
     ),
 
-    // 联调测试
     GoRoute(
       path: '/debug/sync',
       name: 'sync-test',
