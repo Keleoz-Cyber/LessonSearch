@@ -2,11 +2,10 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Header
 from sqlalchemy.orm import Session
 from typing import Optional
 
-from database import get_db
-from models import AttendanceTask, TaskClass, AttendanceRecord
-from schemas import TaskCreate, TaskUpdate, TaskOut
+from app.core.database import get_db
+from app.models import AttendanceTask, TaskClass, AttendanceRecord, User
+from app.schemas import TaskCreate, TaskUpdate, TaskOut
 from routers.auth import get_current_user, _verify_token
-from models import User
 
 router = APIRouter(prefix="/tasks", tags=["任务"])
 

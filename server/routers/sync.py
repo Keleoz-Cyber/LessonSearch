@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy import func
-from database import get_db
-from models import Grade, Major, Class, Student
+from app.core.database import get_db
+from app.models import Grade, Major, Class, Student
 
 router = APIRouter(tags=["sync"])
 

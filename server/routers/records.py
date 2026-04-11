@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from database import get_db
-from models import AttendanceTask, AttendanceRecord
-from schemas import RecordCreate, RecordUpdate, RecordOut
+from app.core.database import get_db
+from app.models import AttendanceTask, AttendanceRecord
+from app.schemas import RecordCreate, RecordUpdate, RecordOut
 
 router = APIRouter(prefix="/tasks/{task_id}/records", tags=["考勤记录"])
 

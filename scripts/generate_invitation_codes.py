@@ -13,11 +13,10 @@ import sys
 import secrets
 import string
 
-# 添加 server 目录到路径
 sys.path.insert(0, '.')
 
-from database import SessionLocal
-from models import InvitationCode
+from app.core.database import SessionLocal
+from app.models import InvitationCode
 
 
 def generate_code(length: int = 8) -> str:

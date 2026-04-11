@@ -1,6 +1,16 @@
 # 考勤助手 开发文档
 
-> 版本：0.4.0 | 更新日期：2026-04-05 | 仓库：https://github.com/Keleoz-Cyber/LessonSearch
+> **⚠️ 此文档待更新至 v0.5.0**
+> 
+> 当前内容基于 v0.4.0，v0.5.0 新功能（角色系统、提交审核、周名单汇总、实时公告等）尚未更新。
+> 
+> v0.5.0 新功能详见：
+> - `docs/v0.5.0功能开发计划.md` - 功能开发详细规划
+> - `docs/v0.5.0重构方案.md` - 代码重构方案
+> 
+> 本文档将在所有功能开发完成后统一更新。
+
+> 版本：0.4.0 | 更新日期：2026-04-06 | 仓库：https://github.com/Keleoz-Cyber/LessonSearch
 
 ---
 
@@ -642,7 +652,45 @@ flutter build apk --release
 - 格式：`kaoqin-helper-vX.X.X.apk`
 - 示例：`kaoqin-helper-v0.4.0.apk`
 
-### 11.4 发布到 GitHub
+### 11.4 构建输出目录说明
+
+`app/build/app/outputs/` 目录结构：
+```
+outputs/
+├── flutter-apk/              # Flutter APK 输出（主要）
+│   └── app-release.apk       # Release APK
+│
+├── logs/                     # 构建日志
+│   ├── manifest-merger-debug-report.txt
+│   └── manifest-merger-release-report.txt
+│
+├── mapping/                  # 代码混淆映射（用于反混淆 Crash 日志）
+│   └── release/
+│       └── mapping.txt
+│
+├── native-debug-symbols/     # 原生调试符号
+│   └── release/
+│
+└── sdk-dependencies/         # SDK 依赖信息
+```
+
+**目录用途：**
+
+| 目录 | 说明 | 是否提交 |
+|------|------|----------|
+| `flutter-apk/` | Flutter 构建的 APK | ❌ 已在 .gitignore |
+| `logs/` | 构建日志，用于排查问题 | ❌ 已在 .gitignore |
+| `mapping/` | 代码混淆映射，用于反混淆 Crash 日志 | ❌ 已在 .gitignore |
+| `native-debug-symbols/` | 原生代码调试符号 | ❌ 已在 .gitignore |
+| `sdk-dependencies/` | SDK 依赖信息 | ❌ 已在 .gitignore |
+
+**清理构建产物：**
+```powershell
+flutter clean                # 清空整个 build/ 目录
+.\scripts\clean_build.ps1    # 项目清理脚本
+```
+
+### 11.5 发布到 GitHub
 
 1. **提交代码：**
    ```powershell
