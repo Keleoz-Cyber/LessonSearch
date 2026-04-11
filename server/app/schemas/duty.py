@@ -32,3 +32,24 @@ class CreateDutyAssignmentRequest(BaseModel):
 
 class DeactivateDutyRequest(BaseModel):
     pass
+
+
+class MemberSubmissionStatus(BaseModel):
+    user_id: int
+    user_name: Optional[str] = None
+    user_email: Optional[str] = None
+    has_duty: bool
+    submitted: bool
+    submission_count: int = 0
+    pending_count: int = 0
+    approved_count: int = 0
+    rejected_count: int = 0
+
+
+class WeekSubmissionStatusResponse(BaseModel):
+    week_number: int
+    total_duty: int
+    submitted_count: int
+    not_submitted_count: int
+    submitted_members: List[MemberSubmissionStatus]
+    not_submitted_members: List[MemberSubmissionStatus]

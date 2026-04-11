@@ -23,7 +23,9 @@ from app.schemas.submission import (
     ApproveSubmissionRequest,
     RejectSubmissionRequest,
     WeekSummaryResponse,
-    ExportStatusResponse
+    ExportStatusResponse,
+    SubmissionRecordsResponse,
+    RecordDetail
 )
 from app.routers.week import get_current_week_config, calculate_week_number
 
@@ -226,6 +228,79 @@ async def get_submission_detail(
         submitted_at=submission.submitted_at,
         task_count=len(task_ids),
         record_count=record_count
+    )
+
+
+@router.get("/{submission_id}/records", response_model=SubmissionRecordsResponse)
+async def get_submission_records(
+    submission_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """获取提交的详细记录列表"""
+    submission = db.query(Submission).filter(Submission.id == submission_id).first()
+    
+    if not submission:
+        raise HTTPException(status_code=404, detail="提交不存在")
+    
+    if submission.user_id != current_user.id and current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="无权查看此提交")
+    
+    user = db.query(User).filter(User.id == submission.user_id).first()
+    
+    submission_records = db.query(SubmissionRecord).filter(
+        SubmissionRecord.submission_id == submission.id
+    ).all()
+    
+    records = []
+    late_count = 0
+    absent_count = 0
+    leave_count = 0
+    other_count = 0
+    
+    for sr in submission_records:
+        record = db.query(AttendanceRecord).filter(
+            AttendanceRecord.id == sr.record_id
+        ).first()
+        
+        if record:
+            student = db.query(Student).filter(
+                Student.id == record.student_id
+            ).first()
+            
+            if student:
+                class_ = db.query(Class).filter(Class.id == student.class_id).first()
+                
+                records.append(RecordDetail(
+                    student_id=student.id,
+                    student_name=student.name,
+                    student_no=student.student_no,
+                    class_name=class_.display_name if class_ else "未知",
+                    status=record.status
+                ))
+                
+                if record.status == "late":
+                    late_count += 1
+                elif record.status == "absent":
+                    absent_count += 1
+                elif record.status == "leave":
+                    leave_count += 1
+                elif record.status == "other":
+                    other_count += 1
+    
+    return SubmissionRecordsResponse(
+        id=submission.id,
+        user_id=submission.user_id,
+        user_name=user.real_name if user else None,
+        user_email=user.email if user else None,
+        week_number=submission.week_number,
+        status=submission.status,
+        submitted_at=submission.submitted_at,
+        records=records,
+        late_count=late_count,
+        absent_count=absent_count,
+        leave_count=leave_count,
+        other_count=other_count
     )
 
 

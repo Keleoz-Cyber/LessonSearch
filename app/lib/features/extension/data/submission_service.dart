@@ -64,4 +64,17 @@ class SubmissionService {
     final res = await _api.dio.get('/submissions/week-summary/$weekNumber');
     return res.data as Map<String, dynamic>;
   }
+
+  Future<Map<String, dynamic>> getWeekSubmissionStatus(int weekNumber) async {
+    final res = await _api.dio.get(
+      '/duties/week-submissions',
+      queryParameters: {'week_number': weekNumber},
+    );
+    return res.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> getSubmissionRecords(int submissionId) async {
+    final res = await _api.dio.get('/submissions/$submissionId/records');
+    return res.data as Map<String, dynamic>;
+  }
 }

@@ -3,13 +3,14 @@
 """
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy import func as sql_func
 from typing import List
 from datetime import datetime
 
 from app.core.database import get_db
 from app.core.security import get_current_user
-from app.models import User, DutyAssignment, Submission
-from app.schemas.duty import DutyAssignmentResponse, DutyAssignmentListResponse, CreateDutyAssignmentRequest
+from app.models import User, DutyAssignment, Submission, SubmissionRecord, AttendanceRecord
+from app.schemas.duty import DutyAssignmentResponse, DutyAssignmentListResponse, CreateDutyAssignmentRequest, WeekSubmissionStatusResponse, MemberSubmissionStatus
 
 router = APIRouter(prefix="/duties", tags=["duties"])
 
@@ -87,14 +88,12 @@ async def get_unsubmitted_users(
     if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="需要管理员权限")
     
-    # 获取所有在职用户
     active_duties = db.query(DutyAssignment).filter(
         DutyAssignment.is_active == True
     ).all()
     
     active_user_ids = [d.user_id for d in active_duties]
     
-    # 获取本周已提交的用户
     submitted_user_ids = db.query(Submission.user_id).filter(
         Submission.week_number == week_number,
         Submission.status.in_(["pending", "approved"])
@@ -102,7 +101,6 @@ async def get_unsubmitted_users(
     
     submitted_user_ids = [u[0] for u in submitted_user_ids]
     
-    # 未提交的用户
     unsubmitted_ids = [uid for uid in active_user_ids if uid not in submitted_user_ids]
     
     result = []
@@ -129,6 +127,60 @@ async def get_unsubmitted_users(
             ))
     
     return result
+
+
+@router.get("/week-submissions", response_model=WeekSubmissionStatusResponse)
+async def get_week_submission_status(
+    week_number: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """获取本周所有成员的提交状态（管理员）"""
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="需要管理员权限")
+    
+    active_duties = db.query(DutyAssignment).filter(
+        DutyAssignment.is_active == True
+    ).all()
+    
+    submitted_members = []
+    not_submitted_members = []
+    
+    for duty in active_duties:
+        user = db.query(User).filter(User.id == duty.user_id).first()
+        if not user:
+            continue
+        
+        submissions = db.query(Submission).filter(
+            Submission.user_id == duty.user_id,
+            Submission.week_number == week_number
+        ).all()
+        
+        status = MemberSubmissionStatus(
+            user_id=user.id,
+            user_name=user.real_name,
+            user_email=user.email,
+            has_duty=True,
+            submitted=len(submissions) > 0,
+            submission_count=len(submissions),
+            pending_count=len([s for s in submissions if s.status == "pending"]),
+            approved_count=len([s for s in submissions if s.status == "approved"]),
+            rejected_count=len([s for s in submissions if s.status == "rejected"])
+        )
+        
+        if status.submitted:
+            submitted_members.append(status)
+        else:
+            not_submitted_members.append(status)
+    
+    return WeekSubmissionStatusResponse(
+        week_number=week_number,
+        total_duty=len(active_duties),
+        submitted_count=len(submitted_members),
+        not_submitted_count=len(not_submitted_members),
+        submitted_members=submitted_members,
+        not_submitted_members=not_submitted_members
+    )
 
 
 @router.post("/", response_model=DutyAssignmentResponse)

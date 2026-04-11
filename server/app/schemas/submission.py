@@ -66,3 +66,26 @@ class ExportStatusResponse(BaseModel):
     is_published: bool
     exported_at: Optional[datetime] = None
     exported_by_name: Optional[str] = None
+
+
+class RecordDetail(BaseModel):
+    student_id: int
+    student_name: str
+    student_no: str
+    class_name: str
+    status: str
+
+
+class SubmissionRecordsResponse(BaseModel):
+    id: int
+    user_id: int
+    user_name: Optional[str] = None
+    user_email: Optional[str] = None
+    week_number: int
+    status: str
+    submitted_at: datetime
+    records: List[RecordDetail]
+    late_count: int
+    absent_count: int
+    leave_count: int
+    other_count: int
