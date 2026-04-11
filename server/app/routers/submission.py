@@ -329,6 +329,8 @@ async def get_week_summary(
     db: Session = Depends(get_db)
 ):
     """获取周汇总统计"""
+    from sqlalchemy import func as sql_func
+    
     submissions = db.query(Submission).filter(
         Submission.week_number == week_number
     ).all()
@@ -337,27 +339,25 @@ async def get_week_summary(
     approved = len([s for s in submissions if s.status == "approved"])
     rejected = len([s for s in submissions if s.status == "rejected"])
     
-    # 统计迟到和缺勤
     late_count = 0
     absent_count = 0
     
-    approved_submissions = [s for s in submissions if s.status == "approved"]
-    for sub in approved_submissions:
-        submission_records = db.query(SubmissionRecord).filter(
-            SubmissionRecord.submission_id == sub.id
-        ).all()
+    approved_ids = [s.id for s in submissions if s.status == "approved"]
+    if approved_ids:
+        late_count = db.query(sql_func.count()).select_from(SubmissionRecord).join(
+            AttendanceRecord, SubmissionRecord.record_id == AttendanceRecord.id
+        ).filter(
+            SubmissionRecord.submission_id.in_(approved_ids),
+            AttendanceRecord.status == "late"
+        ).scalar() or 0
         
-        for sr in submission_records:
-            record = db.query(AttendanceRecord).filter(
-                AttendanceRecord.id == sr.record_id
-            ).first()
-            if record:
-                if record.status == "late":
-                    late_count += 1
-                elif record.status == "absent":
-                    absent_count += 1
+        absent_count = db.query(sql_func.count()).select_from(SubmissionRecord).join(
+            AttendanceRecord, SubmissionRecord.record_id == AttendanceRecord.id
+        ).filter(
+            SubmissionRecord.submission_id.in_(approved_ids),
+            AttendanceRecord.status == "absent"
+        ).scalar() or 0
     
-    # 检查是否已发布
     export = db.query(WeekExport).filter(
         WeekExport.week_number == week_number
     ).order_by(WeekExport.exported_at.desc()).first()
