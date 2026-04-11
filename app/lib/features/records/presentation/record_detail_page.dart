@@ -206,45 +206,28 @@ class _RecordDetailPageState extends ConsumerState<RecordDetailPage> {
                         ),
                       ),
                     ),
-                    ...entry.value.map((record) {
-                      final called = record.status == AttendanceStatus.present;
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 4),
-                        child: Row(
-                          children: [
-                            Expanded(flex: 2, child: Text(record.studentName)),
-                            Expanded(
-                              flex: 3,
-                              child: Text(
-                                record.studentNo,
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: Colors.grey[600],
-                                ),
+                    // 两列网格布局
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        return Wrap(
+                          spacing: 8,
+                          runSpacing: 4,
+                          children: entry.value.map((record) {
+                            final called =
+                                record.status == AttendanceStatus.present;
+                            final itemWidth = (constraints.maxWidth - 8) / 2;
+                            return SizedBox(
+                              width: itemWidth,
+                              child: _RollCallItem(
+                                name: record.studentName,
+                                studentNo: record.studentNo,
+                                called: called,
                               ),
-                            ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 2,
-                              ),
-                              decoration: BoxDecoration(
-                                color: (called ? Colors.green : Colors.grey)
-                                    .withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Text(
-                                called ? '已点' : '未点',
-                                style: TextStyle(
-                                  color: called ? Colors.green : Colors.grey,
-                                  fontSize: 13,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    }),
+                            );
+                          }).toList(),
+                        );
+                      },
+                    ),
                     const Divider(),
                   ],
                 );
@@ -467,6 +450,55 @@ class _RecordRow extends StatelessWidget {
               );
             },
             child: const Text('确认'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 点名记录单项（两列网格使用）
+class _RollCallItem extends StatelessWidget {
+  final String name;
+  final String studentNo;
+  final bool called;
+
+  const _RollCallItem({
+    required this.name,
+    required this.studentNo,
+    required this.called,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Expanded(flex: 2, child: Text(name, overflow: TextOverflow.ellipsis)),
+          Expanded(
+            flex: 3,
+            child: Text(
+              studentNo,
+              style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            decoration: BoxDecoration(
+              color: (called ? Colors.green : Colors.grey).withValues(
+                alpha: 0.15,
+              ),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Text(
+              called ? '已点' : '未点',
+              style: TextStyle(
+                color: called ? Colors.green : Colors.grey,
+                fontSize: 13,
+              ),
+            ),
           ),
         ],
       ),
