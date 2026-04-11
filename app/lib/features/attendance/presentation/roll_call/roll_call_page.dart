@@ -229,7 +229,7 @@ class _RollCallPageState extends ConsumerState<RollCallPage> {
                 Row(
                   children: [
                     Expanded(
-                      child: OutlinedButton(
+                      child: OutlinedButton.icon(
                         onPressed: state.hasPrev
                             ? () {
                                 ref.read(feedbackServiceProvider).feedback();
@@ -238,55 +238,37 @@ class _RollCallPageState extends ConsumerState<RollCallPage> {
                                     .prevStudent();
                               }
                             : null,
+                        icon: const Icon(Icons.navigate_before),
+                        label: const Text('上一个'),
                         style: OutlinedButton.styleFrom(
                           minimumSize: const Size.fromHeight(52),
                         ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.navigate_before, size: 20),
-                            SizedBox(width: 4),
-                            Text('上一个'),
-                          ],
-                        ),
                       ),
                     ),
-                    SizedBox(width: 12),
+                    const SizedBox(width: 12),
                     Expanded(
-                      child: OutlinedButton(
+                      child: OutlinedButton.icon(
                         onPressed: () => _showFinishDialog(),
+                        icon: const Icon(Icons.stop),
+                        label: const Text('结束'),
                         style: OutlinedButton.styleFrom(
                           minimumSize: const Size.fromHeight(52),
                           foregroundColor: Colors.red,
                         ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.stop, size: 20),
-                            SizedBox(width: 4),
-                            Text('结束'),
-                          ],
-                        ),
                       ),
                     ),
-                    SizedBox(width: 12),
+                    const SizedBox(width: 12),
                     Expanded(
                       flex: 2,
-                      child: FilledButton(
+                      child: FilledButton.icon(
                         onPressed: () {
                           ref.read(feedbackServiceProvider).feedback();
                           ref.read(rollCallProvider.notifier).nextStudent();
                         },
+                        icon: const Icon(Icons.navigate_next),
+                        label: Text(state.hasNext ? '下一位' : '完成'),
                         style: FilledButton.styleFrom(
                           minimumSize: const Size.fromHeight(52),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.navigate_next, size: 20),
-                            SizedBox(width: 4),
-                            Text(state.hasNext ? '下一位' : '完成'),
-                          ],
                         ),
                       ),
                     ),
