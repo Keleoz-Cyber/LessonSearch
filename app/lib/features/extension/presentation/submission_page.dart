@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../../shared/providers.dart';
 import '../../../shared/widgets/toast.dart';
 import '../../../core/network/api_client.dart';
+import '../../../features/attendance/domain/models.dart';
 import '../data/submission_service.dart';
 
 final currentWeekProvider = FutureProvider<Map<String, dynamic>>((ref) async {
@@ -25,25 +26,41 @@ final myDutyProvider = FutureProvider<Map<String, dynamic>>((ref) async {
   }
 });
 
-final nameCheckTasksProvider = FutureProvider.family<List<dynamic>, int>((
+final localNameCheckTasksProvider = FutureProvider<List<Map<String, dynamic>>>((
   ref,
-  weekNumber,
 ) async {
-  final api = ref.watch(apiClientProvider);
-  final res = await api.dio.get(
-    '/tasks',
-    queryParameters: {'status': 'completed', 'type': 'name_check'},
+  final repo = ref.watch(attendanceRepositoryProvider);
+  final studentRepo = ref.watch(studentRepositoryProvider);
+
+  final tasks = await repo.getCompletedNameCheckTasks();
+
+  final startOfWeek = DateTime.now().subtract(
+    Duration(days: DateTime.now().weekday - 1),
+  );
+  final weekStart = DateTime(
+    startOfWeek.year,
+    startOfWeek.month,
+    startOfWeek.day,
   );
 
-  final tasks = res.data as List;
+  final weekTasks = tasks.where((t) => t.createdAt.isAfter(weekStart)).toList();
 
-  return tasks.where((t) {
-    final createdAt = DateTime.parse(t['created_at'] as String);
-    final startOfWeek = DateTime.now().subtract(
-      Duration(days: DateTime.now().weekday - 1),
-    );
-    return createdAt.isAfter(startOfWeek.subtract(const Duration(days: 1)));
-  }).toList();
+  final result = <Map<String, dynamic>>[];
+  for (final task in weekTasks) {
+    final classNames = await studentRepo.getClassNames(task.classIds);
+    result.add({
+      'id': task.id,
+      'class_ids': task.classIds,
+      'class_names': classNames,
+      'created_at': task.createdAt.toIso8601String(),
+      'record_count': 0,
+    });
+
+    final records = await repo.getRecordsByTask(task.id);
+    result.last['record_count'] = records.length;
+  }
+
+  return result;
 });
 
 final adminsProvider = FutureProvider<List<dynamic>>((ref) async {
@@ -144,7 +161,7 @@ class _SubmissionPageState extends ConsumerState<SubmissionPage> {
                 return _buildNoDutyView(context);
               }
 
-              final tasksAsync = ref.watch(nameCheckTasksProvider(weekNumber));
+              final tasksAsync = ref.watch(localNameCheckTasksProvider);
 
               return SingleChildScrollView(
                 padding: const EdgeInsets.all(16),
@@ -187,7 +204,7 @@ class _SubmissionPageState extends ConsumerState<SubmissionPage> {
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      '本周记名任务',
+                      '本周记名任务（本地）',
                       style: Theme.of(context).textTheme.titleMedium,
                     ),
                     const SizedBox(height: 8),
@@ -277,11 +294,7 @@ class _SubmissionPageState extends ConsumerState<SubmissionPage> {
                                       '未知班级',
                                 ),
                                 subtitle: Text(
-                                  DateFormat('yyyy-MM-dd HH:mm').format(
-                                    DateTime.parse(
-                                      task['created_at'] as String,
-                                    ),
-                                  ),
+                                  '${task['record_count']} 条记录 · ${DateFormat('yyyy-MM-dd HH:mm').format(DateTime.parse(task['created_at'] as String))}',
                                 ),
                               );
                             },
