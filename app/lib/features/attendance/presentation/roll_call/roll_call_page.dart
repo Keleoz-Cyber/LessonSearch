@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../shared/providers.dart';
 import '../../../../shared/widgets/loading_overlay.dart';
 import '../../../../shared/widgets/toast.dart';
+import '../../application/roll_call_notifier.dart';
 
 class RollCallPage extends ConsumerStatefulWidget {
   final List<int> classIds;
@@ -182,6 +183,9 @@ class _RollCallPageState extends ConsumerState<RollCallPage> {
             padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
             child: Column(
               children: [
+                // 预览区：上三位 + 下一位
+                _buildPreviewArea(context, state),
+
                 Spacer(flex: 2),
 
                 // 学生姓名
@@ -226,16 +230,34 @@ class _RollCallPageState extends ConsumerState<RollCallPage> {
                   children: [
                     Expanded(
                       child: OutlinedButton.icon(
+                        onPressed: state.hasPrev
+                            ? () {
+                                ref.read(feedbackServiceProvider).feedback();
+                                ref
+                                    .read(rollCallProvider.notifier)
+                                    .prevStudent();
+                              }
+                            : null,
+                        icon: Icon(Icons.navigate_before),
+                        label: Text('上一个'),
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: Size.fromHeight(52),
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: OutlinedButton.icon(
                         onPressed: () => _showFinishDialog(),
                         icon: Icon(Icons.stop),
-                        label: Text('结束查课'),
+                        label: Text('结束'),
                         style: OutlinedButton.styleFrom(
                           minimumSize: Size.fromHeight(52),
                           foregroundColor: Colors.red,
                         ),
                       ),
                     ),
-                    SizedBox(width: 16),
+                    SizedBox(width: 8),
                     Expanded(
                       flex: 2,
                       child: FilledButton.icon(
@@ -244,7 +266,7 @@ class _RollCallPageState extends ConsumerState<RollCallPage> {
                           ref.read(rollCallProvider.notifier).nextStudent();
                         },
                         icon: Icon(Icons.navigate_next),
-                        label: Text(state.hasNext ? '下一位' : '最后一位'),
+                        label: Text(state.hasNext ? '下一位' : '完成'),
                         style: FilledButton.styleFrom(
                           minimumSize: Size.fromHeight(52),
                         ),
@@ -256,6 +278,96 @@ class _RollCallPageState extends ConsumerState<RollCallPage> {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildPreviewArea(BuildContext context, RollCallState state) {
+    final prevThree = state.prevThreeStudents;
+    final nextOne = state.nextStudent;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+      decoration: BoxDecoration(
+        color: Theme.of(
+          context,
+        ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          // 上三位
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '已点',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.labelSmall?.copyWith(color: Colors.grey[600]),
+                ),
+                const SizedBox(height: 4),
+                if (prevThree.isEmpty)
+                  Text(
+                    '无',
+                    style: TextStyle(color: Colors.grey[400], fontSize: 13),
+                  )
+                else
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 2,
+                    children: prevThree.map((s) {
+                      final isCalled = state.isCalled(s.id);
+                      return Text(
+                        s.name,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: isCalled
+                              ? Colors.green[700]
+                              : Colors.grey[600],
+                          fontWeight: isCalled
+                              ? FontWeight.w500
+                              : FontWeight.normal,
+                        ),
+                      );
+                    }).toList(),
+                  ),
+              ],
+            ),
+          ),
+          // 分隔
+          Container(width: 1, height: 40, color: Colors.grey[300]),
+          const SizedBox(width: 12),
+          // 下一位
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '下一位',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.labelSmall?.copyWith(color: Colors.grey[600]),
+                ),
+                const SizedBox(height: 4),
+                if (nextOne == null)
+                  Text(
+                    '无',
+                    style: TextStyle(color: Colors.grey[400], fontSize: 13),
+                  )
+                else
+                  Text(
+                    nextOne.name,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

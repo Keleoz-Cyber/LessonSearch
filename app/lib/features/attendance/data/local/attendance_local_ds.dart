@@ -178,6 +178,13 @@ class AttendanceLocalDataSource {
     );
   }
 
+  /// 删除考勤记录（用于点名撤销）
+  Future<void> deleteRecord(int recordId) async {
+    await (_db.delete(
+      _db.attendanceRecords,
+    )..where((r) => r.id.equals(recordId))).go();
+  }
+
   Future<List<domain.AttendanceRecord>> getRecordsByTask(String taskId) async {
     final rows =
         await (_db.select(_db.attendanceRecords)
