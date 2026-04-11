@@ -101,7 +101,7 @@ class _SubmissionPageState extends ConsumerState<SubmissionPage> {
 
       if (mounted) {
         Toast.show(context, '提交成功，等待审核');
-        context.go('/extension/weekly-summary');
+        context.push('/extension/weekly-summary');
       }
     } catch (e) {
       if (mounted) {
