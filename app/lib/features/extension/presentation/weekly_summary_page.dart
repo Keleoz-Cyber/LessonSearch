@@ -128,7 +128,6 @@ class _WeeklySummaryPageState extends ConsumerState<WeeklySummaryPage>
                 isAdmin: auth.isAdmin,
                 onWeekSelected: (w) => setState(() => _selectedWeek = w),
               ),
-              _MySubmissionsTab(),
             ],
           );
         },
@@ -576,3 +575,6 @@ class _HistoryWeekTab extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
