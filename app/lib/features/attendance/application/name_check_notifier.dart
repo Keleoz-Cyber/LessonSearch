@@ -14,6 +14,7 @@ class NameCheckState {
   final int processedStudents;
   final bool isLoading;
   final bool isFinished;
+  final bool isEditing; // 重新编辑模式（从确认页返回）
   final String? error;
 
   const NameCheckState({
@@ -25,6 +26,7 @@ class NameCheckState {
     this.processedStudents = 0,
     this.isLoading = false,
     this.isFinished = false,
+    this.isEditing = false,
     this.error,
   });
 
@@ -60,6 +62,7 @@ class NameCheckState {
     Map<int, List<StudentWithStatus>>? studentsByClass,
     bool? isLoading,
     bool? isFinished,
+    bool? isEditing,
     String? error,
   }) {
     final newStudentsByClass = studentsByClass ?? this.studentsByClass;
@@ -76,6 +79,7 @@ class NameCheckState {
           : processedStudents,
       isLoading: isLoading ?? this.isLoading,
       isFinished: isFinished ?? this.isFinished,
+      isEditing: isEditing ?? this.isEditing,
       error: error,
     );
   }
@@ -385,6 +389,6 @@ class NameCheckNotifier extends StateNotifier<NameCheckState> {
 
   /// 从确认页返回继续编辑
   void resumeEditing() {
-    state = state.copyWith(isFinished: false);
+    state = state.copyWith(isFinished: false, isEditing: true);
   }
 }

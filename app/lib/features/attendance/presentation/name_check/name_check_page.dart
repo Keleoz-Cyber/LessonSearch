@@ -296,7 +296,13 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
           .read(nameCheckProvider.notifier)
           .markStudent(classId, _focusedIndex!, status, remark: remark);
 
-      // 查找当前班级下一个待处理学生
+      // 编辑模式：修改状态后不自动跳转，保持当前焦点
+      if (state.isEditing) {
+        setState(() => _focusedIndex = _focusedIndex);
+        return;
+      }
+
+      // 正常记名流程：查找当前班级下一个待处理学生
       final nextIndex = students.indexWhere(
         (s) => s.status == AttendanceStatus.pending,
         _focusedIndex! + 1,
