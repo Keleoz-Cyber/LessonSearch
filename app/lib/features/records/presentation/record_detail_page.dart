@@ -349,7 +349,7 @@ class _RecordRow extends StatelessWidget {
   };
 
   String get _label => switch (entry.status) {
-    AttendanceStatus.present => '到',
+    AttendanceStatus.present => '到课',
     AttendanceStatus.absent => '缺勤',
     AttendanceStatus.late_ => '迟到',
     AttendanceStatus.leave => '请假',
