@@ -121,7 +121,10 @@ class _SubmissionPageState extends ConsumerState<SubmissionPage>
   }
 
   void _onTabChanged() {
-    if (_tabController.index == 1 && mounted) {
+    if (_tabController.index == 0 && mounted) {
+      ref.invalidate(localNameCheckTasksProvider);
+      ref.invalidate(submittedTaskIdsProvider);
+    } else if (_tabController.index == 1 && mounted) {
       ref.invalidate(mySubmissionsProvider);
     }
   }
