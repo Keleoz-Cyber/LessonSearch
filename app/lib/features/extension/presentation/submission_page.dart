@@ -138,7 +138,7 @@ class _SubmissionPageState extends ConsumerState<SubmissionPage> {
               ),
             ),
             data: (duty) {
-              final hasDuty = duty['has_duty'] as bool;
+              final hasDuty = duty['has_duty'] as bool? ?? false;
 
               if (!hasDuty) {
                 return _buildNoDutyView(context);
@@ -272,7 +272,10 @@ class _SubmissionPageState extends ConsumerState<SubmissionPage> {
                                     });
                                   }
                                 },
-                                title: Text(task['class_name'] ?? '未知班级'),
+                                title: Text(
+                                  (task['class_names'] as List?)?.join(', ') ??
+                                      '未知班级',
+                                ),
                                 subtitle: Text(
                                   DateFormat('yyyy-MM-dd HH:mm').format(
                                     DateTime.parse(

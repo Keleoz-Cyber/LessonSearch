@@ -250,7 +250,7 @@ class _CurrentWeekTab extends ConsumerWidget {
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (e, _) => Text('加载职务状态失败'),
               data: (duty) {
-                final hasDuty = duty['has_duty'] as bool;
+                final hasDuty = duty['has_duty'] as bool? ?? false;
                 if (!hasDuty) {
                   return const Card(
                     child: Padding(
@@ -269,34 +269,6 @@ class _CurrentWeekTab extends ConsumerWidget {
                             SizedBox(height: 8),
                             Text(
                               '无需提交考勤记录',
-                              style: TextStyle(color: Colors.grey),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  );
-                }
-
-                final submitted = duty['submitted'] as bool;
-                if (!submitted) {
-                  return Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(
-                              Icons.pending_actions,
-                              size: 48,
-                              color: Colors.orange,
-                            ),
-                            const SizedBox(height: 16),
-                            const Text('本周尚未提交'),
-                            const SizedBox(height: 8),
-                            Text(
-                              '请先创建记名任务后提交',
                               style: TextStyle(color: Colors.grey),
                             ),
                           ],

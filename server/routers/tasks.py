@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from typing import Optional
 
 from app.core.database import get_db
-from app.models import AttendanceTask, TaskClass, AttendanceRecord, User
+from app.models import AttendanceTask, TaskClass, AttendanceRecord, User, Class
 from app.schemas import TaskCreate, TaskUpdate, TaskOut
 from routers.auth import get_current_user, _verify_token
 
@@ -22,6 +22,12 @@ def _get_user_id_from_token(authorization: Optional[str]) -> Optional[int]:
 
 def _task_to_out(task: AttendanceTask, db: Session) -> TaskOut:
     class_ids = [tc.class_id for tc in task.task_classes]
+    class_names = []
+    for cid in class_ids:
+        cls = db.query(Class).filter(Class.id == cid).first()
+        if cls:
+            class_names.append(cls.display_name)
+    
     record_count = db.query(AttendanceRecord).filter(
         AttendanceRecord.task_id == task.id
     ).count()
@@ -37,6 +43,7 @@ def _task_to_out(task: AttendanceTask, db: Session) -> TaskOut:
         created_at=task.created_at,
         updated_at=task.updated_at,
         class_ids=class_ids,
+        class_names=class_names,
         record_count=record_count,
     )
 
