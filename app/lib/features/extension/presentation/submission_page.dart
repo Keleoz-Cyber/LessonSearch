@@ -27,11 +27,23 @@ final myDutyProvider = FutureProvider<Map<String, dynamic>>((ref) async {
   }
 });
 
+final submittedTaskIdsProvider = FutureProvider<Set<String>>((ref) async {
+  final api = ref.watch(apiClientProvider);
+  try {
+    final res = await api.dio.get('/submissions/submitted-task-ids');
+    final ids = res.data['task_ids'] as List;
+    return ids.map((id) => id.toString()).toSet();
+  } catch (e) {
+    return {};
+  }
+});
+
 final localNameCheckTasksProvider = FutureProvider<List<Map<String, dynamic>>>((
   ref,
 ) async {
   final repo = ref.watch(attendanceRepositoryProvider);
   final studentRepo = ref.watch(studentRepositoryProvider);
+  final submittedIds = await ref.watch(submittedTaskIdsProvider.future);
 
   final tasks = await repo.getCompletedNameCheckTasks();
 
@@ -44,7 +56,11 @@ final localNameCheckTasksProvider = FutureProvider<List<Map<String, dynamic>>>((
     startOfWeek.day,
   );
 
-  final weekTasks = tasks.where((t) => t.createdAt.isAfter(weekStart)).toList();
+  final weekTasks = tasks
+      .where(
+        (t) => t.createdAt.isAfter(weekStart) && !submittedIds.contains(t.id),
+      )
+      .toList();
 
   final result = <Map<String, dynamic>>[];
   for (final task in weekTasks) {

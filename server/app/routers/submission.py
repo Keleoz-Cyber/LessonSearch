@@ -89,6 +89,31 @@ async def create_submission(
     return submission
 
 
+@router.get("/submitted-task-ids")
+async def get_submitted_task_ids(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """获取已提交的任务ID列表"""
+    submissions = db.query(Submission).filter(
+        Submission.user_id == current_user.id
+    ).all()
+    
+    submitted_task_ids = set()
+    for sub in submissions:
+        submission_records = db.query(SubmissionRecord).filter(
+            SubmissionRecord.submission_id == sub.id
+        ).all()
+        for sr in submission_records:
+            record = db.query(AttendanceRecord).filter(
+                AttendanceRecord.id == sr.record_id
+            ).first()
+            if record:
+                submitted_task_ids.add(record.task_id)
+    
+    return {"task_ids": list(submitted_task_ids)}
+
+
 @router.get("/", response_model=List[SubmissionResponse])
 async def get_submissions(
     week_number: int = None,
