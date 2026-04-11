@@ -22,7 +22,7 @@ class _TextGenPageState extends ConsumerState<TextGenPage>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   String _groupReport = '';
-  String _committeeReport = '';
+  List<ClassStats> _classStatsList = [];
   bool _generated = false;
 
   @override
@@ -98,9 +98,38 @@ class _TextGenPageState extends ConsumerState<TextGenPage>
 
     setState(() {
       _groupReport = generateGroupReport(classStatsList, date);
-      _committeeReport = generateCommitteeReport(classStatsList, date);
+      _classStatsList = classStatsList;
       _generated = true;
     });
+  }
+
+  String _generateClassCommitteeReport(ClassStats cs, String date) {
+    return defaultCommitteeReportTemplate
+        .replaceAll('{date}', date)
+        .replaceAll('{class_name}', cs.className)
+        .replaceAll('{total}', '${cs.total}')
+        .replaceAll('{present}', '${cs.present}')
+        .replaceAll('{absent}', '${cs.absent}')
+        .replaceAll('{late}', '${cs.late_}')
+        .replaceAll('{leave}', '${cs.leave}')
+        .replaceAll('{other}', '${cs.other}')
+        .replaceAll('{absent_names}', _formatNames(cs.absentStudents))
+        .replaceAll('{late_names}', _formatNames(cs.lateStudents))
+        .replaceAll('{leave_names}', _formatNames(cs.leaveStudents))
+        .replaceAll('{other_names}', _formatNamesWithRemark(cs.otherStudents))
+        .trim();
+  }
+
+  String _formatNames(List<StudentRecord> students) {
+    if (students.isEmpty) return '无';
+    return students.map((s) => s.name).join('、');
+  }
+
+  String _formatNamesWithRemark(List<StudentRecord> students) {
+    if (students.isEmpty) return '无';
+    return students
+        .map((s) => s.remark != null ? '${s.name}(${s.remark})' : s.name)
+        .join('、');
   }
 
   void _copyAndOpenApp(String text, bool isWechat) async {
@@ -167,10 +196,7 @@ class _TextGenPageState extends ConsumerState<TextGenPage>
         ),
         body: TabBarView(
           controller: _tabController,
-          children: [
-            _buildTextView(_groupReport, isWechat: true),
-            _buildTextView(_committeeReport, isWechat: false),
-          ],
+          children: [_buildGroupReportView(), _buildCommitteeReportView()],
         ),
         bottomNavigationBar: SafeArea(
           top: false,
@@ -189,14 +215,14 @@ class _TextGenPageState extends ConsumerState<TextGenPage>
     );
   }
 
-  Widget _buildTextView(String text, {required bool isWechat}) {
+  Widget _buildGroupReportView() {
     return Column(
       children: [
         Expanded(
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(16),
             child: SelectableText(
-              text,
+              _groupReport,
               style: const TextStyle(fontSize: 15, height: 1.6),
             ),
           ),
@@ -204,16 +230,69 @@ class _TextGenPageState extends ConsumerState<TextGenPage>
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           child: FilledButton.icon(
-            onPressed: () => _copyAndOpenApp(text, isWechat),
-            icon: Icon(isWechat ? Icons.wechat : Icons.message),
-            label: Text(isWechat ? '复制并打开微信' : '复制并打开QQ'),
+            onPressed: () => _copyAndOpenApp(_groupReport, true),
+            icon: const Icon(Icons.wechat),
+            label: const Text('复制并打开微信'),
             style: FilledButton.styleFrom(
               minimumSize: const Size.fromHeight(44),
-              backgroundColor: isWechat ? Colors.green : Colors.blue,
+              backgroundColor: Colors.green,
             ),
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildCommitteeReportView() {
+    final state = ref.read(nameCheckProvider);
+    final taskTime = state.task?.createdAt ?? DateTime.now();
+    final date = taskTime.toString().substring(0, 16);
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: _classStatsList.length,
+      itemBuilder: (context, index) {
+        final cs = _classStatsList[index];
+        final text = _generateClassCommitteeReport(cs, date);
+
+        return Card(
+          margin: const EdgeInsets.only(bottom: 12),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        cs.className,
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    FilledButton.icon(
+                      onPressed: () => _copyAndOpenApp(text, false),
+                      icon: const Icon(Icons.copy, size: 18),
+                      label: const Text('复制'),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: Colors.blue,
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                SelectableText(
+                  text,
+                  style: const TextStyle(fontSize: 14, height: 1.5),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }
