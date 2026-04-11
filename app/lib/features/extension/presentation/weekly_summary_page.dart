@@ -55,7 +55,7 @@ class _WeeklySummaryPageState extends ConsumerState<WeeklySummaryPage>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 2, vsync: this);
   }
 
   @override
@@ -77,7 +77,6 @@ class _WeeklySummaryPageState extends ConsumerState<WeeklySummaryPage>
             icon: const Icon(Icons.refresh),
             onPressed: () {
               ref.invalidate(currentWeekProvider);
-              ref.invalidate(mySubmissionsProvider);
               ref.invalidate(pendingSubmissionsProvider);
               ref.invalidate(myDutyProvider);
             },
@@ -88,7 +87,6 @@ class _WeeklySummaryPageState extends ConsumerState<WeeklySummaryPage>
           tabs: const [
             Tab(text: '本周汇总'),
             Tab(text: '历史周次'),
-            Tab(text: '我的提交'),
           ],
         ),
       ),
