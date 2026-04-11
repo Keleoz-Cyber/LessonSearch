@@ -8,6 +8,7 @@ from sqlalchemy import func
 from typing import List
 from datetime import datetime
 from io import BytesIO
+from urllib.parse import quote
 import openpyxl
 from openpyxl.styles import Font, Alignment, Border, Side
 
@@ -515,8 +516,9 @@ async def export_week_excel(
     
     # 返回文件
     filename = f"第{week_number}周周考勤表.xlsx"
+    encoded_filename = quote(filename)
     return StreamingResponse(
         output,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={"Content-Disposition": f"attachment; filename*=UTF-8''{filename}"}
+        headers={"Content-Disposition": f"attachment; filename*=UTF-8''{encoded_filename}"}
     )
