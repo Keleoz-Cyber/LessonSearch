@@ -234,7 +234,7 @@ async def get_week_summary_detail(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """获取周汇总详细名单（管理员）"""
+    """获取周汇总详细名单（管理员）- 表格形式"""
     if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="需要管理员权限")
     
@@ -245,8 +245,7 @@ async def get_week_summary_detail(
     
     approved_ids = [s.id for s in approved_submissions]
     
-    late_records = []
-    absent_records = []
+    student_stats = {}
     
     if approved_ids:
         submission_records = db.query(SubmissionRecord).filter(
@@ -265,27 +264,49 @@ async def get_week_summary_detail(
                 
                 if student:
                     class_ = db.query(Class).filter(Class.id == student.class_id).first()
+                    major = None
+                    if class_:
+                        major = db.query(Major).filter(Major.id == class_.major_id).first()
                     
-                    detail = {
-                        "student_id": student.id,
-                        "student_name": student.name,
-                        "student_no": student.student_no,
-                        "class_name": class_.display_name if class_ else "未知",
-                        "status": record.status
-                    }
+                    sid = student.id
+                    if sid not in student_stats:
+                        student_stats[sid] = {
+                            "student_id": sid,
+                            "name": student.name,
+                            "student_no": student.student_no,
+                            "class_name": class_.display_name if class_ else "未知",
+                            "major_short_name": major.short_name if major else "",
+                            "class_code": class_.class_code if class_ else "",
+                            "late": 0,
+                            "absent": 0,
+                        }
                     
                     if record.status == "late":
-                        late_records.append(detail)
+                        student_stats[sid]["late"] += 1
                     elif record.status == "absent":
-                        absent_records.append(detail)
+                        student_stats[sid]["absent"] += 1
+    
+    sorted_students = sorted(
+        student_stats.values(),
+        key=lambda x: (x["major_short_name"], int(x["class_code"]) if x["class_code"].isdigit() else 0, x["student_no"])
+    )
+    
+    table_data = []
+    for i, s in enumerate(sorted_students, 1):
+        table_data.append({
+            "index": i,
+            "name": s["name"],
+            "class_name": s["class_name"],
+            "student_no": s["student_no"],
+            "late": s["late"],
+            "absent": s["absent"],
+            "total": (s["late"] // 2) + s["absent"],
+        })
     
     return {
         "week_number": week_number,
-        "late_records": late_records,
-        "absent_records": absent_records,
-        "late_count": len(late_records),
-        "absent_count": len(absent_records),
-        "total_count": len(late_records) + len(absent_records)
+        "table_data": table_data,
+        "total_count": len(table_data),
     }
 
 

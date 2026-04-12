@@ -595,10 +595,7 @@ class _CurrentWeekTab extends ConsumerWidget {
           .read(submissionServiceProvider)
           .getWeekSummaryDetail(weekNumber);
 
-      final lateRecords = (detail['late_records'] as List? ?? [])
-          .map((r) => r as Map<String, dynamic>)
-          .toList();
-      final absentRecords = (detail['absent_records'] as List? ?? [])
+      final tableData = (detail['table_data'] as List? ?? [])
           .map((r) => r as Map<String, dynamic>)
           .toList();
 
@@ -607,56 +604,76 @@ class _CurrentWeekTab extends ConsumerWidget {
         builder: (ctx) => AlertDialog(
           title: Text('第$weekNumber周汇总名单'),
           content: SizedBox(
-            width: 400,
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Row(
-                    children: [
-                      _buildMiniStat('迟到', lateRecords.length, Colors.orange),
-                      const SizedBox(width: 12),
-                      _buildMiniStat('缺勤', absentRecords.length, Colors.red),
-                    ],
+            width: 500,
+            height: 400,
+            child: tableData.isEmpty
+                ? const Center(child: Text('暂无异常记录'))
+                : SingleChildScrollView(
+                    child: DataTable(
+                      headingRowColor: WidgetStateProperty.all(
+                        Theme.of(context).colorScheme.surfaceContainerHighest,
+                      ),
+                      columns: const [
+                        DataColumn(
+                          label: Text(
+                            '序号',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        DataColumn(
+                          label: Text(
+                            '姓名',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        DataColumn(
+                          label: Text(
+                            '班级',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        DataColumn(
+                          label: Text(
+                            '学号',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        DataColumn(
+                          label: Text(
+                            '迟到',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        DataColumn(
+                          label: Text(
+                            '旷课',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        DataColumn(
+                          label: Text(
+                            '累计',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ],
+                      rows: tableData
+                          .map(
+                            (row) => DataRow(
+                              cells: [
+                                DataCell(Text('${row['index']}')),
+                                DataCell(Text(row['name'] as String)),
+                                DataCell(Text(row['class_name'] as String)),
+                                DataCell(Text(row['student_no'] as String)),
+                                DataCell(Text('${row['late']}')),
+                                DataCell(Text('${row['absent']}')),
+                                DataCell(Text('${row['total']}')),
+                              ],
+                            ),
+                          )
+                          .toList(),
+                    ),
                   ),
-                  const SizedBox(height: 16),
-                  if (absentRecords.isNotEmpty) ...[
-                    Text(
-                      '缺勤名单:',
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 8),
-                    ...absentRecords.map(
-                      (r) => Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 2),
-                        child: Text(
-                          '- ${r['student_name']} (${r['student_no']}) ${r['class_name']}',
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                  ],
-                  if (lateRecords.isNotEmpty) ...[
-                    Text(
-                      '迟到名单:',
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 8),
-                    ...lateRecords.map(
-                      (r) => Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 2),
-                        child: Text(
-                          '- ${r['student_name']} (${r['student_no']}) ${r['class_name']}',
-                        ),
-                      ),
-                    ),
-                  ],
-                  if (absentRecords.isEmpty && lateRecords.isEmpty)
-                    const Center(child: Text('暂无异常记录')),
-                ],
-              ),
-            ),
           ),
           actions: [
             TextButton(
@@ -669,17 +686,6 @@ class _CurrentWeekTab extends ConsumerWidget {
     } catch (e) {
       Toast.show(context, '加载详情失败: $e');
     }
-  }
-
-  Widget _buildMiniStat(String label, int count, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Text('$label: $count', style: TextStyle(color: color)),
-    );
   }
 
   Widget _buildStatItem(
