@@ -67,7 +67,7 @@ class _RealNamePageState extends ConsumerState<RealNamePage> {
           title: const Text('完善信息'),
           automaticallyImplyLeading: false,
         ),
-        body: Padding(
+        body: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -94,7 +94,7 @@ class _RealNamePageState extends ConsumerState<RealNamePage> {
                 ),
                 onSubmitted: (_) => _submit(),
               ),
-              const Spacer(),
+              const SizedBox(height: 400),
               FilledButton(
                 onPressed: _loading ? null : _submit,
                 style: FilledButton.styleFrom(
