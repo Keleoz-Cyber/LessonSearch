@@ -80,7 +80,6 @@ class WeeklySummaryPage extends ConsumerStatefulWidget {
 class _WeeklySummaryPageState extends ConsumerState<WeeklySummaryPage>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  int _selectedWeek = 0;
 
   @override
   void initState() {
@@ -144,9 +143,6 @@ class _WeeklySummaryPageState extends ConsumerState<WeeklySummaryPage>
         ),
         data: (weekData) {
           final weekNumber = weekData['week_number'] as int;
-          if (_selectedWeek == 0) {
-            _selectedWeek = weekNumber;
-          }
 
           return TabBarView(
             controller: _tabController,
@@ -156,11 +152,7 @@ class _WeeklySummaryPageState extends ConsumerState<WeeklySummaryPage>
                 weekData: weekData,
                 isAdmin: auth.isAdmin,
               ),
-              _HistoryWeekTab(
-                currentWeek: weekNumber,
-                isAdmin: auth.isAdmin,
-                onWeekSelected: (w) => setState(() => _selectedWeek = w),
-              ),
+              _HistoryWeekTab(currentWeek: weekNumber, isAdmin: auth.isAdmin),
             ],
           );
         },
@@ -714,8 +706,13 @@ class _CurrentWeekTab extends ConsumerWidget {
         return weekSummaryAsync.when(
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (e, _) => Text('加载汇总数据失败: $e'),
-          data: (summary) =>
-              _buildPublishedSection(context, summary, exportStatus),
+          data: (summary) => _buildPublishedSection(
+            context,
+            ref,
+            summary,
+            exportStatus,
+            weekNumber,
+          ),
         );
       },
     );
@@ -767,8 +764,10 @@ class _CurrentWeekTab extends ConsumerWidget {
 
   Widget _buildPublishedSection(
     BuildContext context,
+    WidgetRef ref,
     Map<String, dynamic> summary,
     Map<String, dynamic> exportStatus,
+    int weekNumber,
   ) {
     final lateCount = summary['late_count'] as int? ?? 0;
     final absentCount = summary['absent_count'] as int? ?? 0;
@@ -778,80 +777,100 @@ class _CurrentWeekTab extends ConsumerWidget {
     final total = (lateCount / 2).floor() + absentCount;
 
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Icon(Icons.check_circle, color: Colors.green),
-                const SizedBox(width: 8),
-                const Expanded(child: Text('本周汇总已发布')),
-              ],
-            ),
-            const SizedBox(height: 16),
-            if (exportedByName != null)
-              Text(
-                '导出人: $exportedByName',
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-            if (exportedAt != null)
-              Text(
-                '导出时间: ${DateFormat('yyyy-MM-dd HH:mm').format(DateTime.parse(exportedAt))}',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-              ),
-            const Divider(height: 24),
-            Text('本周统计', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: _buildStatItem(
-                    context,
-                    '迟到/早退',
-                    lateCount,
-                    Colors.orange,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: _buildStatItem(context, '旷课', absentCount, Colors.red),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: _buildStatItem(
-                    context,
-                    '已审核提交',
-                    approvedCount,
-                    Colors.green,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
+      child: InkWell(
+        onTap: () => _showSummaryDetailDialog(context, ref, weekNumber),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
                 children: [
-                  const Icon(Icons.info_outline, size: 20, color: Colors.grey),
+                  const Icon(Icons.check_circle, color: Colors.green),
                   const SizedBox(width: 8),
+                  const Expanded(child: Text('本周汇总已发布')),
+                  const Icon(Icons.chevron_right, color: Colors.grey),
+                ],
+              ),
+              const SizedBox(height: 16),
+              if (exportedByName != null)
+                Text(
+                  '导出人: $exportedByName',
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+              if (exportedAt != null)
+                Text(
+                  '导出时间: ${DateFormat('yyyy-MM-dd HH:mm').format(DateTime.parse(exportedAt))}',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              const Divider(height: 24),
+              Text('本周统计', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 12),
+              Row(
+                children: [
                   Expanded(
-                    child: Text(
-                      '累计: $total 次',
-                      style: Theme.of(context).textTheme.bodyMedium,
+                    child: _buildStatItem(
+                      context,
+                      '迟到/早退',
+                      lateCount,
+                      Colors.orange,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: _buildStatItem(
+                      context,
+                      '旷课',
+                      absentCount,
+                      Colors.red,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: _buildStatItem(
+                      context,
+                      '已审核提交',
+                      approvedCount,
+                      Colors.green,
                     ),
                   ),
                 ],
               ),
-            ),
-          ],
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.info_outline,
+                      size: 20,
+                      color: Colors.grey,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        '累计: $total 次',
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '点击查看详细名单',
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: Colors.grey),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -1266,13 +1285,8 @@ class _PendingSubmissionCard extends ConsumerWidget {
 class _HistoryWeekTab extends ConsumerWidget {
   final int currentWeek;
   final bool isAdmin;
-  final void Function(int) onWeekSelected;
 
-  const _HistoryWeekTab({
-    required this.currentWeek,
-    required this.isAdmin,
-    required this.onWeekSelected,
-  });
+  const _HistoryWeekTab({required this.currentWeek, required this.isAdmin});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -1285,10 +1299,7 @@ class _HistoryWeekTab extends ConsumerWidget {
         return _HistoryWeekCard(
           weekNumber: week,
           currentWeek: currentWeek,
-          onTap: () {
-            onWeekSelected(week);
-            Toast.show(context, '周次详情功能暂未开发');
-          },
+          isAdmin: isAdmin,
         );
       },
     );
@@ -1298,46 +1309,176 @@ class _HistoryWeekTab extends ConsumerWidget {
 class _HistoryWeekCard extends ConsumerWidget {
   final int weekNumber;
   final int currentWeek;
-  final VoidCallback onTap;
+  final bool isAdmin;
 
   const _HistoryWeekCard({
     required this.weekNumber,
     required this.currentWeek,
-    required this.onTap,
+    required this.isAdmin,
   });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final exportStatusAsync = ref.watch(exportStatusProvider(weekNumber));
+    final weekSummaryAsync = ref.watch(weekSummaryProvider(weekNumber));
+
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
-      child: ListTile(
-        leading: const Icon(Icons.calendar_today),
-        title: Text('第 $weekNumber 周'),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (weekNumber == currentWeek) const Text('当前周'),
-            exportStatusAsync.when(
-              loading: () => const Text('加载状态...'),
-              error: (_, __) => const SizedBox.shrink(),
-              data: (status) {
-                final isPublished = status['is_published'] as bool? ?? false;
-                return Text(
-                  isPublished ? '已发布' : '未发布',
-                  style: TextStyle(
-                    color: isPublished ? Colors.green : Colors.orange,
-                    fontSize: 12,
-                  ),
-                );
-              },
-            ),
-          ],
+      child: InkWell(
+        onTap: () => _showWeekDetail(context, ref),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              const Icon(Icons.calendar_today, size: 24),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          '第 $weekNumber 周',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        if (weekNumber == currentWeek)
+                          Container(
+                            margin: const EdgeInsets.only(left: 8),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.blue.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: const Text(
+                              '当前',
+                              style: TextStyle(
+                                color: Colors.blue,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    exportStatusAsync.when(
+                      loading: () => const Text('加载状态...'),
+                      error: (_, __) => const SizedBox.shrink(),
+                      data: (status) {
+                        final isPublished =
+                            status['is_published'] as bool? ?? false;
+                        return Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: isPublished
+                                    ? Colors.green.withValues(alpha: 0.1)
+                                    : Colors.grey.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                isPublished ? '已发布' : '未发布',
+                                style: TextStyle(
+                                  color: isPublished
+                                      ? Colors.green
+                                      : Colors.grey,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ),
+                            if (isPublished)
+                              weekSummaryAsync.when(
+                                loading: () => const SizedBox.shrink(),
+                                error: (_, __) => const SizedBox.shrink(),
+                                data: (summary) {
+                                  final lateCount =
+                                      summary['late_count'] as int? ?? 0;
+                                  final absentCount =
+                                      summary['absent_count'] as int? ?? 0;
+                                  final total =
+                                      (lateCount / 2).floor() + absentCount;
+                                  if (total > 0) {
+                                    return Padding(
+                                      padding: const EdgeInsets.only(left: 8),
+                                      child: Text(
+                                        '异常: $total人',
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.red,
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                  return const SizedBox.shrink();
+                                },
+                              ),
+                          ],
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right, color: Colors.grey),
+            ],
+          ),
         ),
-        trailing: const Icon(Icons.chevron_right),
-        onTap: onTap,
       ),
     );
+  }
+
+  Future<void> _showWeekDetail(BuildContext context, WidgetRef ref) async {
+    final exportStatus = await ref
+        .read(submissionServiceProvider)
+        .getExportStatus(weekNumber);
+    final isPublished = exportStatus['is_published'] as bool? ?? false;
+
+    if (!isPublished && !isAdmin) {
+      Toast.show(context, '该周汇总尚未发布');
+      return;
+    }
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => const AlertDialog(
+        content: Row(
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(width: 20),
+            Text('正在加载...'),
+          ],
+        ),
+      ),
+    );
+
+    try {
+      final detail = await ref
+          .read(submissionServiceProvider)
+          .getWeekSummaryDetail(weekNumber);
+
+      Navigator.of(context, rootNavigator: true).pop();
+
+      final tableData = (detail['table_data'] as List? ?? [])
+          .map((r) => r as Map<String, dynamic>)
+          .toList();
+
+      showDialog(
+        context: context,
+        builder: (ctx) =>
+            _SummaryDetailDialog(weekNumber: weekNumber, tableData: tableData),
+      );
+    } catch (e) {
+      Navigator.of(context, rootNavigator: true).pop();
+      Toast.show(context, '加载详情失败: $e');
+    }
   }
 }
 

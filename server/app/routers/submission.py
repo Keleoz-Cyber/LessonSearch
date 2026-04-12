@@ -234,9 +234,13 @@ async def get_week_summary_detail(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """获取周汇总详细名单（管理员）- 表格形式"""
-    if current_user.role != "admin":
-        raise HTTPException(status_code=403, detail="需要管理员权限")
+    """获取周汇总详细名单"""
+    export = db.query(WeekExport).filter(
+        WeekExport.week_number == week_number
+    ).first()
+    
+    if current_user.role != "admin" and not export:
+        raise HTTPException(status_code=403, detail="该周汇总尚未发布")
     
     approved_submissions = db.query(Submission).filter(
         Submission.week_number == week_number,
