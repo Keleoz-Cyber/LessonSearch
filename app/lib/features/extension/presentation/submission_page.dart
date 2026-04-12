@@ -549,82 +549,303 @@ class _SubmissionCard extends ConsumerWidget {
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    '第 ${submission['week_number']} 周',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
+      child: InkWell(
+        onTap: () => _showDetailDialog(context, ref),
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      '第 ${submission['week_number']} 周',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: _getStatusColor().withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Text(
-                    _getStatusText(),
-                    style: TextStyle(
-                      color: _getStatusColor(),
-                      fontWeight: FontWeight.w500,
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: _getStatusColor().withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Text(
+                      _getStatusText(),
+                      style: TextStyle(
+                        color: _getStatusColor(),
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              DateFormat('yyyy-MM-dd HH:mm').format(submittedAt),
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ],
               ),
-            ),
-            if (reviewerName != null) ...[
-              const SizedBox(height: 4),
+              const SizedBox(height: 8),
               Text(
-                '审核人: $reviewerName',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                DateFormat('yyyy-MM-dd HH:mm').format(submittedAt),
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
               ),
-            ],
-            if (submission['review_note'] != null) ...[
-              const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(8),
+              if (reviewerName != null) ...[
+                const SizedBox(height: 4),
+                Text(
+                  '审核人: $reviewerName',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
                 ),
-                child: Text(
-                  '备注: ${submission['review_note']}',
-                  style: Theme.of(context).textTheme.bodySmall,
+              ],
+              if (submission['review_note'] != null) ...[
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    '备注: ${submission['review_note']}',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
                 ),
-              ),
-            ],
-            if (canCancel) ...[
+              ],
               const SizedBox(height: 12),
-              OutlinedButton.icon(
-                icon: const Icon(Icons.cancel),
-                label: const Text('撤回提交'),
-                style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
-                onPressed: () => _showCancelDialog(context, ref),
+              Row(
+                children: [
+                  const Icon(Icons.visibility, size: 16, color: Colors.grey),
+                  const SizedBox(width: 4),
+                  Text(
+                    '点击查看详情',
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodySmall?.copyWith(color: Colors.grey),
+                  ),
+                  const Spacer(),
+                  if (canCancel)
+                    OutlinedButton.icon(
+                      icon: const Icon(Icons.cancel, size: 18),
+                      label: const Text('撤回'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.red,
+                        visualDensity: VisualDensity.compact,
+                      ),
+                      onPressed: () => _showCancelDialog(context, ref),
+                    ),
+                ],
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showDetailDialog(BuildContext context, WidgetRef ref) async {
+    final submissionId = submission['id'] as int;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => const AlertDialog(
+        content: Row(
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(width: 20),
+            Text('加载详情...'),
           ],
         ),
       ),
+    );
+
+    try {
+      final service = ref.read(submissionServiceProvider);
+      final data = await service.getSubmissionRecords(submissionId);
+
+      Navigator.of(context, rootNavigator: true).pop();
+
+      final status = data['status'] as String?;
+      if (status == 'cancelled') {
+        showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('提交详情'),
+            content: const Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.cancel_outlined, size: 48, color: Colors.grey),
+                  SizedBox(height: 16),
+                  Text('该提交已被撤销'),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('关闭'),
+              ),
+            ],
+          ),
+        );
+        return;
+      }
+
+      final records = data['records'] as List? ?? [];
+      final lateCount = data['late_count'] as int? ?? 0;
+      final absentCount = data['absent_count'] as int? ?? 0;
+      final leaveCount = data['leave_count'] as int? ?? 0;
+      final otherCount = data['other_count'] as int? ?? 0;
+
+      final lateRecords = records.where((r) => r['status'] == 'late').toList();
+      final absentRecords = records
+          .where((r) => r['status'] == 'absent')
+          .toList();
+      final leaveRecords = records
+          .where((r) => r['status'] == 'leave')
+          .toList();
+      final otherRecords = records
+          .where((r) => r['status'] == 'other')
+          .toList();
+
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text('提交详情 - 第 ${submission['week_number']} 周'),
+          content: SizedBox(
+            width: 400,
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    children: [
+                      _buildMiniStat('迟到', lateCount, Colors.orange),
+                      const SizedBox(width: 8),
+                      _buildMiniStat('缺勤', absentCount, Colors.red),
+                      const SizedBox(width: 8),
+                      _buildMiniStat('请假', leaveCount, Colors.blue),
+                      const SizedBox(width: 8),
+                      _buildMiniStat('其他', otherCount, Colors.grey),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  if (records.isEmpty)
+                    const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(24),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.check_circle,
+                              size: 48,
+                              color: Colors.green,
+                            ),
+                            SizedBox(height: 16),
+                            Text('全部到齐，无异常记录'),
+                          ],
+                        ),
+                      ),
+                    ),
+                  if (absentRecords.isNotEmpty) ...[
+                    const Text(
+                      '缺勤名单:',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    ...absentRecords.map(
+                      (r) => Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        child: Text(
+                          '- ${r['student_name']} (${r['student_no']}) ${r['class_name']}',
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                  if (lateRecords.isNotEmpty) ...[
+                    const Text(
+                      '迟到名单:',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    ...lateRecords.map(
+                      (r) => Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        child: Text(
+                          '- ${r['student_name']} (${r['student_no']}) ${r['class_name']}',
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                  if (leaveRecords.isNotEmpty) ...[
+                    const Text(
+                      '请假名单:',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    ...leaveRecords.map(
+                      (r) => Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        child: Text(
+                          '- ${r['student_name']} (${r['student_no']}) ${r['class_name']}',
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                  if (otherRecords.isNotEmpty) ...[
+                    const Text(
+                      '其他名单:',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    ...otherRecords.map(
+                      (r) => Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        child: Text(
+                          '- ${r['student_name']} (${r['student_no']}) ${r['class_name']}',
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('关闭'),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      Navigator.of(context, rootNavigator: true).pop();
+      Toast.show(context, '加载详情失败: $e');
+    }
+  }
+
+  Widget _buildMiniStat(String label, int count, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text('$label: $count', style: TextStyle(color: color)),
     );
   }
 

@@ -232,15 +232,11 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
                     )
                   : LayoutBuilder(
                       builder: (context, constraints) {
-                        final crossAxisCount = constraints.maxWidth > 400
-                            ? 2
-                            : 1;
+                        const crossAxisCount = 2;
                         final itemWidth =
-                            (constraints.maxWidth -
-                                12 * 2 -
-                                8 * (crossAxisCount - 1)) /
+                            (constraints.maxWidth - 12 * 2 - 8) /
                             crossAxisCount;
-                        final itemHeight = 56.0;
+                        const itemHeight = 56.0;
                         return GridView.builder(
                           padding: const EdgeInsets.all(12),
                           gridDelegate:
@@ -668,11 +664,9 @@ class _ClassStudentGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final crossAxisCount = constraints.maxWidth > 400 ? 2 : 1;
-        final itemWidth =
-            (constraints.maxWidth - 12 * 2 - 8 * (crossAxisCount - 1)) /
-            crossAxisCount;
-        final itemHeight = 56.0;
+        const crossAxisCount = 2;
+        final itemWidth = (constraints.maxWidth - 12 * 2 - 8) / crossAxisCount;
+        const itemHeight = 56.0;
         return GridView.builder(
           padding: const EdgeInsets.all(12),
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
