@@ -41,7 +41,7 @@ class SettingsPage extends ConsumerWidget {
           const ListTile(
             leading: Icon(Icons.tag),
             title: Text('版本号'),
-            subtitle: Text('0.5.0'),
+            subtitle: Text('0.5.1'),
           ),
 
           const Divider(),
