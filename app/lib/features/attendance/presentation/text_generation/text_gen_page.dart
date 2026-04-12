@@ -150,7 +150,9 @@ class _TextGenPageState extends ConsumerState<TextGenPage>
   }
 
   Future<void> _finish() async {
-    ref.invalidate(localNameCheckTasksProvider);
+    final weekData = await ref.read(currentWeekProvider.future);
+    final weekNumber = weekData['week_number'] as int;
+    ref.invalidate(weekNameCheckTasksProvider(weekNumber));
     ref.invalidate(submittedTaskIdsProvider);
     context.go('/');
   }
@@ -185,7 +187,9 @@ class _TextGenPageState extends ConsumerState<TextGenPage>
         if (didPop) return;
         final shouldPop = await _onWillPop();
         if (shouldPop && context.mounted) {
-          ref.invalidate(localNameCheckTasksProvider);
+          final weekData = await ref.read(currentWeekProvider.future);
+          final weekNumber = weekData['week_number'] as int;
+          ref.invalidate(weekNameCheckTasksProvider(weekNumber));
           ref.invalidate(submittedTaskIdsProvider);
           context.go('/');
         }
