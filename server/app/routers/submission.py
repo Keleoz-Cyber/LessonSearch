@@ -176,6 +176,61 @@ async def get_pending_submissions(
     return result
 
 
+@router.get("/reviewed", response_model=List[SubmissionDetailResponse])
+async def get_reviewed_submissions(
+    week_number: int = None,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """获取已审核提交列表（管理员）"""
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="需要管理员权限")
+    
+    query = db.query(Submission).filter(
+        Submission.status.in_(["approved", "rejected"])
+    )
+    
+    if week_number:
+        query = query.filter(Submission.week_number == week_number)
+    
+    submissions = query.order_by(Submission.review_time.desc()).all()
+    
+    result = []
+    for sub in submissions:
+        user = db.query(User).filter(User.id == sub.user_id).first()
+        reviewer = None
+        if sub.reviewer_id:
+            reviewer = db.query(User).filter(User.id == sub.reviewer_id).first()
+        
+        submission_records = db.query(SubmissionRecord).filter(
+            SubmissionRecord.submission_id == sub.id
+        ).all()
+        record_count = len(submission_records)
+        task_ids = set()
+        for sr in submission_records:
+            record = db.query(AttendanceRecord).filter(AttendanceRecord.id == sr.record_id).first()
+            if record:
+                task_ids.add(record.task_id)
+        
+        result.append(SubmissionDetailResponse(
+            id=sub.id,
+            user_id=sub.user_id,
+            user_name=user.real_name if user else None,
+            user_email=user.email if user else None,
+            week_number=sub.week_number,
+            status=sub.status,
+            reviewer_id=sub.reviewer_id,
+            reviewer_name=reviewer.real_name if reviewer else None,
+            review_time=sub.review_time,
+            review_note=sub.review_note,
+            submitted_at=sub.submitted_at,
+            task_count=len(task_ids),
+            record_count=record_count
+        ))
+    
+    return result
+
+
 @router.get("/week-summary/{week_number}", response_model=WeekSummaryResponse)
 async def get_week_summary(
     week_number: int,

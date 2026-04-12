@@ -84,4 +84,14 @@ class SubmissionService {
     );
     return res.data as Map<String, dynamic>;
   }
+
+  Future<List<dynamic>> getReviewedSubmissions({int? weekNumber}) async {
+    final params = <String, dynamic>{};
+    if (weekNumber != null) params['week_number'] = weekNumber;
+    final res = await _api.dio.get(
+      '/submissions/reviewed',
+      queryParameters: params,
+    );
+    return res.data as List;
+  }
 }

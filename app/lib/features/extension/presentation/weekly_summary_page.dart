@@ -66,6 +66,15 @@ final weekSummaryDetailProvider =
           .getWeekSummaryDetail(weekNumber);
     });
 
+final reviewedSubmissionsProvider = FutureProvider.family<List<dynamic>, int>((
+  ref,
+  weekNumber,
+) {
+  return ref
+      .watch(submissionServiceProvider)
+      .getReviewedSubmissions(weekNumber: weekNumber);
+});
+
 final submissionServiceProvider = Provider<SubmissionService>((ref) {
   return SubmissionService(ref.watch(apiClientProvider));
 });
@@ -190,6 +199,7 @@ class _CurrentWeekTab extends ConsumerWidget {
         ref.invalidate(weekSubmissionStatusProvider(weekNumber));
         ref.invalidate(weekSummaryProvider(weekNumber));
         ref.invalidate(exportStatusProvider(weekNumber));
+        ref.invalidate(reviewedSubmissionsProvider(weekNumber));
         ref.invalidate(myDutyProvider);
       },
       child: SingleChildScrollView(
@@ -310,6 +320,8 @@ class _CurrentWeekTab extends ConsumerWidget {
     AsyncValue<Map<String, dynamic>> weekSummaryAsync,
     int weekNumber,
   ) {
+    final reviewedAsync = ref.watch(reviewedSubmissionsProvider(weekNumber));
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -359,6 +371,43 @@ class _CurrentWeekTab extends ConsumerWidget {
               children: pending
                   .map(
                     (s) => _PendingSubmissionCard(
+                      submission: s,
+                      weekNumber: weekNumber,
+                    ),
+                  )
+                  .toList(),
+            );
+          },
+        ),
+        const SizedBox(height: 16),
+
+        Text('已审核记录', style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 8),
+        reviewedAsync.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (e, _) => Text('加载失败: $e'),
+          data: (reviewed) {
+            if (reviewed.isEmpty) {
+              return const Card(
+                child: Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.history, size: 48, color: Colors.grey),
+                        SizedBox(height: 8),
+                        Text('暂无已审核记录'),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }
+            return Column(
+              children: reviewed
+                  .map(
+                    (s) => _ReviewedSubmissionCard(
                       submission: s,
                       weekNumber: weekNumber,
                     ),
@@ -1212,6 +1261,7 @@ class _PendingSubmissionCard extends ConsumerWidget {
       ref.invalidate(pendingSubmissionsProvider);
       ref.invalidate(weekSummaryProvider(weekNumber));
       ref.invalidate(weekSubmissionStatusProvider(weekNumber));
+      ref.invalidate(reviewedSubmissionsProvider(weekNumber));
       Toast.show(context, '审核通过');
     } on DioException catch (e) {
       final message = e.response?.data['detail'] ?? '操作失败';
@@ -1260,6 +1310,7 @@ class _PendingSubmissionCard extends ConsumerWidget {
         await service.rejectSubmission(submission['id'], note);
         ref.invalidate(pendingSubmissionsProvider);
         ref.invalidate(weekSubmissionStatusProvider(weekNumber));
+        ref.invalidate(reviewedSubmissionsProvider(weekNumber));
         Toast.show(context, '已拒绝');
       } on DioException catch (e) {
         final message = e.response?.data['detail'] ?? '操作失败';
@@ -1267,6 +1318,262 @@ class _PendingSubmissionCard extends ConsumerWidget {
       } catch (e) {
         Toast.show(context, '操作失败: $e');
       }
+    }
+  }
+
+  Widget _buildMiniStat(String label, int count, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text('$label: $count', style: TextStyle(color: color)),
+    );
+  }
+}
+
+class _ReviewedSubmissionCard extends ConsumerWidget {
+  final Map<String, dynamic> submission;
+  final int weekNumber;
+
+  const _ReviewedSubmissionCard({
+    required this.submission,
+    required this.weekNumber,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final userName =
+        submission['user_name'] ?? submission['user_email'] ?? '未知';
+    final reviewerName = submission['reviewer_name'] ?? '未知';
+    final reviewTime = submission['review_time'] != null
+        ? DateTime.parse(submission['review_time'] as String)
+        : null;
+    final submittedAt = DateTime.parse(submission['submitted_at'] as String);
+    final status = submission['status'] as String;
+    final isApproved = status == 'approved';
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: InkWell(
+        onTap: () => _showDetailDialog(context, ref),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          userName,
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '提交时间: ${DateFormat('yyyy-MM-dd HH:mm').format(submittedAt)}',
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurfaceVariant,
+                              ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: isApproved
+                          ? Colors.green.withValues(alpha: 0.1)
+                          : Colors.red.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Text(
+                      isApproved ? '已通过' : '已拒绝',
+                      style: TextStyle(
+                        color: isApproved ? Colors.green : Colors.red,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '${submission['task_count']} 个任务，${submission['record_count']} 条记录',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Icon(Icons.person_outline, size: 16, color: Colors.grey),
+                  const SizedBox(width: 4),
+                  Text(
+                    '审核人: $reviewerName',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  if (reviewTime != null)
+                    Expanded(
+                      child: Text(
+                        '审核时间: ${DateFormat('yyyy-MM-dd HH:mm').format(reviewTime)}',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              if (!isApproved && submission['review_note'] != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withValues(alpha: 0.05),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.message_outlined,
+                          size: 16,
+                          color: Colors.red,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            '拒绝理由: ${submission['review_note']}',
+                            style: const TextStyle(
+                              color: Colors.red,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showDetailDialog(BuildContext context, WidgetRef ref) async {
+    final submissionId = submission['id'] as int;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => const AlertDialog(
+        content: Row(
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(width: 20),
+            Text('正在加载...'),
+          ],
+        ),
+      ),
+    );
+
+    try {
+      final data = await ref
+          .read(submissionServiceProvider)
+          .getSubmissionRecords(submissionId);
+
+      Navigator.of(context, rootNavigator: true).pop();
+
+      final records = data['records'] as List? ?? [];
+      final lateCount = data['late_count'] as int? ?? 0;
+      final absentCount = data['absent_count'] as int? ?? 0;
+      final leaveCount = data['leave_count'] as int? ?? 0;
+
+      final lateRecords = records.where((r) => r['status'] == 'late').toList();
+      final absentRecords = records
+          .where((r) => r['status'] == 'absent')
+          .toList();
+
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text('审核详情 - ${submission['user_name'] ?? '未知'}'),
+          content: SizedBox(
+            width: 400,
+            child: records.isEmpty
+                ? const Center(child: Text('暂无异常记录'))
+                : SingleChildScrollView(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Row(
+                          children: [
+                            _buildMiniStat('迟到', lateCount, Colors.orange),
+                            const SizedBox(width: 12),
+                            _buildMiniStat('缺勤', absentCount, Colors.red),
+                            const SizedBox(width: 12),
+                            _buildMiniStat('请假', leaveCount, Colors.blue),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        if (absentRecords.isNotEmpty) ...[
+                          const Text(
+                            '缺勤名单:',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 8),
+                          ...absentRecords.map(
+                            (r) => Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 2),
+                              child: Text(
+                                '- ${r['student_name']} (${r['student_no']}) ${r['class_name']}',
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                        ],
+                        if (lateRecords.isNotEmpty) ...[
+                          const Text(
+                            '迟到名单:',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 8),
+                          ...lateRecords.map(
+                            (r) => Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 2),
+                              child: Text(
+                                '- ${r['student_name']} (${r['student_no']}) ${r['class_name']}',
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('关闭'),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      Navigator.of(context, rootNavigator: true).pop();
+      Toast.show(context, '加载详情失败: $e');
     }
   }
 
