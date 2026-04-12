@@ -216,7 +216,13 @@ class RollCallNotifier extends StateNotifier<RollCallState> {
         msg.contains('Network')) {
       return '网络连接失败，请检查网络后重试';
     }
-    return '加载失败: $e';
+    if (msg.contains('401') || msg.contains('Unauthorized')) {
+      return '请先登录后再使用';
+    }
+    if (msg.contains('返回空数据')) {
+      return '服务器返回空数据，请联系管理员';
+    }
+    return '加载失败: $msg';
   }
 
   /// 下一位（记录当前学生为已点）

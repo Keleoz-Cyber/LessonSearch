@@ -76,6 +76,9 @@ class StudentRepository {
 
   Future<void> syncStudentsByClass(int classId) async {
     final studentsJson = await _api.getStudentsByClass(classId);
+    if (studentsJson.isEmpty) {
+      throw Exception('班级 $classId 返回空数据');
+    }
     await _db.transaction(() async {
       for (final s in studentsJson) {
         await _db
