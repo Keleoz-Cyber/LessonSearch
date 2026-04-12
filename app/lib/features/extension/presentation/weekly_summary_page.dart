@@ -1312,6 +1312,9 @@ class _PendingSubmissionCard extends ConsumerWidget {
       ref.invalidate(weekSummaryProvider(weekNumber));
       ref.invalidate(weekSubmissionStatusProvider(weekNumber));
       Toast.show(context, '审核通过');
+    } on DioException catch (e) {
+      final message = e.response?.data['detail'] ?? '操作失败';
+      Toast.show(context, message);
     } catch (e) {
       Toast.show(context, '操作失败: $e');
     }
@@ -1357,6 +1360,9 @@ class _PendingSubmissionCard extends ConsumerWidget {
         ref.invalidate(pendingSubmissionsProvider);
         ref.invalidate(weekSubmissionStatusProvider(weekNumber));
         Toast.show(context, '已拒绝');
+      } on DioException catch (e) {
+        final message = e.response?.data['detail'] ?? '操作失败';
+        Toast.show(context, message);
       } catch (e) {
         Toast.show(context, '操作失败: $e');
       }
