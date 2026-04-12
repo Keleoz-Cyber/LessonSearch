@@ -617,175 +617,8 @@ class _CurrentWeekTab extends ConsumerWidget {
 
       showDialog(
         context: context,
-        builder: (ctx) => AlertDialog(
-          title: Row(
-            children: [
-              Text('第$weekNumber周汇总名单'),
-              if (tableData.isNotEmpty) ...[
-                const Spacer(),
-                Text(
-                  '共${tableData.length}人',
-                  style: const TextStyle(fontSize: 14, color: Colors.grey),
-                ),
-              ],
-            ],
-          ),
-          content: SizedBox(
-            width: 350,
-            height: 500,
-            child: tableData.isEmpty
-                ? const Center(child: Text('暂无异常记录'))
-                : ListView.builder(
-                    itemCount: tableData.length,
-                    itemBuilder: (context, index) {
-                      final row = tableData[index];
-                      final late = row['late'] as int;
-                      final absent = row['absent'] as int;
-                      final total = row['total'] as int;
-
-                      return Card(
-                        margin: const EdgeInsets.symmetric(vertical: 4),
-                        child: Padding(
-                          padding: const EdgeInsets.all(12),
-                          child: Row(
-                            children: [
-                              Container(
-                                width: 28,
-                                height: 28,
-                                decoration: BoxDecoration(
-                                  color: Theme.of(
-                                    context,
-                                  ).colorScheme.primaryContainer,
-                                  borderRadius: BorderRadius.circular(14),
-                                ),
-                                child: Center(
-                                  child: Text(
-                                    '${row['index']}',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: Theme.of(
-                                        context,
-                                      ).colorScheme.onPrimaryContainer,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      row['name'] as String,
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      row['class_name'] as String,
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: Theme.of(
-                                          context,
-                                        ).colorScheme.onSurfaceVariant,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                children: [
-                                  Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      if (late > 0)
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 6,
-                                            vertical: 2,
-                                          ),
-                                          margin: const EdgeInsets.only(
-                                            right: 4,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: Colors.orange.withValues(
-                                              alpha: 0.1,
-                                            ),
-                                            borderRadius: BorderRadius.circular(
-                                              4,
-                                            ),
-                                          ),
-                                          child: Text(
-                                            '迟到$late',
-                                            style: const TextStyle(
-                                              fontSize: 11,
-                                              color: Colors.orange,
-                                            ),
-                                          ),
-                                        ),
-                                      if (absent > 0)
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 6,
-                                            vertical: 2,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: Colors.red.withValues(
-                                              alpha: 0.1,
-                                            ),
-                                            borderRadius: BorderRadius.circular(
-                                              4,
-                                            ),
-                                          ),
-                                          child: Text(
-                                            '旷课$absent',
-                                            style: const TextStyle(
-                                              fontSize: 11,
-                                              color: Colors.red,
-                                            ),
-                                          ),
-                                        ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 4,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: Colors.purple.withValues(
-                                        alpha: 0.1,
-                                      ),
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                    child: Text(
-                                      '累计: $total',
-                                      style: const TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.purple,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('关闭'),
-            ),
-          ],
-        ),
+        builder: (ctx) =>
+            _SummaryDetailDialog(weekNumber: weekNumber, tableData: tableData),
       );
     } catch (e) {
       Navigator.of(context, rootNavigator: true).pop();
@@ -1504,6 +1337,246 @@ class _HistoryWeekCard extends ConsumerWidget {
         trailing: const Icon(Icons.chevron_right),
         onTap: onTap,
       ),
+    );
+  }
+}
+
+class _SummaryDetailDialog extends StatefulWidget {
+  final int weekNumber;
+  final List<Map<String, dynamic>> tableData;
+
+  const _SummaryDetailDialog({
+    required this.weekNumber,
+    required this.tableData,
+  });
+
+  @override
+  State<_SummaryDetailDialog> createState() => _SummaryDetailDialogState();
+}
+
+class _SummaryDetailDialogState extends State<_SummaryDetailDialog> {
+  String? _selectedClass;
+
+  @override
+  Widget build(BuildContext context) {
+    final classes = <String>{};
+    for (final row in widget.tableData) {
+      classes.add(row['class_name'] as String);
+    }
+    final sortedClasses = classes.toList()..sort();
+
+    final filteredData = _selectedClass == null
+        ? widget.tableData
+        : widget.tableData
+              .where((r) => r['class_name'] == _selectedClass)
+              .toList();
+
+    return AlertDialog(
+      title: Row(
+        children: [
+          Text('第${widget.weekNumber}周汇总'),
+          const Spacer(),
+          Text(
+            '共${filteredData.length}人',
+            style: const TextStyle(fontSize: 14, color: Colors.grey),
+          ),
+        ],
+      ),
+      content: SizedBox(
+        width: 350,
+        height: 500,
+        child: Column(
+          children: [
+            if (sortedClasses.isNotEmpty)
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    const Text('班级筛选:', style: TextStyle(fontSize: 13)),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: DropdownButton<String>(
+                        value: _selectedClass,
+                        isExpanded: true,
+                        hint: const Text('全部班级'),
+                        items: [
+                          const DropdownMenuItem(
+                            value: null,
+                            child: Text('全部班级'),
+                          ),
+                          ...sortedClasses.map(
+                            (c) => DropdownMenuItem(value: c, child: Text(c)),
+                          ),
+                        ],
+                        onChanged: (v) => setState(() => _selectedClass = v),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            const SizedBox(height: 8),
+            Expanded(
+              child: filteredData.isEmpty
+                  ? const Center(child: Text('暂无异常记录'))
+                  : ListView.builder(
+                      itemCount: filteredData.length,
+                      itemBuilder: (context, index) {
+                        final row = filteredData[index];
+                        final late = row['late'] as int;
+                        final absent = row['absent'] as int;
+                        final total = row['total'] as int;
+
+                        return Card(
+                          margin: const EdgeInsets.symmetric(vertical: 4),
+                          child: Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 28,
+                                  height: 28,
+                                  decoration: BoxDecoration(
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.primaryContainer,
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                  child: Center(
+                                    child: Text(
+                                      '${index + 1}',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.onPrimaryContainer,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        row['name'] as String,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        row['class_name'] as String,
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Theme.of(
+                                            context,
+                                          ).colorScheme.onSurfaceVariant,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
+                                    Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        if (late > 0)
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 6,
+                                              vertical: 2,
+                                            ),
+                                            margin: const EdgeInsets.only(
+                                              right: 4,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: Colors.orange.withValues(
+                                                alpha: 0.1,
+                                              ),
+                                              borderRadius:
+                                                  BorderRadius.circular(4),
+                                            ),
+                                            child: Text(
+                                              '迟到$late',
+                                              style: const TextStyle(
+                                                fontSize: 11,
+                                                color: Colors.orange,
+                                              ),
+                                            ),
+                                          ),
+                                        if (absent > 0)
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 6,
+                                              vertical: 2,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: Colors.red.withValues(
+                                                alpha: 0.1,
+                                              ),
+                                              borderRadius:
+                                                  BorderRadius.circular(4),
+                                            ),
+                                            child: Text(
+                                              '旷课$absent',
+                                              style: const TextStyle(
+                                                fontSize: 11,
+                                                color: Colors.red,
+                                              ),
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 4,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.purple.withValues(
+                                          alpha: 0.1,
+                                        ),
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Text(
+                                        '累计: $total',
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.purple,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('关闭'),
+        ),
+      ],
     );
   }
 }
