@@ -943,7 +943,7 @@ class _CurrentWeekTab extends ConsumerWidget {
       );
 
       final bytes = Uint8List.fromList(response.data as List<int>);
-      final filename = '第${weekNumber}周周考勤表.xlsx';
+      final filename = '第${weekNumber}周考勤表.xlsx';
 
       await Share.shareXFiles([
         XFile.fromData(

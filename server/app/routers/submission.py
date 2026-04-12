@@ -662,7 +662,7 @@ async def export_week_excel(
     db.add(export)
     db.commit()
     
-    filename = f"第{week_number}周周考勤表.xlsx"
+    filename = f"第{week_number}周考勤表.xlsx"
     encoded_filename = quote(filename)
     return StreamingResponse(
         output,
