@@ -59,7 +59,11 @@ def import_students(commit: bool = False, clear: bool = False, min_year: int = 2
     
     # 筛选年级范围
     df = df[(df["现在年级"] >= min_year) & (df["现在年级"] <= max_year)]
-    print(f"筛选 {min_year}-{max_year} 级: {len(df)} 人")
+    
+    # 过滤研究生和博士（班级名含"研"或"博"）
+    df = df[~df["班级"].str.contains("研|博", na=False)]
+    
+    print(f"筛选 {min_year}-{max_year} 级本科生: {len(df)} 人")
     
     if len(df) == 0:
         print("无数据可导入")
