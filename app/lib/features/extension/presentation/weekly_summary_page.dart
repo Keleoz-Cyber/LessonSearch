@@ -602,77 +602,163 @@ class _CurrentWeekTab extends ConsumerWidget {
       await showDialog(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: Text('第$weekNumber周汇总名单'),
+          title: Row(
+            children: [
+              Text('第$weekNumber周汇总名单'),
+              const Spacer(),
+              Text(
+                '共${tableData.length}人',
+                style: const TextStyle(fontSize: 14, color: Colors.grey),
+              ),
+            ],
+          ),
           content: SizedBox(
-            width: 500,
-            height: 400,
+            width: 350,
+            height: 500,
             child: tableData.isEmpty
                 ? const Center(child: Text('暂无异常记录'))
-                : SingleChildScrollView(
-                    child: DataTable(
-                      headingRowColor: WidgetStateProperty.all(
-                        Theme.of(context).colorScheme.surfaceContainerHighest,
-                      ),
-                      columns: const [
-                        DataColumn(
-                          label: Text(
-                            '序号',
-                            style: TextStyle(fontWeight: FontWeight.bold),
+                : ListView.builder(
+                    itemCount: tableData.length,
+                    itemBuilder: (context, index) {
+                      final row = tableData[index];
+                      final late = row['late'] as int;
+                      final absent = row['absent'] as int;
+                      final total = row['total'] as int;
+
+                      return Card(
+                        margin: const EdgeInsets.symmetric(vertical: 4),
+                        child: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 28,
+                                height: 28,
+                                decoration: BoxDecoration(
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.primaryContainer,
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    '${row['index']}',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.onPrimaryContainer,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      row['name'] as String,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      row['class_name'] as String,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.onSurfaceVariant,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      if (late > 0)
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 6,
+                                            vertical: 2,
+                                          ),
+                                          margin: const EdgeInsets.only(
+                                            right: 4,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: Colors.orange.withValues(
+                                              alpha: 0.1,
+                                            ),
+                                            borderRadius: BorderRadius.circular(
+                                              4,
+                                            ),
+                                          ),
+                                          child: Text(
+                                            '迟到${late}',
+                                            style: const TextStyle(
+                                              fontSize: 11,
+                                              color: Colors.orange,
+                                            ),
+                                          ),
+                                        ),
+                                      if (absent > 0)
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 6,
+                                            vertical: 2,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: Colors.red.withValues(
+                                              alpha: 0.1,
+                                            ),
+                                            borderRadius: BorderRadius.circular(
+                                              4,
+                                            ),
+                                          ),
+                                          child: Text(
+                                            '旷课${absent}',
+                                            style: const TextStyle(
+                                              fontSize: 11,
+                                              color: Colors.red,
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.purple.withValues(
+                                        alpha: 0.1,
+                                      ),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Text(
+                                      '累计: $total',
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.purple,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
                           ),
                         ),
-                        DataColumn(
-                          label: Text(
-                            '姓名',
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                        DataColumn(
-                          label: Text(
-                            '班级',
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                        DataColumn(
-                          label: Text(
-                            '学号',
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                        DataColumn(
-                          label: Text(
-                            '迟到',
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                        DataColumn(
-                          label: Text(
-                            '旷课',
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                        DataColumn(
-                          label: Text(
-                            '累计',
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                      ],
-                      rows: tableData
-                          .map(
-                            (row) => DataRow(
-                              cells: [
-                                DataCell(Text('${row['index']}')),
-                                DataCell(Text(row['name'] as String)),
-                                DataCell(Text(row['class_name'] as String)),
-                                DataCell(Text(row['student_no'] as String)),
-                                DataCell(Text('${row['late']}')),
-                                DataCell(Text('${row['absent']}')),
-                                DataCell(Text('${row['total']}')),
-                              ],
-                            ),
-                          )
-                          .toList(),
-                    ),
+                      );
+                    },
                   ),
           ),
           actions: [
