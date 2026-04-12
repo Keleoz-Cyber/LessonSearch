@@ -55,3 +55,7 @@ scripts/reports/
 
 # === 重构临时目录 ===
 server/app/
+
+# === Android 签名 ===
+app/android/app/release-keystore.jks
+app/android/key.properties
