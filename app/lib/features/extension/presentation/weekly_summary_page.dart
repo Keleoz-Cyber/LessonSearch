@@ -590,26 +590,44 @@ class _CurrentWeekTab extends ConsumerWidget {
     WidgetRef ref,
     int weekNumber,
   ) async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => const AlertDialog(
+        content: Row(
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(width: 20),
+            Text('正在加载...'),
+          ],
+        ),
+      ),
+    );
+
     try {
       final detail = await ref
           .read(submissionServiceProvider)
           .getWeekSummaryDetail(weekNumber);
 
+      Navigator.of(context, rootNavigator: true).pop();
+
       final tableData = (detail['table_data'] as List? ?? [])
           .map((r) => r as Map<String, dynamic>)
           .toList();
 
-      await showDialog(
+      showDialog(
         context: context,
         builder: (ctx) => AlertDialog(
           title: Row(
             children: [
               Text('第$weekNumber周汇总名单'),
-              const Spacer(),
-              Text(
-                '共${tableData.length}人',
-                style: const TextStyle(fontSize: 14, color: Colors.grey),
-              ),
+              if (tableData.isNotEmpty) ...[
+                const Spacer(),
+                Text(
+                  '共${tableData.length}人',
+                  style: const TextStyle(fontSize: 14, color: Colors.grey),
+                ),
+              ],
             ],
           ),
           content: SizedBox(
@@ -700,7 +718,7 @@ class _CurrentWeekTab extends ConsumerWidget {
                                             ),
                                           ),
                                           child: Text(
-                                            '迟到${late}',
+                                            '迟到$late',
                                             style: const TextStyle(
                                               fontSize: 11,
                                               color: Colors.orange,
@@ -722,7 +740,7 @@ class _CurrentWeekTab extends ConsumerWidget {
                                             ),
                                           ),
                                           child: Text(
-                                            '旷课${absent}',
+                                            '旷课$absent',
                                             style: const TextStyle(
                                               fontSize: 11,
                                               color: Colors.red,
@@ -770,6 +788,7 @@ class _CurrentWeekTab extends ConsumerWidget {
         ),
       );
     } catch (e) {
+      Navigator.of(context, rootNavigator: true).pop();
       Toast.show(context, '加载详情失败: $e');
     }
   }
