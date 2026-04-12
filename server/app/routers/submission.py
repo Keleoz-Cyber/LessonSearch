@@ -308,12 +308,6 @@ async def get_week_summary_detail(
         "week_number": week_number,
         "table_data": table_data,
         "total_count": len(table_data),
-        "debug": {
-            "approved_submission_count": len(approved_submissions),
-            "approved_ids": approved_ids,
-            "submission_record_count": len(submission_records) if approved_ids else 0,
-            "student_stats_count": len(student_stats),
-        }
     }
 
 
