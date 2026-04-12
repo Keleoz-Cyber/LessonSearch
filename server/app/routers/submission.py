@@ -449,6 +449,67 @@ async def get_week_summary(
     )
 
 
+@router.get("/week-summary-detail/{week_number}")
+async def get_week_summary_detail(
+    week_number: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """获取周汇总详细名单（管理员）"""
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="需要管理员权限")
+    
+    approved_submissions = db.query(Submission).filter(
+        Submission.week_number == week_number,
+        Submission.status == "approved"
+    ).all()
+    
+    approved_ids = [s.id for s in approved_submissions]
+    
+    late_records = []
+    absent_records = []
+    
+    if approved_ids:
+        submission_records = db.query(SubmissionRecord).filter(
+            SubmissionRecord.submission_id.in_(approved_ids)
+        ).all()
+        
+        for sr in submission_records:
+            record = db.query(AttendanceRecord).filter(
+                AttendanceRecord.id == sr.record_id
+            ).first()
+            
+            if record and record.status in ("late", "absent"):
+                student = db.query(Student).filter(
+                    Student.id == record.student_id
+                ).first()
+                
+                if student:
+                    class_ = db.query(Class).filter(Class.id == student.class_id).first()
+                    
+                    detail = {
+                        "student_id": student.id,
+                        "student_name": student.name,
+                        "student_no": student.student_no,
+                        "class_name": class_.display_name if class_ else "未知",
+                        "status": record.status
+                    }
+                    
+                    if record.status == "late":
+                        late_records.append(detail)
+                    elif record.status == "absent":
+                        absent_records.append(detail)
+    
+    return {
+        "week_number": week_number,
+        "late_records": late_records,
+        "absent_records": absent_records,
+        "late_count": len(late_records),
+        "absent_count": len(absent_records),
+        "total_count": len(late_records) + len(absent_records)
+    }
+
+
 @router.get("/export-status/{week_number}", response_model=ExportStatusResponse)
 async def get_export_status(
     week_number: int,

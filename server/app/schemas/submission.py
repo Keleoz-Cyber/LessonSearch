@@ -89,3 +89,12 @@ class SubmissionRecordsResponse(BaseModel):
     absent_count: int
     leave_count: int
     other_count: int
+
+
+class WeekSummaryDetailResponse(BaseModel):
+    week_number: int
+    late_records: List[RecordDetail]
+    absent_records: List[RecordDetail]
+    late_count: int
+    absent_count: int
+    total_count: int

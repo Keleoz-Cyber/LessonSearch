@@ -59,6 +59,13 @@ final submissionRecordsProvider =
           .getSubmissionRecords(submissionId);
     });
 
+final weekSummaryDetailProvider =
+    FutureProvider.family<Map<String, dynamic>, int>((ref, weekNumber) {
+      return ref
+          .watch(submissionServiceProvider)
+          .getWeekSummaryDetail(weekNumber);
+    });
+
 final submissionServiceProvider = Provider<SubmissionService>((ref) {
   return SubmissionService(ref.watch(apiClientProvider));
 });
@@ -324,7 +331,8 @@ class _CurrentWeekTab extends ConsumerWidget {
         weekSummaryAsync.when(
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (e, _) => Text('加载汇总统计失败: $e'),
-          data: (summary) => _buildSummaryPreviewCard(context, summary),
+          data: (summary) =>
+              _buildSummaryPreviewCard(context, ref, summary, weekNumber),
         ),
         const SizedBox(height: 16),
 
@@ -490,7 +498,9 @@ class _CurrentWeekTab extends ConsumerWidget {
 
   Widget _buildSummaryPreviewCard(
     BuildContext context,
+    WidgetRef ref,
     Map<String, dynamic> summary,
+    int weekNumber,
   ) {
     final lateCount = summary['late_count'] as int? ?? 0;
     final absentCount = summary['absent_count'] as int? ?? 0;
@@ -499,58 +509,176 @@ class _CurrentWeekTab extends ConsumerWidget {
     final total = (lateCount / 2).floor() + absentCount;
 
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('汇总预览', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: _buildStatItem(
-                    context,
-                    '迟到/早退',
-                    lateCount,
-                    Colors.orange,
+      child: InkWell(
+        onTap: () => _showSummaryDetailDialog(context, ref, weekNumber),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Text('汇总预览', style: Theme.of(context).textTheme.titleMedium),
+                  const Spacer(),
+                  const Icon(Icons.chevron_right, color: Colors.grey),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildStatItem(
+                      context,
+                      '迟到/早退',
+                      lateCount,
+                      Colors.orange,
+                    ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _buildStatItem(context, '旷课', absentCount, Colors.red),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _buildStatItem(context, '累计', total, Colors.purple),
-                ),
-              ],
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildStatItem(
+                      context,
+                      '旷课',
+                      absentCount,
+                      Colors.red,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildStatItem(context, '累计', total, Colors.purple),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildStatItem(
+                      context,
+                      '待审核',
+                      pendingCount,
+                      Colors.blue,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildStatItem(
+                      context,
+                      '已通过',
+                      approvedCount,
+                      Colors.green,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '点击查看详细名单',
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: Colors.grey),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showSummaryDetailDialog(
+    BuildContext context,
+    WidgetRef ref,
+    int weekNumber,
+  ) async {
+    try {
+      final detail = await ref
+          .read(submissionServiceProvider)
+          .getWeekSummaryDetail(weekNumber);
+
+      final lateRecords = (detail['late_records'] as List? ?? [])
+          .map((r) => r as Map<String, dynamic>)
+          .toList();
+      final absentRecords = (detail['absent_records'] as List? ?? [])
+          .map((r) => r as Map<String, dynamic>)
+          .toList();
+
+      await showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text('第$weekNumber周汇总名单'),
+          content: SizedBox(
+            width: 400,
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    children: [
+                      _buildMiniStat('迟到', lateRecords.length, Colors.orange),
+                      const SizedBox(width: 12),
+                      _buildMiniStat('缺勤', absentRecords.length, Colors.red),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  if (absentRecords.isNotEmpty) ...[
+                    Text(
+                      '缺勤名单:',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    ...absentRecords.map(
+                      (r) => Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        child: Text(
+                          '- ${r['student_name']} (${r['student_no']}) ${r['class_name']}',
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                  if (lateRecords.isNotEmpty) ...[
+                    Text(
+                      '迟到名单:',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    ...lateRecords.map(
+                      (r) => Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        child: Text(
+                          '- ${r['student_name']} (${r['student_no']}) ${r['class_name']}',
+                        ),
+                      ),
+                    ),
+                  ],
+                  if (absentRecords.isEmpty && lateRecords.isEmpty)
+                    const Center(child: Text('暂无异常记录')),
+                ],
+              ),
             ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: _buildStatItem(
-                    context,
-                    '待审核',
-                    pendingCount,
-                    Colors.blue,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _buildStatItem(
-                    context,
-                    '已通过',
-                    approvedCount,
-                    Colors.green,
-                  ),
-                ),
-              ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('关闭'),
             ),
           ],
         ),
+      );
+    } catch (e) {
+      Toast.show(context, '加载详情失败: $e');
+    }
+  }
+
+  Widget _buildMiniStat(String label, int count, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(8),
       ),
+      child: Text('$label: $count', style: TextStyle(color: color)),
     );
   }
 
@@ -1065,17 +1193,6 @@ class _PendingSubmissionCard extends ConsumerWidget {
     );
   }
 
-  Widget _buildMiniStat(String label, int count, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Text('$label: $count', style: TextStyle(color: color)),
-    );
-  }
-
   Future<void> _approve(BuildContext context, WidgetRef ref) async {
     try {
       final service = ref.read(submissionServiceProvider);
@@ -1133,6 +1250,17 @@ class _PendingSubmissionCard extends ConsumerWidget {
         Toast.show(context, '操作失败: $e');
       }
     }
+  }
+
+  Widget _buildMiniStat(String label, int count, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text('$label: $count', style: TextStyle(color: color)),
+    );
   }
 }
 
