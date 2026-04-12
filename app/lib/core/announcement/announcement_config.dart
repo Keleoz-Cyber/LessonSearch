@@ -3,7 +3,7 @@
 // ============================================================
 
 /// 公告版本号：每次修改公告内容后 +1，用户才会再次看到
-const int announcementVersion = 19;
+const int announcementVersion = 20;
 
 /// 公告标题
 const String announcementTitle = '考勤助手 v0.5.0';
