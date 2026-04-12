@@ -3,37 +3,42 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../shared/providers.dart';
-import '../../../shared/widgets/toast.dart';
 
 class ExtensionPage extends ConsumerWidget {
   const ExtensionPage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final auth = ref.watch(authServiceProvider);
+    final isAdmin = auth.isAdmin;
+
     return Scaffold(
       appBar: AppBar(title: const Text('扩展功能')),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _FeatureCard(
-                icon: Icons.send_outlined,
-                title: '名单提交',
-                subtitle: '提交本周记名记录供审核',
-                color: Colors.green,
-                onTap: () => context.push('/extension/submission'),
-              ),
-              const SizedBox(height: 12),
-              _FeatureCard(
-                icon: Icons.summarize_outlined,
-                title: '周名单汇总',
-                subtitle: '查看汇总名单、审核、导出',
-                color: Colors.orange,
-                onTap: () => context.push('/extension/weekly-summary'),
-              ),
-            ],
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _FeatureCard(
+                  icon: Icons.send_outlined,
+                  title: '名单提交',
+                  subtitle: isAdmin ? '查看提交状态、审核记录' : '提交本周记名任务供审核',
+                  color: Colors.green,
+                  onTap: () => context.push('/extension/submission'),
+                ),
+                const SizedBox(height: 16),
+                _FeatureCard(
+                  icon: Icons.summarize_outlined,
+                  title: '周名单汇总',
+                  subtitle: isAdmin ? '审核提交、导出汇总表' : '查看已发布的周汇总名单',
+                  color: Colors.orange,
+                  onTap: () => context.push('/extension/weekly-summary'),
+                ),
+              ],
+            ),
           ),
         ),
       ),
