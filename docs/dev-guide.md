@@ -779,6 +779,7 @@ python generate_invitation_codes.py 10  # 生成10个随机邀请码
 3. **更新文档**
    - `docs/dev-guide.md` 版本号
    - `docs/tasks.md` 版本历史
+   - `AGENT.md` 版本号
 
 4. **本地测试**
    ```bash
@@ -786,27 +787,45 @@ python generate_invitation_codes.py 10  # 生成10个随机邀请码
    flutter run -d emulator-5554
    ```
 
-5. **推送代码**
+5. **提交并推送**
    ```bash
    git add .
    git commit -m "release: vX.X.X"
-   git push origin feature/v0.5.0
+   git push origin main
    ```
 
-### 构建APK
+### GitHub Actions 自动构建
+
+推送 tag 触发自动构建发布：
+
+```bash
+git tag vX.X.X
+git push origin vX.X.X
+```
+
+构建产物自动上传到 GitHub Release，包含：
+- `kaoqin-helper-vX.X.X.apk` - Android APK（release keystore签名）
+- `kaoqin-helper-unsigned.ipa` - iOS IPA（未签名）
+
+### 本地构建APK
+
+本地构建需要 `key.properties` 文件：
 
 ```bash
 cd app
 flutter build apk --release
-# APK位置：app/build/app/outputs/flutter-apk/app-release.apk
+# APK位置：app/build/app/outputs/flutter-apk/考勤助手vX.X.X.apk
 ```
 
-### 发布到GitHub
+### Release Keystore 签名
 
-```bash
-gh release create vX.X.X --title "vX.X.X 版本标题"
-gh release upload vX.X.X app/build/app/outputs/flutter-apk/app-release.apk
-```
+APK 使用 release keystore 签名，确保后续版本可正常覆盖安装：
+
+- **Keystore文件**: `app/android/app/release-keystore.jks`（不提交到仓库）
+- **配置文件**: `app/android/key.properties`（不提交到仓库）
+- **GitHub Secrets**: `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`
+
+⚠️ keystore 文件丢失会导致签名不一致，用户需卸载重装
 
 ---
 
