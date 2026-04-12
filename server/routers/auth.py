@@ -179,10 +179,17 @@ def login(body: LoginRequest, db: Session = Depends(get_db)):
 
     token = _create_token(user.id)
 
-    return LoginResponse(
-        token=token,
-        user=UserOut(id=user.id, email=user.email, nickname=user.nickname, is_new_user=False),
-    )
+    return {
+        "token": token,
+        "user": {
+            "id": user.id,
+            "email": user.email,
+            "nickname": user.nickname,
+            "real_name": user.real_name,
+            "role": user.role or "member",
+            "is_new_user": False
+        }
+    }
 
 
 @router.post("/register", response_model=LoginResponse)
@@ -227,10 +234,17 @@ def register(body: RegisterRequest, db: Session = Depends(get_db)):
 
     token = _create_token(user.id)
 
-    return LoginResponse(
-        token=token,
-        user=UserOut(id=user.id, email=user.email, nickname=user.nickname, is_new_user=True),
-    )
+    return {
+        "token": token,
+        "user": {
+            "id": user.id,
+            "email": user.email,
+            "nickname": user.nickname,
+            "real_name": user.real_name,
+            "role": user.role or "member",
+            "is_new_user": True
+        }
+    }
 
 
 @router.get("/me", response_model=UserOut)

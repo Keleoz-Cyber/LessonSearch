@@ -13,6 +13,8 @@ class User(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     email = Column(String(100), unique=True, nullable=False)
     nickname = Column(String(50), nullable=True)
+    role = Column(String(20), default="member")  # member / admin
+    real_name = Column(String(50), nullable=True)  # 真实姓名（实名制）
     created_at = Column(DateTime, server_default=func.now())
     last_login_at = Column(DateTime, nullable=True)
 

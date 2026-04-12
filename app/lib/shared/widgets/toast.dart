@@ -47,7 +47,7 @@ class _ToastWidgetState extends State<_ToastWidget>
 
     _controller.forward();
 
-    Future.delayed(const Duration(seconds: 2), () {
+    Future.delayed(const Duration(milliseconds: 1500), () {
       if (mounted) {
         _controller.reverse().then((_) {
           widget.onDismiss();
@@ -103,7 +103,7 @@ class _ToastWidgetState extends State<_ToastWidget>
                     widget.message,
                     style: TextStyle(
                       color: textColor,
-                      fontSize: 14,
+                      fontSize: 15,
                       fontWeight: FontWeight.w500,
                     ),
                     textAlign: TextAlign.center,

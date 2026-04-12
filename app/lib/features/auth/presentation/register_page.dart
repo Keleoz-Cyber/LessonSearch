@@ -96,16 +96,17 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
         userId: response['user']['id'],
         email: response['user']['email'],
         nickname: response['user']['nickname'],
+        realName: response['user']['real_name'],
+        role: response['user']['role'],
       );
 
-      // 刷新登录状态
       ref.invalidate(authServiceProvider);
       ref.invalidate(isLoggedInProvider);
       ref.invalidate(userEmailProvider);
       ref.invalidate(apiClientProvider);
 
       if (mounted) {
-        _showSuccessDialog();
+        context.go('/real-name');
       }
     } on DioException catch (e) {
       final detail = e.response?.data['detail'] ?? '';
@@ -127,27 +128,6 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
-  }
-
-  void _showSuccessDialog() {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('注册成功'),
-        content: const Text(
-          '首次登录后，新创建的查课记录将仅属于当前账户。\n\n历史本地数据将继续在此设备上展示，但不会同步到服务器。',
-        ),
-        actions: [
-          FilledButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              context.pop();
-            },
-            child: const Text('我知道了'),
-          ),
-        ],
-      ),
-    );
   }
 
   @override

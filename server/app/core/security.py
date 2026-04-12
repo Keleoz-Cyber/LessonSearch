@@ -38,7 +38,7 @@ def get_current_user(
 ):
     """获取当前登录用户"""
     from app.models.user import User
-    
+
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="未登录")
 
@@ -49,4 +49,24 @@ def get_current_user(
     if not user:
         raise HTTPException(status_code=401, detail="用户不存在")
 
+    return user
+
+
+def get_current_user_optional(
+    authorization: Optional[str] = Header(None),
+    db: Session = Depends(get_db),
+):
+    """获取当前登录用户（可选）"""
+    from app.models.user import User
+
+    if not authorization or not authorization.startswith("Bearer "):
+        return None
+
+    token = authorization.removeprefix("Bearer ")
+    try:
+        user_id = verify_token(token)
+    except HTTPException:
+        return None
+
+    user = db.query(User).filter(User.id == user_id).first()
     return user

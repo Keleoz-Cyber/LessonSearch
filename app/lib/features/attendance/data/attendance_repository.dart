@@ -93,6 +93,11 @@ class AttendanceRepository {
     return _local.getTasksByStatus(TaskStatus.inProgress);
   }
 
+  /// 获取已完成的记名任务（用于提交审核）
+  Future<List<AttendanceTask>> getCompletedNameCheckTasks() {
+    return _local.getCompletedNameCheckTasks();
+  }
+
   // ============================================================
   // 考勤记录
   // ============================================================

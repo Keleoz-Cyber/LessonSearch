@@ -89,6 +89,25 @@ class AttendanceLocalDataSource {
     return tasks;
   }
 
+  Future<List<domain.AttendanceTask>> getCompletedNameCheckTasks() async {
+    final rows =
+        await (_db.select(_db.attendanceTasks)
+              ..where(
+                (t) =>
+                    t.status.equals(domain.TaskStatus.completed.value) &
+                    t.type.equals('name_check'),
+              )
+              ..orderBy([(t) => OrderingTerm.desc(t.createdAt)]))
+            .get();
+
+    final tasks = <domain.AttendanceTask>[];
+    for (final row in rows) {
+      final classIds = await _getTaskClassIds(row.id);
+      tasks.add(_mapRowToTask(row, classIds));
+    }
+    return tasks;
+  }
+
   Future<List<int>> _getTaskClassIds(String taskId) async {
     final rows =
         await (_db.select(_db.taskClasses)

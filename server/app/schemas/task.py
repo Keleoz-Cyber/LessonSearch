@@ -30,6 +30,7 @@ class TaskOut(BaseModel):
     created_at: datetime
     updated_at: datetime
     class_ids: list[int]
+    class_names: list[str] = []
     record_count: int
 
     model_config = {"from_attributes": True}

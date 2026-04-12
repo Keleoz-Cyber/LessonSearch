@@ -17,6 +17,19 @@ class StudentRepository {
 
   StudentRepository(this._db, this._api, this._prefs);
 
+  Future<List<String>> getClassNames(List<int> classIds) async {
+    final names = <String>[];
+    for (final id in classIds) {
+      final row = await (_db.select(
+        _db.classes,
+      )..where((c) => c.id.equals(id))).getSingleOrNull();
+      if (row != null) {
+        names.add(row.displayName);
+      }
+    }
+    return names;
+  }
+
   Future<void> syncBaseData() async {
     final gradesJson = await _api.getGrades();
     final majorsJson = await _api.getMajors();
@@ -253,7 +266,7 @@ class StudentRepository {
     };
   }
 
-  Future<List<StudentInfo>> getStudentsByClass(int classId) async {
+  Future<List<StudentInfo>> getStudentsByClassLocal(int classId) async {
     final rows =
         await (_db.select(_db.students)
               ..where((s) => s.classId.equals(classId))
@@ -278,7 +291,7 @@ class StudentRepository {
   ) async {
     final result = <int, List<StudentInfo>>{};
     for (final classId in classIds) {
-      result[classId] = await getStudentsByClass(classId);
+      result[classId] = await getStudentsByClassLocal(classId);
     }
     return result;
   }

@@ -14,6 +14,8 @@ class ApiClient {
         connectTimeout: const Duration(seconds: 10),
         receiveTimeout: const Duration(seconds: 10),
         headers: {'Content-Type': 'application/json'},
+        followRedirects: true,
+        maxRedirects: 5,
       ),
     );
 
@@ -162,6 +164,16 @@ class ApiClient {
     Map<String, dynamic> body,
   ) async {
     final res = await dio.put('/records/$recordId', data: body);
+    return res.data as Map<String, dynamic>;
+  }
+
+  // === 通用请求 ===
+
+  Future<Map<String, dynamic>> put(
+    String path,
+    Map<String, dynamic> data,
+  ) async {
+    final res = await dio.put(path, data: data);
     return res.data as Map<String, dynamic>;
   }
 }

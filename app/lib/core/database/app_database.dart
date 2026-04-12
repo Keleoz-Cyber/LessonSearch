@@ -35,22 +35,33 @@ class AppDatabase extends _$AppDatabase {
       },
       onUpgrade: (Migrator m, int from, int to) async {
         if (from < 2) {
-          // v2 新增 users 表和 attendanceTasks.userId 列
-          // 先尝试创建表（如果不存在）
           try {
             await m.createTable(users);
-          } catch (_) {
-            // 表已存在，忽略
-          }
-          // 添加 userId 列（如果不存在）
+          } catch (_) {}
           try {
             await m.addColumn(attendanceTasks, attendanceTasks.userId);
-          } catch (_) {
-            // 列已存在，忽略
-          }
+          } catch (_) {}
         }
       },
     );
+  }
+
+  Future<void> clearUserData() async {
+    await delete(syncQueue).go();
+    await delete(attendanceRecords).go();
+    await delete(taskClasses).go();
+    await delete(attendanceTasks).go();
+  }
+
+  Future<int> getUnsyncedCount() async {
+    var count = 0;
+    final queueList = await select(syncQueue).get();
+    count += queueList.length;
+    final unfinishedQuery = select(attendanceTasks)
+      ..where((t) => t.status.equals('unfinished'));
+    final unfinishedList = await unfinishedQuery.get();
+    count += unfinishedList.length;
+    return count;
   }
 }
 
