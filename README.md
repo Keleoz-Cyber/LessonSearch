@@ -2,54 +2,32 @@
 
 > 面向课堂查课场景的 Flutter App，支持点名、记名、考勤文本生成、本地优先+服务器同步。
 
-**当前版本：v0.5.0**（2026-04-11）
+**当前版本：v0.5.0**（2026-04-12）
 
 ## v0.5.0 更新日志
 
-### 🎯 代码重构
+### 核心功能
 
-- 服务端目录结构重构：`server/app/` 结构（core/models/schemas/routers/services）
-- Models/Schemas 按领域拆分（user/student/task/record）
-- Core 模块独立（config/database/security/exceptions）
-- 构建脚本统一移至 `scripts/`
-- 文档整合优化
+- **实名制** - 登录后必须填写真实姓名
+- **名单提交审核** - 成员提交记名任务，管理员审核
+- **周名单汇总** - 管理员审核、导出Excel、发布汇总
+- **数据隔离** - 登出时清空本地用户数据
+- **实时公告** - 从服务端获取公告内容
+- **审核历史** - 管理员查看已审核记录
 
-### 🐛 Bug 修复
+### 角色系统
 
-1. **记名重新编辑不自动跳转**
-   - 从确认名单页返回编辑时，修改状态不再自动切换班级
-   - 新增 `isEditing` 状态标记区分正常流程和编辑模式
+| 角色 | 权限 |
+|------|------|
+| member | 查看自己的数据、提交记录、查看已发布汇总 |
+| admin | 审核、导出、查看所有提交状态 |
 
-2. **iOS 微信/QQ 检测修复**
-   - 添加 `LSApplicationQueriesSchemes` 声明
-   - iOS 9+ 可正常检测微信/QQ是否安装
+### 技术改进
 
-3. **查课记录编辑滚动位置**
-   - 修改状态后保持滚动位置，不再刷新到列表开头
-   - 使用 `recordId` 直接更新条目，避免全量刷新
-
-4. **查课记录编辑索引错误**
-   - 修复过滤列表中索引错位导致修改错误条目的问题
-   - 用 `recordId` 查找正确条目，不依赖列表索引
-
-### ✨ 功能改进
-
-5. **点名记录两列布局**
-   - 点名详情改为两列网格显示，更紧凑
-   - 使用 Wrap + LayoutBuilder 实现响应式布局
-
-6. **学委汇报按班级分开复制**
-   - 文本生成页：每个班级独立卡片，单独复制按钮
-   - 查课记录详情页：同样支持按班级分开复制
-   - 便于逐个发送给各班学委
-
-7. **状态标签统一**
-   - 记名详情"到"改为"到课"，与其他两字状态统一
-
-8. **点名上一个+预览界面**
-   - 新增"上一个"按钮，撤销上一位点名记录
-   - 预览区显示"已点"上三位和"下一位"学生
-   - 防止误操作，让用户清楚看到附近学生
+- 服务端目录结构重构
+- Models/Schemas按领域拆分
+- 周次系统统一使用服务端配置
+- 学生名单更新（2022-2024级本科生，含性别）
 
 ---
 
@@ -62,10 +40,14 @@
 - **查课记录** — 查看、编辑历史记录，继续未完成任务
 - **中断恢复** — 记名任务异常退出后恢复进度
 - **数据同步** — 本地优先离线可用，后台异步同步服务器
-- **邮箱登录** — 邮箱验证码登录注册，登录注册分离，一人一码邀请机制
+- **名单提交** — 提交本周记名任务供管理员审核
+- **周名单汇总** — 管理员审核导出，成员查看已发布汇总
+- **邮箱登录** — 邮箱验证码登录注册，一人一码邀请机制
 - **暗色模式** — 支持跟随系统/亮色/暗色三种主题
 - **检查更新** — App 内检查新版本并跳转下载
 - **公告系统** — 版本更新自动弹出
+
+---
 
 ## 技术栈
 
@@ -76,16 +58,26 @@
 | 数据导入 | Python · openpyxl · pypinyin |
 | 部署 | 1Panel · Nginx · systemd · HTTPS |
 
+---
+
 ## 项目结构
 
 ```
 LessonSearch/
 ├── app/            Flutter 客户端
 ├── server/         FastAPI 服务端
-├── scripts/        Excel 导入脚本 + 邀请码生成
+│   └── app/
+│       ├── core/   配置、数据库、安全
+│       ├── models/ 数据模型
+│       ├── schemas/ Pydantic模型
+│       ├── routers/ API路由
+│       └── services/ 业务逻辑
+├── scripts/        Excel导入脚本
 ├── docs/           文档
-└── AGENT.md        AI Agent 协作指南
+└── AGENT.md        AI Agent协作指南
 ```
+
+---
 
 ## 快速开始
 
@@ -97,25 +89,32 @@ flutter run
 
 # 服务端
 cd server && pip install -r requirements.txt
-cp .env.example .env  # 编辑数据库配置
+cp .env.example .env
 uvicorn main:app --reload --port 8000
 
 # 数据导入
 cd scripts && pip install -r requirements.txt
-python excel_importer.py --commit
+python import_students_2022plus.py --commit --clear
 ```
+
+---
 
 ## 文档
 
-- [AGENT.md](AGENT.md) — AI Agent 协作指南（接手必读）
-- [CLAUDE.md](CLAUDE.md) — 项目规范与约束
-- [docs/dev-guide.md](docs/dev-guide.md) — 开发文档
-- [docs/tasks.md](docs/tasks.md) — 任务表
-- [docs/invitation-codes.md](docs/invitation-codes.md) — 邀请码管理指南
+| 文档 | 说明 |
+|------|------|
+| AGENT.md | AI Agent协作指南（接手必读） |
+| CLAUDE.md | 项目规范与约束 |
+| docs/dev-guide.md | 开发文档 |
+| docs/tasks.md | 任务表 |
+
+---
 
 ## API
 
 Swagger 文档：https://api.keleoz.cn/docs
+
+---
 
 ## 许可
 
