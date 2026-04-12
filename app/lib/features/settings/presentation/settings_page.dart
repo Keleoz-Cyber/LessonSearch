@@ -119,35 +119,78 @@ class SettingsPage extends ConsumerWidget {
 
   void _handleAuth(BuildContext context, WidgetRef ref, bool isLoggedIn) {
     if (isLoggedIn) {
-      showDialog(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text('退出登录'),
-          content: const Text('确定要退出登录吗？\n\n退出后本地数据仍会保留，但新记录将不再同步到服务器。'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('取消'),
-            ),
-            FilledButton(
-              onPressed: () async {
-                await ref.read(authServiceProvider).clearAuth();
-                ref.invalidate(authServiceProvider);
-                ref.invalidate(isLoggedInProvider);
-                ref.invalidate(userEmailProvider);
-                ref.invalidate(apiClientProvider);
-                if (context.mounted) {
-                  Navigator.pop(ctx);
-                  Toast.show(context, '已退出登录');
-                }
-              },
-              child: const Text('退出'),
-            ),
-          ],
-        ),
-      );
+      _showLogoutDialog(context, ref);
     } else {
       context.push('/login');
+    }
+  }
+
+  Future<void> _showLogoutDialog(BuildContext context, WidgetRef ref) async {
+    final db = ref.read(databaseProvider);
+    final unsyncedCount = await db.getUnsyncedCount();
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('退出登录'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('确定要退出登录吗？'),
+            const SizedBox(height: 12),
+            if (unsyncedCount > 0)
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.warning_amber,
+                      color: Colors.orange,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        '有 $unsyncedCount 条数据未同步到服务器，退出后本地数据将被清空。',
+                        style: const TextStyle(
+                          color: Colors.orange,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else
+              const Text('退出后本地数据将被清空。'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('退出'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && context.mounted) {
+      await db.clearUserData();
+      await ref.read(authServiceProvider).clearAuth();
+      ref.invalidate(authServiceProvider);
+      ref.invalidate(isLoggedInProvider);
+      ref.invalidate(userEmailProvider);
+      ref.invalidate(apiClientProvider);
+      Toast.show(context, '已退出登录');
     }
   }
 
