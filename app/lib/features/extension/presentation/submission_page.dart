@@ -139,30 +139,38 @@ class _SubmissionPageState extends ConsumerState<SubmissionPage>
 
     setState(() => _loading = true);
 
-    try {
-      final service = ref.read(submissionServiceProvider);
-      await service.createSubmission(
-        weekNumber: weekNumber,
-        taskIds: _selectedTaskIds,
-      );
+    int successCount = 0;
+    int failCount = 0;
+    final errors = <String>[];
 
-      if (mounted) {
-        Toast.show(context, '提交成功，等待审核');
-        _selectedTaskIds = [];
-        ref.invalidate(submittedTaskIdsProvider);
-        ref.invalidate(weekNameCheckTasksProvider);
-        ref.invalidate(mySubmissionsProvider);
-        _tabController.animateTo(1);
-      }
-    } catch (e) {
-      if (mounted) {
-        Toast.show(context, '提交失败: $e');
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _loading = false);
+    for (final taskId in _selectedTaskIds) {
+      try {
+        final service = ref.read(submissionServiceProvider);
+        await service.createSubmission(
+          weekNumber: weekNumber,
+          taskIds: [taskId],
+        );
+        successCount++;
+      } catch (e) {
+        failCount++;
+        errors.add('$taskId: $e');
       }
     }
+
+    if (mounted) {
+      if (failCount == 0) {
+        Toast.show(context, '成功提交 $successCount 个任务');
+      } else {
+        Toast.show(context, '提交完成: $successCount 成功, $failCount 失败');
+      }
+      _selectedTaskIds = [];
+      ref.invalidate(submittedTaskIdsProvider);
+      ref.invalidate(weekNameCheckTasksProvider);
+      ref.invalidate(mySubmissionsProvider);
+      _tabController.animateTo(1);
+    }
+
+    setState(() => _loading = false);
   }
 
   @override
@@ -546,6 +554,8 @@ class _SubmissionCard extends ConsumerWidget {
     final reviewerName = submission['reviewer_name'] as String?;
     final status = submission['status'] as String;
     final canCancel = status == 'pending';
+    final classNames = submission['class_names'] as String?;
+    final recordCount = submission['record_count'] as int? ?? 0;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -560,11 +570,25 @@ class _SubmissionCard extends ConsumerWidget {
               Row(
                 children: [
                   Expanded(
-                    child: Text(
-                      '第 ${submission['week_number']} 周',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          classNames ?? '未知班级',
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(fontWeight: FontWeight.w600),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '第 ${submission['week_number']} 周 · $recordCount 条记录',
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurfaceVariant,
+                              ),
+                        ),
+                      ],
                     ),
                   ),
                   Container(

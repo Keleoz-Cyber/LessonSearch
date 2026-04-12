@@ -40,6 +40,7 @@ class SubmissionDetailResponse(BaseModel):
     submitted_at: datetime
     task_count: int = 0
     record_count: int = 0
+    class_names: Optional[str] = None
 
 
 class ApproveSubmissionRequest(BaseModel):

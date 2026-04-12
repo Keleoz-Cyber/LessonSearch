@@ -32,6 +32,25 @@ from app.routers.week import get_current_week_config, calculate_week_number
 router = APIRouter(prefix="/submissions", tags=["submissions"])
 
 
+def _get_submission_class_names(db: Session, submission_id: int) -> str:
+    """获取提交的班级名称"""
+    submission_records = db.query(SubmissionRecord).filter(
+        SubmissionRecord.submission_id == submission_id
+    ).all()
+    
+    class_ids = set()
+    for sr in submission_records:
+        record = db.query(AttendanceRecord).filter(AttendanceRecord.id == sr.record_id).first()
+        if record and record.class_id:
+            class_ids.add(record.class_id)
+    
+    if not class_ids:
+        return ""
+    
+    classes = db.query(Class).filter(Class.id.in_(class_ids)).all()
+    return ", ".join([c.name for c in classes])
+
+
 @router.post("/", response_model=SubmissionResponse)
 async def create_submission(
     body: CreateSubmissionRequest,
@@ -111,14 +130,14 @@ async def get_submitted_task_ids(
     return {"task_ids": list(submitted_task_ids)}
 
 
-@router.get("/", response_model=List[SubmissionResponse])
+@router.get("/", response_model=List[SubmissionDetailResponse])
 async def get_submissions(
     week_number: int = None,
     status: str = None,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """获取提交列表"""
+    """获取用户自己的提交列表"""
     query = db.query(Submission).filter(Submission.user_id == current_user.id)
     
     if week_number:
@@ -127,7 +146,39 @@ async def get_submissions(
     if status:
         query = query.filter(Submission.status == status)
     
-    return query.order_by(Submission.submitted_at.desc()).all()
+    submissions = query.order_by(Submission.submitted_at.desc()).all()
+    
+    result = []
+    for sub in submissions:
+        reviewer = None
+        if sub.reviewer_id:
+            reviewer = db.query(User).filter(User.id == sub.reviewer_id).first()
+        
+        submission_records = db.query(SubmissionRecord).filter(
+            SubmissionRecord.submission_id == sub.id
+        ).all()
+        record_count = len(submission_records)
+        
+        class_names = _get_submission_class_names(db, sub.id)
+        
+        result.append(SubmissionDetailResponse(
+            id=sub.id,
+            user_id=sub.user_id,
+            user_name=current_user.real_name,
+            user_email=current_user.email,
+            week_number=sub.week_number,
+            status=sub.status,
+            reviewer_id=sub.reviewer_id,
+            reviewer_name=reviewer.real_name if reviewer else None,
+            review_time=sub.review_time,
+            review_note=sub.review_note,
+            submitted_at=sub.submitted_at,
+            task_count=1,
+            record_count=record_count,
+            class_names=class_names
+        ))
+    
+    return result
 
 
 @router.get("/pending", response_model=List[SubmissionDetailResponse])
@@ -155,11 +206,8 @@ async def get_pending_submissions(
             SubmissionRecord.submission_id == sub.id
         ).all()
         record_count = len(submission_records)
-        task_ids = set()
-        for sr in submission_records:
-            record = db.query(AttendanceRecord).filter(AttendanceRecord.id == sr.record_id).first()
-            if record:
-                task_ids.add(record.task_id)
+        
+        class_names = _get_submission_class_names(db, sub.id)
         
         result.append(SubmissionDetailResponse(
             id=sub.id,
@@ -173,8 +221,9 @@ async def get_pending_submissions(
             review_time=sub.review_time,
             review_note=sub.review_note,
             submitted_at=sub.submitted_at,
-            task_count=len(task_ids),
-            record_count=record_count
+            task_count=1,
+            record_count=record_count,
+            class_names=class_names
         ))
     
     return result
@@ -210,11 +259,8 @@ async def get_reviewed_submissions(
             SubmissionRecord.submission_id == sub.id
         ).all()
         record_count = len(submission_records)
-        task_ids = set()
-        for sr in submission_records:
-            record = db.query(AttendanceRecord).filter(AttendanceRecord.id == sr.record_id).first()
-            if record:
-                task_ids.add(record.task_id)
+        
+        class_names = _get_submission_class_names(db, sub.id)
         
         result.append(SubmissionDetailResponse(
             id=sub.id,
@@ -228,8 +274,9 @@ async def get_reviewed_submissions(
             review_time=sub.review_time,
             review_note=sub.review_note,
             submitted_at=sub.submitted_at,
-            task_count=len(task_ids),
-            record_count=record_count
+            task_count=1,
+            record_count=record_count,
+            class_names=class_names
         ))
     
     return result
