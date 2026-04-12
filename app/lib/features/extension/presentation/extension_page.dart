@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../shared/providers.dart';
+import '../../../shared/widgets/toast.dart';
 
 class ExtensionPage extends ConsumerWidget {
   const ExtensionPage({super.key});
@@ -36,6 +37,22 @@ class ExtensionPage extends ConsumerWidget {
                   subtitle: isAdmin ? '审核提交、导出汇总表' : '查看已发布的周汇总名单',
                   color: Colors.orange,
                   onTap: () => context.push('/extension/weekly-summary'),
+                ),
+                const SizedBox(height: 16),
+                _FeatureCard(
+                  icon: Icons.file_upload_outlined,
+                  title: '任务导入',
+                  subtitle: '从Excel导入考勤任务',
+                  color: Colors.blue,
+                  onTap: () => Toast.show(context, '敬请期待'),
+                ),
+                const SizedBox(height: 16),
+                _FeatureCard(
+                  icon: Icons.leaderboard_outlined,
+                  title: '排行榜',
+                  subtitle: '查看考勤统计排行',
+                  color: Colors.purple,
+                  onTap: () => Toast.show(context, '敬请期待'),
                 ),
               ],
             ),
