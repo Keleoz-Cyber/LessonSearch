@@ -1736,13 +1736,20 @@ class _HistoryWeekCard extends ConsumerWidget {
                                       summary['late_count'] as int? ?? 0;
                                   final absentCount =
                                       summary['absent_count'] as int? ?? 0;
-                                  final total =
-                                      (lateCount / 2).floor() + absentCount;
-                                  if (total > 0) {
+                                  final leaveCount =
+                                      summary['leave_count'] as int? ?? 0;
+                                  final otherCount =
+                                      summary['other_count'] as int? ?? 0;
+                                  final totalRecords =
+                                      lateCount +
+                                      absentCount +
+                                      leaveCount +
+                                      otherCount;
+                                  if (totalRecords > 0) {
                                     return Padding(
                                       padding: const EdgeInsets.only(left: 8),
                                       child: Text(
-                                        '异常: $total人',
+                                        '异常: $totalRecords条',
                                         style: const TextStyle(
                                           fontSize: 12,
                                           color: Colors.red,

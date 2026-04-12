@@ -624,11 +624,8 @@ async def get_submission_detail(
         SubmissionRecord.submission_id == submission.id
     ).all()
     record_count = len(submission_records)
-    task_ids = set()
-    for sr in submission_records:
-        record = db.query(AttendanceRecord).filter(AttendanceRecord.id == sr.record_id).first()
-        if record:
-            task_ids.add(record.task_id)
+    
+    class_names = _get_submission_class_names(db, submission.id)
     
     return SubmissionDetailResponse(
         id=submission.id,
@@ -642,8 +639,9 @@ async def get_submission_detail(
         review_time=submission.review_time,
         review_note=submission.review_note,
         submitted_at=submission.submitted_at,
-        task_count=len(task_ids),
-        record_count=record_count
+        task_count=1,
+        record_count=record_count,
+        class_names=class_names
     )
 
 
