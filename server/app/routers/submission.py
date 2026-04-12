@@ -490,7 +490,7 @@ async def get_week_summary_detail(
             "absent": s["absent"],
             "leave": s["leave"],
             "other": s["other"],
-            "total": (s["late"] // 2) + s["absent"] + s["leave"] + s["other"],
+            "total": (s["late"] // 2) + s["absent"],
         })
     
     return {
@@ -554,7 +554,7 @@ async def export_week_excel(
             record = db.query(AttendanceRecord).filter(
                 AttendanceRecord.id == sr.record_id
             ).first()
-            if record and record.status in ("late", "absent"):
+            if record and record.status in ("late", "absent", "leave", "other"):
                 student = db.query(Student).filter(
                     Student.id == record.student_id
                 ).first()
@@ -586,11 +586,17 @@ async def export_week_excel(
                 "class_code": r["class_code"],
                 "late": 0,
                 "absent": 0,
+                "leave": 0,
+                "other": 0,
             }
         if r["status"] == "late":
             student_stats[sid]["late"] += 1
         elif r["status"] == "absent":
             student_stats[sid]["absent"] += 1
+        elif r["status"] == "leave":
+            student_stats[sid]["leave"] += 1
+        elif r["status"] == "other":
+            student_stats[sid]["other"] += 1
     
     sorted_students = sorted(
         student_stats.values(),
@@ -601,7 +607,7 @@ async def export_week_excel(
     ws = wb.active
     ws.title = f"第{week_number}周考勤"
     
-    headers = ["序号", "姓名", "班级", "学号", "迟到/早退", "旷课", "累计"]
+    headers = ["序号", "姓名", "班级", "学号", "迟到", "缺勤", "请假", "其他", "累计"]
     ws.append(headers)
     
     for cell in ws[1]:
@@ -616,11 +622,13 @@ async def export_week_excel(
             s["student_no"],
             s["late"],
             s["absent"],
+            s["leave"],
+            s["other"],
             None,
         ]
         ws.append(row)
         
-        ws.cell(row=i+1, column=7).value = f"=ROUNDDOWN(E{i+1}/2+F{i+1},0)"
+        ws.cell(row=i+1, column=9).value = f"=ROUNDDOWN(E{i+1}/2+F{i+1},0)"
     
     thin_border = Border(
         left=Side(style='thin'),
@@ -628,7 +636,7 @@ async def export_week_excel(
         top=Side(style='thin'),
         bottom=Side(style='thin')
     )
-    for row in ws.iter_rows(min_row=1, max_row=ws.max_row, min_col=1, max_col=7):
+    for row in ws.iter_rows(min_row=1, max_row=ws.max_row, min_col=1, max_col=9):
         for cell in row:
             cell.border = thin_border
             cell.alignment = Alignment(horizontal="center")
@@ -637,9 +645,11 @@ async def export_week_excel(
     ws.column_dimensions['B'].width = 12
     ws.column_dimensions['C'].width = 12
     ws.column_dimensions['D'].width = 16
-    ws.column_dimensions['E'].width = 12
+    ws.column_dimensions['E'].width = 8
     ws.column_dimensions['F'].width = 8
     ws.column_dimensions['G'].width = 8
+    ws.column_dimensions['H'].width = 8
+    ws.column_dimensions['I'].width = 8
     
     output = BytesIO()
     wb.save(output)
