@@ -626,7 +626,7 @@ class _AboutPageState extends ConsumerState<AboutPage> {
 
               Center(
                 child: Text(
-                  '考勤助手 v0.5.0',
+                  '考勤助手 v0.5.1',
                   style: TextStyle(
                     color: Theme.of(
                       context,
