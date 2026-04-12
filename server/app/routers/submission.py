@@ -614,8 +614,15 @@ async def approve_submission(
     if not submission:
         raise HTTPException(status_code=404, detail="提交不存在")
     
+    if submission.status == "cancelled":
+        raise HTTPException(status_code=400, detail="成员已撤销该提交，无法审核")
+    
     if submission.status != "pending":
-        raise HTTPException(status_code=400, detail="提交状态不是待审核")
+        status_text = {
+            "approved": "已通过",
+            "rejected": "已拒绝",
+        }.get(submission.status, submission.status)
+        raise HTTPException(status_code=400, detail=f"提交状态不是待审核（当前状态：{status_text}）")
     
     submission.status = "approved"
     submission.reviewer_id = current_user.id
@@ -644,8 +651,15 @@ async def reject_submission(
     if not submission:
         raise HTTPException(status_code=404, detail="提交不存在")
     
+    if submission.status == "cancelled":
+        raise HTTPException(status_code=400, detail="成员已撤销该提交，无法审核")
+    
     if submission.status != "pending":
-        raise HTTPException(status_code=400, detail="提交状态不是待审核")
+        status_text = {
+            "approved": "已通过",
+            "rejected": "已拒绝",
+        }.get(submission.status, submission.status)
+        raise HTTPException(status_code=400, detail=f"提交状态不是待审核（当前状态：{status_text}）")
     
     submission.status = "rejected"
     submission.reviewer_id = current_user.id
