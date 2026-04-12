@@ -124,10 +124,10 @@ def import_students(commit: bool = False, clear: bool = False, min_year: int = 2
     try:
         if clear:
             print("\n清空旧数据...")
-            # 先清空关联表（外键约束）
-            session.execute(text("DELETE FROM attendance_records"))
+            # 按外键依赖顺序删除（从子表到父表）
             session.execute(text("DELETE FROM submission_records"))
             session.execute(text("DELETE FROM submissions"))
+            session.execute(text("DELETE FROM attendance_records"))
             session.execute(text("DELETE FROM week_exports"))
             # 再清空主表
             session.execute(delete(Student))
