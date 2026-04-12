@@ -1,7 +1,7 @@
 """
 学生相关模型
 """
-from sqlalchemy import Column, Integer, String, ForeignKey, UniqueConstraint, func
+from sqlalchemy import Column, Integer, String, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import relationship
 
 from app.core.database import Base
@@ -53,6 +53,7 @@ class Student(Base):
     student_no = Column(String(20), unique=True, nullable=False)
     pinyin = Column(String(100), nullable=True)
     pinyin_abbr = Column(String(20), nullable=True)
+    gender = Column(String(10), nullable=True)
     class_id = Column(Integer, ForeignKey("classes.id"), nullable=False)
 
     class_ = relationship("Class", back_populates="students")
