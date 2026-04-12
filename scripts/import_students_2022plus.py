@@ -131,7 +131,6 @@ def import_students(commit: bool = False, clear: bool = False, min_year: int = 2
             session.execute(text("DELETE FROM week_exports"))
             session.execute(text("DELETE FROM task_classes"))
             session.execute(text("DELETE FROM attendance_tasks"))
-            session.execute(text("DELETE FROM duties"))
             # 再清空主表
             session.execute(delete(Student))
             session.execute(delete(Class))
