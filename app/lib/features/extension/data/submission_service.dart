@@ -36,8 +36,13 @@ class SubmissionService {
     await _api.dio.delete('/submissions/$submissionId');
   }
 
-  Future<List<dynamic>> getPendingSubmissions() async {
-    final res = await _api.dio.get('/submissions/pending');
+  Future<List<dynamic>> getPendingSubmissions({int? weekNumber}) async {
+    final params = <String, dynamic>{};
+    if (weekNumber != null) params['week_number'] = weekNumber;
+    final res = await _api.dio.get(
+      '/submissions/pending',
+      queryParameters: params,
+    );
     return res.data as List;
   }
 

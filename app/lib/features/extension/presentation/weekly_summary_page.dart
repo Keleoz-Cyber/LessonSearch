@@ -16,8 +16,13 @@ final currentWeekProvider = FutureProvider<Map<String, dynamic>>((ref) async {
   return res.data as Map<String, dynamic>;
 });
 
-final pendingSubmissionsProvider = FutureProvider<List<dynamic>>((ref) {
-  return ref.watch(submissionServiceProvider).getPendingSubmissions();
+final pendingSubmissionsProvider = FutureProvider.family<List<dynamic>, int>((
+  ref,
+  weekNumber,
+) {
+  return ref
+      .watch(submissionServiceProvider)
+      .getPendingSubmissions(weekNumber: weekNumber);
 });
 
 final myDutyProvider = FutureProvider<Map<String, dynamic>>((ref) async {
@@ -109,7 +114,7 @@ class _WeeklySummaryPageState extends ConsumerState<WeeklySummaryPage>
       final weekData = ref.read(currentWeekProvider).valueOrNull;
       if (weekData != null) {
         final weekNumber = weekData['week_number'] as int;
-        ref.invalidate(pendingSubmissionsProvider);
+        ref.invalidate(pendingSubmissionsProvider(weekNumber));
         ref.invalidate(weekSubmissionStatusProvider(weekNumber));
         ref.invalidate(weekSummaryProvider(weekNumber));
         ref.invalidate(myDutyProvider);
@@ -183,7 +188,7 @@ class _CurrentWeekTab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final pendingAsync = ref.watch(pendingSubmissionsProvider);
+    final pendingAsync = ref.watch(pendingSubmissionsProvider(weekNumber));
     final submissionStatusAsync = ref.watch(
       weekSubmissionStatusProvider(weekNumber),
     );
@@ -195,7 +200,7 @@ class _CurrentWeekTab extends ConsumerWidget {
 
     return RefreshIndicator(
       onRefresh: () async {
-        ref.invalidate(pendingSubmissionsProvider);
+        ref.invalidate(pendingSubmissionsProvider(weekNumber));
         ref.invalidate(weekSubmissionStatusProvider(weekNumber));
         ref.invalidate(weekSummaryProvider(weekNumber));
         ref.invalidate(exportStatusProvider(weekNumber));
@@ -986,7 +991,7 @@ class _CurrentWeekTab extends ConsumerWidget {
         Toast.show(context, '导出成功');
       }
 
-      ref.invalidate(pendingSubmissionsProvider);
+      ref.invalidate(pendingSubmissionsProvider(weekNumber));
       ref.invalidate(exportStatusProvider(weekNumber));
       ref.invalidate(weekSummaryProvider(weekNumber));
     } catch (e) {
@@ -1258,7 +1263,7 @@ class _PendingSubmissionCard extends ConsumerWidget {
     try {
       final service = ref.read(submissionServiceProvider);
       await service.approveSubmission(submission['id']);
-      ref.invalidate(pendingSubmissionsProvider);
+      ref.invalidate(pendingSubmissionsProvider(weekNumber));
       ref.invalidate(weekSummaryProvider(weekNumber));
       ref.invalidate(weekSubmissionStatusProvider(weekNumber));
       ref.invalidate(reviewedSubmissionsProvider(weekNumber));
@@ -1308,7 +1313,7 @@ class _PendingSubmissionCard extends ConsumerWidget {
       try {
         final service = ref.read(submissionServiceProvider);
         await service.rejectSubmission(submission['id'], note);
-        ref.invalidate(pendingSubmissionsProvider);
+        ref.invalidate(pendingSubmissionsProvider(weekNumber));
         ref.invalidate(weekSubmissionStatusProvider(weekNumber));
         ref.invalidate(reviewedSubmissionsProvider(weekNumber));
         Toast.show(context, '已拒绝');

@@ -132,6 +132,7 @@ async def get_submissions(
 
 @router.get("/pending", response_model=List[SubmissionDetailResponse])
 async def get_pending_submissions(
+    week_number: int = None,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -139,9 +140,12 @@ async def get_pending_submissions(
     if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="需要管理员权限")
     
-    submissions = db.query(Submission).filter(
-        Submission.status == "pending"
-    ).all()
+    query = db.query(Submission).filter(Submission.status == "pending")
+    
+    if week_number:
+        query = query.filter(Submission.week_number == week_number)
+    
+    submissions = query.all()
     
     result = []
     for sub in submissions:

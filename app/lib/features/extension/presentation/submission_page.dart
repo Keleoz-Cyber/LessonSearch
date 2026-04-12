@@ -42,47 +42,48 @@ final mySubmissionsProvider = FutureProvider<List<dynamic>>((ref) {
   return ref.watch(submissionServiceProvider).getMySubmissions();
 });
 
-final localNameCheckTasksProvider = FutureProvider<List<Map<String, dynamic>>>((
-  ref,
-) async {
-  final repo = ref.watch(attendanceRepositoryProvider);
-  final studentRepo = ref.watch(studentRepositoryProvider);
-  final submittedIds = await ref.watch(submittedTaskIdsProvider.future);
+final weekNameCheckTasksProvider =
+    FutureProvider.family<List<Map<String, dynamic>>, int>((
+      ref,
+      weekNumber,
+    ) async {
+      final repo = ref.watch(attendanceRepositoryProvider);
+      final studentRepo = ref.watch(studentRepositoryProvider);
+      final submittedIds = await ref.watch(submittedTaskIdsProvider.future);
+      final weekData = await ref.watch(currentWeekProvider.future);
 
-  final tasks = await repo.getCompletedNameCheckTasks();
+      final startDate = DateTime.parse(weekData['start_date'] as String);
+      final endDate = DateTime.parse(weekData['end_date'] as String);
+      final weekEnd = endDate.add(const Duration(days: 1));
 
-  final startOfWeek = DateTime.now().subtract(
-    Duration(days: DateTime.now().weekday - 1),
-  );
-  final weekStart = DateTime(
-    startOfWeek.year,
-    startOfWeek.month,
-    startOfWeek.day,
-  );
+      final tasks = await repo.getCompletedNameCheckTasks();
 
-  final weekTasks = tasks
-      .where(
-        (t) => t.createdAt.isAfter(weekStart) && !submittedIds.contains(t.id),
-      )
-      .toList();
+      final weekTasks = tasks
+          .where(
+            (t) =>
+                t.createdAt.isAfter(startDate) &&
+                t.createdAt.isBefore(weekEnd) &&
+                !submittedIds.contains(t.id),
+          )
+          .toList();
 
-  final result = <Map<String, dynamic>>[];
-  for (final task in weekTasks) {
-    final classNames = await studentRepo.getClassNames(task.classIds);
-    result.add({
-      'id': task.id,
-      'class_ids': task.classIds,
-      'class_names': classNames,
-      'created_at': task.createdAt.toIso8601String(),
-      'record_count': 0,
+      final result = <Map<String, dynamic>>[];
+      for (final task in weekTasks) {
+        final classNames = await studentRepo.getClassNames(task.classIds);
+        result.add({
+          'id': task.id,
+          'class_ids': task.classIds,
+          'class_names': classNames,
+          'created_at': task.createdAt.toIso8601String(),
+          'record_count': 0,
+        });
+
+        final records = await repo.getRecordsByTask(task.id);
+        result.last['record_count'] = records.length;
+      }
+
+      return result;
     });
-
-    final records = await repo.getRecordsByTask(task.id);
-    result.last['record_count'] = records.length;
-  }
-
-  return result;
-});
 
 final adminsProvider = FutureProvider<List<dynamic>>((ref) async {
   final api = ref.watch(apiClientProvider);
@@ -123,7 +124,7 @@ class _SubmissionPageState extends ConsumerState<SubmissionPage>
 
   void _onTabChanged() {
     if (_tabController.index == 0 && mounted) {
-      ref.invalidate(localNameCheckTasksProvider);
+      ref.invalidate(weekNameCheckTasksProvider);
       ref.invalidate(submittedTaskIdsProvider);
     } else if (_tabController.index == 1 && mounted) {
       ref.invalidate(mySubmissionsProvider);
@@ -149,7 +150,7 @@ class _SubmissionPageState extends ConsumerState<SubmissionPage>
         Toast.show(context, '提交成功，等待审核');
         _selectedTaskIds = [];
         ref.invalidate(submittedTaskIdsProvider);
-        ref.invalidate(localNameCheckTasksProvider);
+        ref.invalidate(weekNameCheckTasksProvider);
         ref.invalidate(mySubmissionsProvider);
         _tabController.animateTo(1);
       }
@@ -282,7 +283,7 @@ class _SubmitTaskTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final adminsAsync = ref.watch(adminsProvider);
-    final tasksAsync = ref.watch(localNameCheckTasksProvider);
+    final tasksAsync = ref.watch(weekNameCheckTasksProvider(weekNumber));
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
