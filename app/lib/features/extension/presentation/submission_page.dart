@@ -503,7 +503,7 @@ class _MySubmissionsTab extends ConsumerWidget {
   }
 }
 
-class _SubmissionCard extends StatelessWidget {
+class _SubmissionCard extends ConsumerWidget {
   final Map<String, dynamic> submission;
 
   const _SubmissionCard({required this.submission});
@@ -539,9 +539,11 @@ class _SubmissionCard extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final submittedAt = DateTime.parse(submission['submitted_at'] as String);
     final reviewerName = submission['reviewer_name'] as String?;
+    final status = submission['status'] as String;
+    final canCancel = status == 'pending';
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -609,9 +611,51 @@ class _SubmissionCard extends StatelessWidget {
                 ),
               ),
             ],
+            if (canCancel) ...[
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                icon: const Icon(Icons.cancel),
+                label: const Text('撤回提交'),
+                style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
+                onPressed: () => _showCancelDialog(context, ref),
+              ),
+            ],
           ],
         ),
       ),
     );
+  }
+
+  Future<void> _showCancelDialog(BuildContext context, WidgetRef ref) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('撤回提交'),
+        content: const Text('确定要撤回此提交吗？撤回后可以重新提交。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('确认撤回'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        final service = ref.read(submissionServiceProvider);
+        await service.cancelSubmission(submission['id'] as int);
+        ref.invalidate(mySubmissionsProvider);
+        ref.invalidate(submittedTaskIdsProvider);
+        Toast.show(context, '已撤回');
+      } catch (e) {
+        Toast.show(context, '撤回失败: $e');
+      }
+    }
   }
 }
