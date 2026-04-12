@@ -9,6 +9,7 @@ import 'package:path_provider/path_provider.dart';
 
 import '../../../shared/providers.dart';
 import '../../../shared/widgets/toast.dart';
+import '../../../shared/widgets/empty_state.dart';
 import '../data/submission_service.dart';
 
 final currentWeekProvider = FutureProvider<Map<String, dynamic>>((ref) async {
@@ -402,21 +403,7 @@ class _CurrentWeekTab extends ConsumerWidget {
           error: (e, _) => Text('加载失败: $e'),
           data: (reviewed) {
             if (reviewed.isEmpty) {
-              return const Card(
-                child: Padding(
-                  padding: EdgeInsets.all(16),
-                  child: Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.history, size: 48, color: Colors.grey),
-                        SizedBox(height: 8),
-                        Text('暂无已审核记录'),
-                      ],
-                    ),
-                  ),
-                ),
-              );
+              return EmptyStateCard.noReviewed();
             }
             return Column(
               children: reviewed
@@ -768,26 +755,7 @@ class _CurrentWeekTab extends ConsumerWidget {
       );
     }
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.check_circle, size: 48, color: Colors.green),
-              const SizedBox(height: 16),
-              const Text('您已被分配查课职务'),
-              const SizedBox(height: 8),
-              Text(
-                '分配时间: ${duty['assigned_at'] != null ? DateFormat('yyyy-MM-dd').format(DateTime.parse(duty['assigned_at'])) : '未知'}',
-                style: const TextStyle(color: Colors.grey),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
+    return EmptyStateCard.noPending();
   }
 
   Widget _buildPublishedSection(
@@ -1156,7 +1124,7 @@ class _PendingSubmissionCard extends ConsumerWidget {
                         .toList();
 
                     if (records.isEmpty) {
-                      return const Center(child: Text('暂无异常记录'));
+                      return EmptyState.noAbnormal();
                     }
 
                     return SingleChildScrollView(
@@ -1538,7 +1506,7 @@ class _ReviewedSubmissionCard extends ConsumerWidget {
           content: SizedBox(
             width: 400,
             child: records.isEmpty
-                ? const Center(child: Text('暂无异常记录'))
+                ? EmptyState.noAbnormal()
                 : SingleChildScrollView(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1896,7 +1864,7 @@ class _SummaryDetailDialogState extends State<_SummaryDetailDialog> {
             const SizedBox(height: 8),
             Expanded(
               child: filteredData.isEmpty
-                  ? const Center(child: Text('暂无异常记录'))
+                  ? EmptyState.noAbnormal()
                   : ListView.builder(
                       itemCount: filteredData.length,
                       itemBuilder: (context, index) {
