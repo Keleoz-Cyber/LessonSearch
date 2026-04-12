@@ -550,9 +550,9 @@ class _CurrentWeekTab extends ConsumerWidget {
   ) {
     final lateCount = summary['late_count'] as int? ?? 0;
     final absentCount = summary['absent_count'] as int? ?? 0;
+    final leaveCount = summary['leave_count'] as int? ?? 0;
+    final otherCount = summary['other_count'] as int? ?? 0;
     final approvedCount = summary['approved_count'] as int? ?? 0;
-    final pendingCount = summary['pending_count'] as int? ?? 0;
-    final total = (lateCount / 2).floor() + absentCount;
 
     return Card(
       child: InkWell(
@@ -563,61 +563,33 @@ class _CurrentWeekTab extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('汇总预览', style: Theme.of(context).textTheme.titleMedium),
-                  const Spacer(),
+                  const Text(
+                    '汇总预览',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
                   const Icon(Icons.chevron_right, color: Colors.grey),
                 ],
               ),
               const SizedBox(height: 12),
               Row(
                 children: [
-                  Expanded(
-                    child: _buildStatItem(
-                      context,
-                      '迟到/早退',
-                      lateCount,
-                      Colors.orange,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _buildStatItem(
-                      context,
-                      '旷课',
-                      absentCount,
-                      Colors.red,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _buildStatItem(context, '累计', total, Colors.purple),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildStatItem(
-                      context,
-                      '待审核',
-                      pendingCount,
-                      Colors.blue,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _buildStatItem(
-                      context,
-                      '已通过',
-                      approvedCount,
-                      Colors.green,
-                    ),
-                  ),
+                  _buildMiniStat('迟到', lateCount, Colors.orange),
+                  const SizedBox(width: 8),
+                  _buildMiniStat('缺勤', absentCount, Colors.red),
+                  const SizedBox(width: 8),
+                  _buildMiniStat('请假', leaveCount, Colors.blue),
+                  const SizedBox(width: 8),
+                  _buildMiniStat('其他', otherCount, Colors.grey),
                 ],
               ),
               const SizedBox(height: 8),
+              Text(
+                '已审核提交: $approvedCount',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              const SizedBox(height: 4),
               Text(
                 '点击查看详细名单',
                 style: Theme.of(
@@ -998,6 +970,20 @@ class _CurrentWeekTab extends ConsumerWidget {
       Toast.show(context, '导出失败: $e');
     }
   }
+
+  Widget _buildMiniStat(String label, int count, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        '$label: $count',
+        style: TextStyle(color: color, fontSize: 12),
+      ),
+    );
+  }
 }
 
 class _PendingSubmissionCard extends ConsumerWidget {
@@ -1164,12 +1150,19 @@ class _PendingSubmissionCard extends ConsumerWidget {
                     final lateCount = data['late_count'] as int? ?? 0;
                     final absentCount = data['absent_count'] as int? ?? 0;
                     final leaveCount = data['leave_count'] as int? ?? 0;
+                    final otherCount = data['other_count'] as int? ?? 0;
 
                     final lateRecords = records
                         .where((r) => r['status'] == 'late')
                         .toList();
                     final absentRecords = records
                         .where((r) => r['status'] == 'absent')
+                        .toList();
+                    final leaveRecords = records
+                        .where((r) => r['status'] == 'leave')
+                        .toList();
+                    final otherRecords = records
+                        .where((r) => r['status'] == 'other')
                         .toList();
 
                     if (records.isEmpty) {
@@ -1184,10 +1177,12 @@ class _PendingSubmissionCard extends ConsumerWidget {
                           Row(
                             children: [
                               _buildMiniStat('迟到', lateCount, Colors.orange),
-                              const SizedBox(width: 12),
+                              const SizedBox(width: 8),
                               _buildMiniStat('缺勤', absentCount, Colors.red),
-                              const SizedBox(width: 12),
+                              const SizedBox(width: 8),
                               _buildMiniStat('请假', leaveCount, Colors.blue),
+                              const SizedBox(width: 8),
+                              _buildMiniStat('其他', otherCount, Colors.grey),
                             ],
                           ),
                           const SizedBox(height: 16),
@@ -1216,6 +1211,42 @@ class _PendingSubmissionCard extends ConsumerWidget {
                             ),
                             const SizedBox(height: 8),
                             ...lateRecords.map(
+                              (r) => Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 2,
+                                ),
+                                child: Text(
+                                  '- ${r['student_name']} (${r['student_no']}) ${r['class_name']}',
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                          ],
+                          if (leaveRecords.isNotEmpty) ...[
+                            const Text(
+                              '请假名单:',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            const SizedBox(height: 8),
+                            ...leaveRecords.map(
+                              (r) => Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 2,
+                                ),
+                                child: Text(
+                                  '- ${r['student_name']} (${r['student_no']}) ${r['class_name']}',
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                          ],
+                          if (otherRecords.isNotEmpty) ...[
+                            const Text(
+                              '其他名单:',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            const SizedBox(height: 8),
+                            ...otherRecords.map(
                               (r) => Padding(
                                 padding: const EdgeInsets.symmetric(
                                   vertical: 2,

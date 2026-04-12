@@ -254,6 +254,8 @@ async def get_week_summary(
     
     late_count = 0
     absent_count = 0
+    leave_count = 0
+    other_count = 0
     
     approved_ids = [s.id for s in submissions if s.status == "approved"]
     if approved_ids:
@@ -270,6 +272,20 @@ async def get_week_summary(
             SubmissionRecord.submission_id.in_(approved_ids),
             AttendanceRecord.status == "absent"
         ).scalar() or 0
+        
+        leave_count = db.query(sql_func.count()).select_from(SubmissionRecord).join(
+            AttendanceRecord, SubmissionRecord.record_id == AttendanceRecord.id
+        ).filter(
+            SubmissionRecord.submission_id.in_(approved_ids),
+            AttendanceRecord.status == "leave"
+        ).scalar() or 0
+        
+        other_count = db.query(sql_func.count()).select_from(SubmissionRecord).join(
+            AttendanceRecord, SubmissionRecord.record_id == AttendanceRecord.id
+        ).filter(
+            SubmissionRecord.submission_id.in_(approved_ids),
+            AttendanceRecord.status == "other"
+        ).scalar() or 0
     
     export = db.query(WeekExport).filter(
         WeekExport.week_number == week_number
@@ -283,6 +299,8 @@ async def get_week_summary(
         rejected_count=rejected,
         late_count=late_count,
         absent_count=absent_count,
+        leave_count=leave_count,
+        other_count=other_count,
         is_published=export is not None
     )
 

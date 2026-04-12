@@ -58,6 +58,8 @@ class WeekSummaryResponse(BaseModel):
     rejected_count: int
     late_count: int
     absent_count: int
+    leave_count: int = 0
+    other_count: int = 0
     is_published: bool
 
 
