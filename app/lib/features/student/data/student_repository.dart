@@ -75,23 +75,27 @@ class StudentRepository {
   }
 
   Future<void> syncStudentsByClass(int classId) async {
-    final studentsJson = await _api.getStudentsByClass(classId);
-    await _db.transaction(() async {
-      for (final s in studentsJson) {
-        await _db
-            .into(_db.students)
-            .insertOnConflictUpdate(
-              StudentsCompanion.insert(
-                id: Value(s['id'] as int),
-                name: s['name'] as String,
-                studentNo: s['student_no'] as String,
-                pinyin: Value(s['pinyin'] as String?),
-                pinyinAbbr: Value(s['pinyin_abbr'] as String?),
-                classId: s['class_id'] as int,
-              ),
-            );
-      }
-    });
+    try {
+      final studentsJson = await _api.getStudentsByClass(classId);
+      await _db.transaction(() async {
+        for (final s in studentsJson) {
+          await _db
+              .into(_db.students)
+              .insertOnConflictUpdate(
+                StudentsCompanion.insert(
+                  id: Value(s['id'] as int),
+                  name: s['name'] as String,
+                  studentNo: s['student_no'] as String,
+                  pinyin: Value(s['pinyin'] as String?),
+                  pinyinAbbr: Value(s['pinyin_abbr'] as String?),
+                  classId: s['class_id'] as int,
+                ),
+              );
+        }
+      });
+    } catch (e) {
+      throw Exception('syncStudentsByClass($classId) 失败: $e');
+    }
   }
 
   Future<void> syncStudentsBatch(List<int> classIds) async {
