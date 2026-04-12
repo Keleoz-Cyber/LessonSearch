@@ -65,6 +65,7 @@ class WeekSummaryResponse(BaseModel):
     absent_student_count: int = 0
     leave_student_count: int = 0
     other_student_count: int = 0
+    total_abnormal_students: int = 0
     is_published: bool
 
 

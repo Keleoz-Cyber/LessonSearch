@@ -1732,28 +1732,15 @@ class _HistoryWeekCard extends ConsumerWidget {
                                 loading: () => const SizedBox.shrink(),
                                 error: (_, __) => const SizedBox.shrink(),
                                 data: (summary) {
-                                  final lateStudentCount =
-                                      summary['late_student_count'] as int? ??
+                                  final totalAbnormalStudents =
+                                      summary['total_abnormal_students']
+                                          as int? ??
                                       0;
-                                  final absentStudentCount =
-                                      summary['absent_student_count'] as int? ??
-                                      0;
-                                  final leaveStudentCount =
-                                      summary['leave_student_count'] as int? ??
-                                      0;
-                                  final otherStudentCount =
-                                      summary['other_student_count'] as int? ??
-                                      0;
-                                  final totalStudents =
-                                      lateStudentCount +
-                                      absentStudentCount +
-                                      leaveStudentCount +
-                                      otherStudentCount;
-                                  if (totalStudents > 0) {
+                                  if (totalAbnormalStudents > 0) {
                                     return Padding(
                                       padding: const EdgeInsets.only(left: 8),
                                       child: Text(
-                                        '异常: $totalStudents人',
+                                        '异常: $totalAbnormalStudents人',
                                         style: const TextStyle(
                                           fontSize: 12,
                                           color: Colors.red,
