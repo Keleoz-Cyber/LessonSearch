@@ -500,6 +500,24 @@ async def get_week_summary_detail(
     }
 
 
+@router.get("/history")
+async def get_history_weeks(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """获取历史周次列表（已导出的周次）"""
+    exports = db.query(WeekExport).order_by(WeekExport.week_number.desc()).all()
+    
+    result = []
+    for export in exports:
+        result.append({
+            "week_number": export.week_number,
+            "exported_at": export.exported_at.isoformat() if export.exported_at else None,
+        })
+    
+    return result
+
+
 @router.get("/export-status/{week_number}", response_model=ExportStatusResponse)
 async def get_export_status(
     week_number: int,

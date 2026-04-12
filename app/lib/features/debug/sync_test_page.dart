@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:dio/dio.dart';
 
 import '../../core/sync/sync_service.dart';
 import '../../shared/providers.dart';
+import '../../features/extension/data/submission_service.dart';
 
 class SyncTestPage extends ConsumerStatefulWidget {
   const SyncTestPage({super.key});
@@ -19,11 +21,52 @@ class _SyncTestPageState extends ConsumerState<SyncTestPage> {
   int _recordCount = 0;
   bool _loading = false;
 
+  int _currentWeek = 0;
+  String _weekStartDate = '';
+  String _weekEndDate = '';
+  int _weekSubmissionCount = 0;
+  int _historyWeekCount = 0;
+  bool _weekTestLoading = false;
+
   @override
   void initState() {
     super.initState();
     _loadStats();
     _loadLogs();
+    _loadWeekTest();
+  }
+
+  Future<void> _loadWeekTest() async {
+    try {
+      final api = ref.read(apiClientProvider);
+
+      final weekResponse = await api.dio.get('/week/current');
+      final weekData = weekResponse.data;
+      final weekNumber = weekData['week_number'] as int;
+      final startDate = weekData['start_date'] as String;
+      final endDate = weekData['end_date'] as String;
+
+      final submissionResponse = await api.dio.get(
+        '/submissions/',
+        queryParameters: {'week_number': weekNumber},
+      );
+      final submissions = submissionResponse.data as List;
+
+      final historyResponse = await api.dio.get('/submissions/history');
+      final historyWeeks = historyResponse.data as List;
+
+      setState(() {
+        _currentWeek = weekNumber;
+        _weekStartDate = startDate;
+        _weekEndDate = endDate;
+        _weekSubmissionCount = submissions.length;
+        _historyWeekCount = historyWeeks.length;
+      });
+
+      _addLog('当前第$weekNumber周 ($startDate ~ $endDate)');
+    } catch (e) {
+      _addLog('加载周次数据失败: $e', isError: true);
+    }
   }
 
   Future<void> _loadStats() async {
@@ -142,6 +185,76 @@ class _SyncTestPageState extends ConsumerState<SyncTestPage> {
     }
   }
 
+  Future<void> _testWeekReset() async {
+    setState(() => _weekTestLoading = true);
+    try {
+      final api = ref.read(apiClientProvider);
+
+      final weekResponse = await api.dio.get('/week/current');
+      final weekData = weekResponse.data;
+      final weekNumber = weekData['week_number'] as int;
+      final startDate = weekData['start_date'] as String;
+
+      final startDateTime = DateTime.parse(startDate);
+      final now = DateTime.now();
+
+      final daysUntilMonday = (7 - now.weekday) % 7;
+      final nextMonday = now.add(Duration(days: daysUntilMonday));
+      final nextMondayZero = DateTime(
+        nextMonday.year,
+        nextMonday.month,
+        nextMonday.day,
+        0,
+        0,
+        0,
+      );
+
+      final secondsUntilReset = nextMondayZero.difference(now).inSeconds;
+      final hoursUntilReset = secondsUntilReset / 3600;
+
+      _addLog('=== 周次重置测试 ===');
+      _addLog('当前: 第$weekNumber周');
+      _addLog('周期: $startDate ~ ${weekData['end_date']}');
+      _addLog('下次重置: ${nextMondayZero.toString().substring(0, 16)}');
+      _addLog('距离重置: ${hoursUntilReset.toStringAsFixed(1)}小时');
+
+      if (daysUntilMonday == 0 && now.hour < 24) {
+        _addLog('⚠️ 今天是周一，即将重置！');
+      }
+
+      final submissionResponse = await api.dio.get(
+        '/submissions/',
+        queryParameters: {'week_number': weekNumber},
+      );
+      final submissions = submissionResponse.data as List;
+      final pendingCount = submissions
+          .where((s) => s['status'] == 'pending')
+          .length;
+      final approvedCount = submissions
+          .where((s) => s['status'] == 'approved')
+          .length;
+
+      _addLog(
+        '本周提交: ${submissions.length}条 (待审$pendingCount, 已过$approvedCount)',
+      );
+
+      final historyResponse = await api.dio.get('/submissions/history');
+      final historyWeeks = (historyResponse.data as List)
+          .map((w) => w['week_number'])
+          .toList();
+      _addLog('历史周次: ${historyWeeks.join(", ")}');
+
+      _addLog('结论: 周一零点后，本周提交会变成历史周次');
+      _addLog('新周次开始，成员可以提交新一周的名单');
+
+      await _loadWeekTest();
+    } catch (e) {
+      _addLog('测试失败: $e', isError: true);
+    } finally {
+      setState(() => _weekTestLoading = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final syncState = ref.watch(syncStateProvider);
@@ -197,6 +310,52 @@ class _SyncTestPageState extends ConsumerState<SyncTestPage> {
                 const SizedBox(width: 8),
                 _StatCard(label: '失败', count: _failedCount, color: Colors.red),
               ],
+            ),
+          ),
+
+          // 周次测试卡片
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Card(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.calendar_today,
+                          size: 18,
+                          color: Colors.purple,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          '周次测试',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      '当前: 第${_currentWeek}周 (${_weekStartDate} ~ $_weekEndDate)',
+                    ),
+                    const SizedBox(height: 4),
+                    Text('本周提交: ${_weekSubmissionCount}条'),
+                    const SizedBox(height: 4),
+                    Text('历史周次: ${_historyWeekCount}个'),
+                    const SizedBox(height: 12),
+                    FilledButton.icon(
+                      onPressed: _weekTestLoading ? null : _testWeekReset,
+                      icon: const Icon(Icons.science, size: 18),
+                      label: const Text('测试周次重置'),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: Colors.purple,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
 
