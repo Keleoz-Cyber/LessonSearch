@@ -3,11 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:dio/dio.dart';
 
+import '../../../core/router/app_router.dart';
 import '../../../shared/providers.dart';
 import '../../../shared/widgets/toast.dart';
-import '../../../core/network/api_client.dart';
-import '../../../features/attendance/domain/models.dart';
+import '../../../shared/widgets/status_badge.dart';
+import '../../../shared/widgets/empty_state.dart';
 import '../data/submission_service.dart';
 
 final currentWeekProvider = FutureProvider<Map<String, dynamic>>((ref) async {
@@ -346,30 +348,7 @@ class _SubmitTaskTab extends ConsumerWidget {
             ),
             data: (tasks) {
               if (tasks.isEmpty) {
-                return const Card(
-                  child: Padding(
-                    padding: EdgeInsets.all(24),
-                    child: Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.inbox_outlined,
-                            size: 48,
-                            color: Colors.grey,
-                          ),
-                          SizedBox(height: 16),
-                          Text('暂无可提交的任务'),
-                          SizedBox(height: 8),
-                          Text(
-                            '请先在首页完成记名任务',
-                            style: TextStyle(color: Colors.grey),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                );
+                return EmptyStateCard.noTask();
               }
 
               return Card(
@@ -480,22 +459,7 @@ class _MySubmissionsTab extends ConsumerWidget {
         ),
         data: (submissions) {
           if (submissions.isEmpty) {
-            return ListView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              children: const [
-                SizedBox(height: 200),
-                Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.inbox_outlined, size: 64, color: Colors.grey),
-                      SizedBox(height: 16),
-                      Text('暂无提交记录', style: TextStyle(color: Colors.grey)),
-                    ],
-                  ),
-                ),
-              ],
-            );
+            return EmptyState.noSubmission();
           }
 
           return ListView.builder(
@@ -593,22 +557,9 @@ class _SubmissionCard extends ConsumerWidget {
                       ],
                     ),
                   ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: _getStatusColor().withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Text(
-                      _getStatusText(),
-                      style: TextStyle(
-                        color: _getStatusColor(),
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
+                  StatusBadge(
+                    label: _getStatusText(),
+                    color: _getStatusColor(),
                   ),
                 ],
               ),

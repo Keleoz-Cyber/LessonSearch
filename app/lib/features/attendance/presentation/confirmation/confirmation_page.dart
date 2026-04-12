@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../shared/providers.dart';
+import '../../../../shared/widgets/status_badge.dart';
+import '../../../../shared/widgets/empty_state.dart';
 import '../../../attendance/domain/models.dart';
 
 /// 记名确认页：展示异常名单（未到/请假/其他），按班级分组
@@ -78,20 +80,7 @@ class ConfirmationPage extends ConsumerWidget {
 
             Expanded(
               child: abnormalByClass.isEmpty
-                  ? const Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.check_circle,
-                            size: 64,
-                            color: Colors.green,
-                          ),
-                          SizedBox(height: 16),
-                          Text('全部到齐，没有异常记录'),
-                        ],
-                      ),
-                    )
+                  ? EmptyStateCard.noAbnormal()
                   : ListView(
                       padding: const EdgeInsets.all(16),
                       children: abnormalByClass.entries.map((entry) {
