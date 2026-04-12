@@ -162,13 +162,14 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   ),
                 ),
                 const SizedBox(width: 12),
-                SizedBox(
-                  width: 100,
-                  height: 48,
+                Flexible(
                   child: FilledButton(
                     onPressed: _countdown > 0 || _isSendingCode
                         ? null
                         : _sendCode,
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size(80, 48),
+                    ),
                     child: Text(_countdown > 0 ? '${_countdown}s' : '发送'),
                   ),
                 ),

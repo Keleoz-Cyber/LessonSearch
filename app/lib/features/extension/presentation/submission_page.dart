@@ -697,108 +697,104 @@ class _SubmissionCard extends ConsumerWidget {
         context: context,
         builder: (ctx) => AlertDialog(
           title: Text('提交详情 - 第 ${submission['week_number']} 周'),
-          content: SizedBox(
-            width: 400,
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Row(
-                    children: [
-                      _buildMiniStat('迟到', lateCount, Colors.orange),
-                      const SizedBox(width: 8),
-                      _buildMiniStat('缺勤', absentCount, Colors.red),
-                      const SizedBox(width: 8),
-                      _buildMiniStat('请假', leaveCount, Colors.blue),
-                      const SizedBox(width: 8),
-                      _buildMiniStat('其他', otherCount, Colors.grey),
-                    ],
+          content: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    _buildMiniStat('迟到', lateCount, Colors.orange),
+                    _buildMiniStat('缺勤', absentCount, Colors.red),
+                    _buildMiniStat('请假', leaveCount, Colors.blue),
+                    _buildMiniStat('其他', otherCount, Colors.grey),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                if (records.isEmpty)
+                  const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(24),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.check_circle,
+                            size: 48,
+                            color: Colors.green,
+                          ),
+                          SizedBox(height: 16),
+                          Text('全部到齐，无异常记录'),
+                        ],
+                      ),
+                    ),
                   ),
-                  const SizedBox(height: 16),
-                  if (records.isEmpty)
-                    const Center(
-                      child: Padding(
-                        padding: EdgeInsets.all(24),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.check_circle,
-                              size: 48,
-                              color: Colors.green,
-                            ),
-                            SizedBox(height: 16),
-                            Text('全部到齐，无异常记录'),
-                          ],
-                        ),
+                if (absentRecords.isNotEmpty) ...[
+                  const Text(
+                    '缺勤名单:',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  ...absentRecords.map(
+                    (r) => Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 2),
+                      child: Text(
+                        '- ${r['student_name']} (${r['student_no']}) ${r['class_name']}',
                       ),
                     ),
-                  if (absentRecords.isNotEmpty) ...[
-                    const Text(
-                      '缺勤名单:',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 8),
-                    ...absentRecords.map(
-                      (r) => Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 2),
-                        child: Text(
-                          '- ${r['student_name']} (${r['student_no']}) ${r['class_name']}',
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                  ],
-                  if (lateRecords.isNotEmpty) ...[
-                    const Text(
-                      '迟到名单:',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 8),
-                    ...lateRecords.map(
-                      (r) => Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 2),
-                        child: Text(
-                          '- ${r['student_name']} (${r['student_no']}) ${r['class_name']}',
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                  ],
-                  if (leaveRecords.isNotEmpty) ...[
-                    const Text(
-                      '请假名单:',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 8),
-                    ...leaveRecords.map(
-                      (r) => Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 2),
-                        child: Text(
-                          '- ${r['student_name']} (${r['student_no']}) ${r['class_name']}',
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                  ],
-                  if (otherRecords.isNotEmpty) ...[
-                    const Text(
-                      '其他名单:',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 8),
-                    ...otherRecords.map(
-                      (r) => Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 2),
-                        child: Text(
-                          '- ${r['student_name']} (${r['student_no']}) ${r['class_name']}',
-                        ),
-                      ),
-                    ),
-                  ],
+                  ),
+                  const SizedBox(height: 12),
                 ],
-              ),
+                if (lateRecords.isNotEmpty) ...[
+                  const Text(
+                    '迟到名单:',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  ...lateRecords.map(
+                    (r) => Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 2),
+                      child: Text(
+                        '- ${r['student_name']} (${r['student_no']}) ${r['class_name']}',
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                ],
+                if (leaveRecords.isNotEmpty) ...[
+                  const Text(
+                    '请假名单:',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  ...leaveRecords.map(
+                    (r) => Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 2),
+                      child: Text(
+                        '- ${r['student_name']} (${r['student_no']}) ${r['class_name']}',
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                ],
+                if (otherRecords.isNotEmpty) ...[
+                  const Text(
+                    '其他名单:',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  ...otherRecords.map(
+                    (r) => Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 2),
+                      child: Text(
+                        '- ${r['student_name']} (${r['student_no']}) ${r['class_name']}',
+                      ),
+                    ),
+                  ),
+                ],
+              ],
             ),
           ),
           actions: [

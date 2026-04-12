@@ -186,11 +186,15 @@ class _AbnormalRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         children: [
-          Expanded(flex: 2, child: Text(entry.name)),
+          Expanded(
+            flex: 2,
+            child: Text(entry.name, overflow: TextOverflow.ellipsis),
+          ),
           Expanded(
             flex: 3,
             child: Text(
               entry.studentNo,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(color: Colors.grey[600], fontSize: 13),
             ),
           ),
@@ -202,6 +206,7 @@ class _AbnormalRow extends StatelessWidget {
             ),
             child: Text(
               entry.statusLabel,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(color: entry.statusColor, fontSize: 13),
             ),
           ),

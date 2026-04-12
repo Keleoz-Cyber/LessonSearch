@@ -1050,177 +1050,163 @@ class _PendingSubmissionCard extends ConsumerWidget {
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text('审核详情 - ${submission['user_name'] ?? '未知'}'),
-        content: SizedBox(
-          width: 400,
-          child: submissionStatus == 'cancelled'
-              ? const Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.cancel_outlined, size: 48, color: Colors.grey),
-                      SizedBox(height: 16),
-                      Text('该提交已被撤销'),
-                      SizedBox(height: 8),
-                      Text(
-                        '成员已撤销此提交，无法审核',
-                        style: TextStyle(color: Colors.grey),
-                      ),
-                    ],
-                  ),
-                )
-              : FutureBuilder<Map<String, dynamic>>(
-                  future: ref
-                      .read(submissionServiceProvider)
-                      .getSubmissionRecords(submissionId),
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(child: CircularProgressIndicator());
-                    }
-                    if (snapshot.hasError) {
-                      return Text('加载失败: ${snapshot.error}');
-                    }
+        content: submissionStatus == 'cancelled'
+            ? const Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.cancel_outlined, size: 48, color: Colors.grey),
+                    SizedBox(height: 16),
+                    Text('该提交已被撤销'),
+                    SizedBox(height: 8),
+                    Text('成员已撤销此提交，无法审核', style: TextStyle(color: Colors.grey)),
+                  ],
+                ),
+              )
+            : FutureBuilder<Map<String, dynamic>>(
+                future: ref
+                    .read(submissionServiceProvider)
+                    .getSubmissionRecords(submissionId),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  if (snapshot.hasError) {
+                    return Text('加载失败: ${snapshot.error}');
+                  }
 
-                    final data = snapshot.data!;
-                    final status = data['status'] as String?;
-                    if (status == 'cancelled') {
-                      return const Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.cancel_outlined,
-                              size: 48,
-                              color: Colors.grey,
-                            ),
-                            SizedBox(height: 16),
-                            Text('该提交已被撤销'),
-                            SizedBox(height: 8),
-                            Text(
-                              '成员已撤销此提交，无法审核',
-                              style: TextStyle(color: Colors.grey),
-                            ),
-                          ],
-                        ),
-                      );
-                    }
-
-                    final records = data['records'] as List? ?? [];
-                    final lateCount = data['late_count'] as int? ?? 0;
-                    final absentCount = data['absent_count'] as int? ?? 0;
-                    final leaveCount = data['leave_count'] as int? ?? 0;
-                    final otherCount = data['other_count'] as int? ?? 0;
-
-                    final lateRecords = records
-                        .where((r) => r['status'] == 'late')
-                        .toList();
-                    final absentRecords = records
-                        .where((r) => r['status'] == 'absent')
-                        .toList();
-                    final leaveRecords = records
-                        .where((r) => r['status'] == 'leave')
-                        .toList();
-                    final otherRecords = records
-                        .where((r) => r['status'] == 'other')
-                        .toList();
-
-                    if (records.isEmpty) {
-                      return EmptyState.noAbnormal();
-                    }
-
-                    return SingleChildScrollView(
+                  final data = snapshot.data!;
+                  final status = data['status'] as String?;
+                  if (status == 'cancelled') {
+                    return const Center(
                       child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Row(
-                            children: [
-                              _buildMiniStat('迟到', lateCount, Colors.orange),
-                              const SizedBox(width: 8),
-                              _buildMiniStat('缺勤', absentCount, Colors.red),
-                              const SizedBox(width: 8),
-                              _buildMiniStat('请假', leaveCount, Colors.blue),
-                              const SizedBox(width: 8),
-                              _buildMiniStat('其他', otherCount, Colors.grey),
-                            ],
+                          Icon(
+                            Icons.cancel_outlined,
+                            size: 48,
+                            color: Colors.grey,
                           ),
-                          const SizedBox(height: 16),
-                          if (absentRecords.isNotEmpty) ...[
-                            const Text(
-                              '缺勤名单:',
-                              style: TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                            const SizedBox(height: 8),
-                            ...absentRecords.map(
-                              (r) => Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 2,
-                                ),
-                                child: Text(
-                                  '- ${r['student_name']} (${r['student_no']}) ${r['class_name']}',
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                          ],
-                          if (lateRecords.isNotEmpty) ...[
-                            const Text(
-                              '迟到名单:',
-                              style: TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                            const SizedBox(height: 8),
-                            ...lateRecords.map(
-                              (r) => Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 2,
-                                ),
-                                child: Text(
-                                  '- ${r['student_name']} (${r['student_no']}) ${r['class_name']}',
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                          ],
-                          if (leaveRecords.isNotEmpty) ...[
-                            const Text(
-                              '请假名单:',
-                              style: TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                            const SizedBox(height: 8),
-                            ...leaveRecords.map(
-                              (r) => Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 2,
-                                ),
-                                child: Text(
-                                  '- ${r['student_name']} (${r['student_no']}) ${r['class_name']}',
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                          ],
-                          if (otherRecords.isNotEmpty) ...[
-                            const Text(
-                              '其他名单:',
-                              style: TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                            const SizedBox(height: 8),
-                            ...otherRecords.map(
-                              (r) => Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 2,
-                                ),
-                                child: Text(
-                                  '- ${r['student_name']} (${r['student_no']}) ${r['class_name']}',
-                                ),
-                              ),
-                            ),
-                          ],
+                          SizedBox(height: 16),
+                          Text('该提交已被撤销'),
+                          SizedBox(height: 8),
+                          Text(
+                            '成员已撤销此提交，无法审核',
+                            style: TextStyle(color: Colors.grey),
+                          ),
                         ],
                       ),
                     );
-                  },
-                ),
-        ),
+                  }
+
+                  final records = data['records'] as List? ?? [];
+                  final lateCount = data['late_count'] as int? ?? 0;
+                  final absentCount = data['absent_count'] as int? ?? 0;
+                  final leaveCount = data['leave_count'] as int? ?? 0;
+                  final otherCount = data['other_count'] as int? ?? 0;
+
+                  final lateRecords = records
+                      .where((r) => r['status'] == 'late')
+                      .toList();
+                  final absentRecords = records
+                      .where((r) => r['status'] == 'absent')
+                      .toList();
+                  final leaveRecords = records
+                      .where((r) => r['status'] == 'leave')
+                      .toList();
+                  final otherRecords = records
+                      .where((r) => r['status'] == 'other')
+                      .toList();
+
+                  if (records.isEmpty) {
+                    return EmptyState.noAbnormal();
+                  }
+
+                  return SingleChildScrollView(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Row(
+                          children: [
+                            _buildMiniStat('迟到', lateCount, Colors.orange),
+                            const SizedBox(width: 8),
+                            _buildMiniStat('缺勤', absentCount, Colors.red),
+                            const SizedBox(width: 8),
+                            _buildMiniStat('请假', leaveCount, Colors.blue),
+                            const SizedBox(width: 8),
+                            _buildMiniStat('其他', otherCount, Colors.grey),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        if (absentRecords.isNotEmpty) ...[
+                          const Text(
+                            '缺勤名单:',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 8),
+                          ...absentRecords.map(
+                            (r) => Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 2),
+                              child: Text(
+                                '- ${r['student_name']} (${r['student_no']}) ${r['class_name']}',
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                        ],
+                        if (lateRecords.isNotEmpty) ...[
+                          const Text(
+                            '迟到名单:',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 8),
+                          ...lateRecords.map(
+                            (r) => Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 2),
+                              child: Text(
+                                '- ${r['student_name']} (${r['student_no']}) ${r['class_name']}',
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                        ],
+                        if (leaveRecords.isNotEmpty) ...[
+                          const Text(
+                            '请假名单:',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 8),
+                          ...leaveRecords.map(
+                            (r) => Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 2),
+                              child: Text(
+                                '- ${r['student_name']} (${r['student_no']}) ${r['class_name']}',
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                        ],
+                        if (otherRecords.isNotEmpty) ...[
+                          const Text(
+                            '其他名单:',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 8),
+                          ...otherRecords.map(
+                            (r) => Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 2),
+                              child: Text(
+                                '- ${r['student_name']} (${r['student_no']}) ${r['class_name']}',
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  );
+                },
+              ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),

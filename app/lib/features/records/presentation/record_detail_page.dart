@@ -346,11 +346,15 @@ class _RecordRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         children: [
-          Expanded(flex: 2, child: Text(entry.studentName)),
+          Expanded(
+            flex: 2,
+            child: Text(entry.studentName, overflow: TextOverflow.ellipsis),
+          ),
           Expanded(
             flex: 3,
             child: Text(
               entry.studentNo,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(fontSize: 13, color: Colors.grey[600]),
             ),
           ),
