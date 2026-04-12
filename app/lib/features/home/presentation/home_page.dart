@@ -6,6 +6,7 @@ import '../../../core/announcement/announcement_service.dart';
 import '../../../core/resume/task_resume_checker.dart';
 import '../../../core/sync/sync_service.dart';
 import '../../../shared/providers.dart';
+import '../../../shared/widgets/entry_card.dart';
 
 class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
@@ -107,12 +108,12 @@ class _HomePageState extends ConsumerState<HomePage> {
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24.0),
+            padding: const EdgeInsets.all(24),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _EntryCard(
+                EntryCard(
                   icon: Icons.record_voice_over,
                   title: '点名',
                   subtitle: '按学号依次点名',
@@ -120,7 +121,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                   onTap: () => _checkLoginAndNavigate('/roll-call/select'),
                 ),
                 const SizedBox(height: 16),
-                _EntryCard(
+                EntryCard(
                   icon: Icons.checklist,
                   title: '记名',
                   subtitle: '逐人记录考勤状态',
@@ -128,7 +129,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                   onTap: () => _checkLoginAndNavigate('/name-check/select'),
                 ),
                 const SizedBox(height: 16),
-                _EntryCard(
+                EntryCard(
                   icon: Icons.history,
                   title: '查课记录',
                   subtitle: '查看与编辑历史记录',
@@ -136,7 +137,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                   onTap: () => _checkLoginAndNavigate('/records'),
                 ),
                 const SizedBox(height: 16),
-                _EntryCard(
+                EntryCard(
                   icon: Icons.extension,
                   title: '扩展功能',
                   subtitle: '导入、提交、汇总、排行',
@@ -145,77 +146,6 @@ class _HomePageState extends ConsumerState<HomePage> {
                 ),
               ],
             ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _EntryCard extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final Color color;
-  final VoidCallback onTap;
-
-  const _EntryCard({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.color,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      elevation: 1,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
-          child: Row(
-            children: [
-              Container(
-                width: 56,
-                height: 56,
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Icon(icon, size: 28, color: color),
-              ),
-              const SizedBox(width: 20),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      subtitle,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Icon(
-                Icons.chevron_right,
-                color: Theme.of(
-                  context,
-                ).colorScheme.outline.withValues(alpha: 0.5),
-              ),
-            ],
           ),
         ),
       ),

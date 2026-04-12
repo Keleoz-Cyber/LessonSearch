@@ -67,49 +67,70 @@ class _RealNamePageState extends ConsumerState<RealNamePage> {
           title: const Text('完善信息'),
           automaticallyImplyLeading: false,
         ),
-        body: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                '请输入您的真实姓名',
-                style: Theme.of(context).textTheme.headlineSmall,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                '姓名将用于审核和统计，请填写真实姓名',
-                style: Theme.of(
-                  context,
-                ).textTheme.bodyMedium?.copyWith(color: Colors.grey[600]),
-              ),
-              const SizedBox(height: 32),
-              TextField(
-                controller: _controller,
-                autofocus: true,
-                decoration: const InputDecoration(
-                  labelText: '真实姓名',
-                  hintText: '2-20个字符',
-                  border: OutlineInputBorder(),
+        body: Column(
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 32),
+                    Icon(
+                      Icons.badge_outlined,
+                      size: 64,
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.primary.withValues(alpha: 0.5),
+                    ),
+                    const SizedBox(height: 24),
+                    Text(
+                      '请输入您的真实姓名',
+                      style: Theme.of(context).textTheme.headlineSmall,
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      '姓名将用于审核和统计，请填写真实姓名',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+                    TextField(
+                      controller: _controller,
+                      autofocus: true,
+                      decoration: const InputDecoration(
+                        labelText: '真实姓名',
+                        hintText: '2-20个字符',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.person_outline),
+                      ),
+                      onSubmitted: (_) => _submit(),
+                    ),
+                  ],
                 ),
-                onSubmitted: (_) => _submit(),
               ),
-              const SizedBox(height: 400),
-              FilledButton(
-                onPressed: _loading ? null : _submit,
-                style: FilledButton.styleFrom(
-                  minimumSize: const Size.fromHeight(48),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(24),
+              child: SafeArea(
+                top: false,
+                child: FilledButton(
+                  onPressed: _loading ? null : _submit,
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size.fromHeight(48),
+                  ),
+                  child: _loading
+                      ? const SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text('保存'),
                 ),
-                child: _loading
-                    ? const SizedBox(
-                        width: 24,
-                        height: 24,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Text('保存'),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
