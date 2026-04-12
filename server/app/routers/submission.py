@@ -34,21 +34,25 @@ router = APIRouter(prefix="/submissions", tags=["submissions"])
 
 def _get_submission_class_names(db: Session, submission_id: int) -> str:
     """获取提交的班级名称"""
-    submission_records = db.query(SubmissionRecord).filter(
-        SubmissionRecord.submission_id == submission_id
-    ).all()
-    
-    class_ids = set()
-    for sr in submission_records:
-        record = db.query(AttendanceRecord).filter(AttendanceRecord.id == sr.record_id).first()
-        if record and record.class_id:
-            class_ids.add(record.class_id)
-    
-    if not class_ids:
+    try:
+        submission_records = db.query(SubmissionRecord).filter(
+            SubmissionRecord.submission_id == submission_id
+        ).all()
+        
+        class_ids = set()
+        for sr in submission_records:
+            record = db.query(AttendanceRecord).filter(AttendanceRecord.id == sr.record_id).first()
+            if record and hasattr(record, 'class_id') and record.class_id:
+                class_ids.add(record.class_id)
+        
+        if not class_ids:
+            return ""
+        
+        classes = db.query(Class).filter(Class.id.in_(class_ids)).all()
+        return ", ".join([c.name for c in classes if hasattr(c, 'name') and c.name])
+    except Exception as e:
+        print(f"Error getting class names for submission {submission_id}: {e}")
         return ""
-    
-    classes = db.query(Class).filter(Class.id.in_(class_ids)).all()
-    return ", ".join([c.name for c in classes])
 
 
 @router.post("/", response_model=SubmissionResponse)
@@ -150,33 +154,37 @@ async def get_submissions(
     
     result = []
     for sub in submissions:
-        reviewer = None
-        if sub.reviewer_id:
-            reviewer = db.query(User).filter(User.id == sub.reviewer_id).first()
-        
-        submission_records = db.query(SubmissionRecord).filter(
-            SubmissionRecord.submission_id == sub.id
-        ).all()
-        record_count = len(submission_records)
-        
-        class_names = _get_submission_class_names(db, sub.id)
-        
-        result.append(SubmissionDetailResponse(
-            id=sub.id,
-            user_id=sub.user_id,
-            user_name=current_user.real_name,
-            user_email=current_user.email,
-            week_number=sub.week_number,
-            status=sub.status,
-            reviewer_id=sub.reviewer_id,
-            reviewer_name=reviewer.real_name if reviewer else None,
-            review_time=sub.review_time,
-            review_note=sub.review_note,
-            submitted_at=sub.submitted_at,
-            task_count=1,
-            record_count=record_count,
-            class_names=class_names
-        ))
+        try:
+            reviewer = None
+            if sub.reviewer_id:
+                reviewer = db.query(User).filter(User.id == sub.reviewer_id).first()
+            
+            submission_records = db.query(SubmissionRecord).filter(
+                SubmissionRecord.submission_id == sub.id
+            ).all()
+            record_count = len(submission_records)
+            
+            class_names = _get_submission_class_names(db, sub.id)
+            
+            result.append(SubmissionDetailResponse(
+                id=sub.id,
+                user_id=sub.user_id,
+                user_name=current_user.real_name or current_user.email,
+                user_email=current_user.email,
+                week_number=sub.week_number,
+                status=sub.status,
+                reviewer_id=sub.reviewer_id,
+                reviewer_name=reviewer.real_name if reviewer else None,
+                review_time=sub.review_time,
+                review_note=sub.review_note,
+                submitted_at=sub.submitted_at,
+                task_count=1,
+                record_count=record_count,
+                class_names=class_names or ""
+            ))
+        except Exception as e:
+            print(f"Error processing submission {sub.id}: {e}")
+            continue
     
     return result
 
