@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -273,10 +274,18 @@ class SettingsPage extends ConsumerWidget {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('更新日志'),
-        content: SingleChildScrollView(
-          child: Text(
-            updateNotes.trim(),
-            style: const TextStyle(fontSize: 13, height: 1.6),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: MarkdownBody(
+            data: updateNotes.trim(),
+            styleSheet: MarkdownStyleSheet(
+              h2: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+              p: const TextStyle(fontSize: 13, height: 1.5),
+              listBullet: const TextStyle(fontSize: 13, height: 1.5),
+            ),
           ),
         ),
         actions: [
