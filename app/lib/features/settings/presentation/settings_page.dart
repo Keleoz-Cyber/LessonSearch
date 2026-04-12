@@ -20,7 +20,6 @@ class SettingsPage extends ConsumerWidget {
       appBar: AppBar(title: const Text('设置')),
       body: ListView(
         children: [
-          // --- 账户 ---
           const _SectionHeader(title: '账户'),
           ListTile(
             leading: Icon(isLoggedIn ? Icons.account_circle : Icons.login),
@@ -32,7 +31,6 @@ class SettingsPage extends ConsumerWidget {
 
           const Divider(),
 
-          // --- 应用信息 ---
           const _SectionHeader(title: '应用信息'),
           const ListTile(
             leading: Icon(Icons.info_outline),
@@ -42,12 +40,11 @@ class SettingsPage extends ConsumerWidget {
           const ListTile(
             leading: Icon(Icons.tag),
             title: Text('版本号'),
-            subtitle: Text('0.4.0'),
+            subtitle: Text('0.5.0'),
           ),
 
           const Divider(),
 
-          // --- 功能 ---
           const _SectionHeader(title: '功能'),
           ListTile(
             leading: const Icon(Icons.campaign_outlined),
@@ -73,7 +70,6 @@ class SettingsPage extends ConsumerWidget {
 
           const Divider(),
 
-          // --- 显示 ---
           const _SectionHeader(title: '显示'),
           ListTile(
             leading: const Icon(Icons.palette_outlined),
@@ -85,7 +81,6 @@ class SettingsPage extends ConsumerWidget {
 
           const Divider(),
 
-          // --- 反馈 ---
           const _SectionHeader(title: '反馈'),
           SwitchListTile(
             secondary: const Icon(Icons.vibration),
@@ -101,7 +96,6 @@ class SettingsPage extends ConsumerWidget {
 
           const Divider(),
 
-          // --- 关于 ---
           const _SectionHeader(title: '关于'),
           ListTile(
             leading: const Icon(Icons.favorite_outline),
@@ -306,7 +300,7 @@ class SettingsPage extends ConsumerWidget {
       final downloadUrl = response['download_url'] as String;
       final releaseNotes = response['release_notes'] as String;
 
-      const currentVersion = '0.4.0';
+      const currentVersion = '0.5.0';
       debugPrint('[CheckUpdate] 当前版本: $currentVersion, 最新版本: $latestVersion');
 
       if (latestVersion == currentVersion) {
@@ -396,11 +390,20 @@ class _SectionHeader extends StatelessWidget {
 }
 
 // ============================================================
-// 关于页 — 开发者与致谢
+// 关于页 — 开发者与致谢（彩蛋：点击开发者7次触发爱心雨）
 // ============================================================
 
-class AboutPage extends StatelessWidget {
+class AboutPage extends ConsumerStatefulWidget {
   const AboutPage({super.key});
+
+  @override
+  ConsumerState<AboutPage> createState() => _AboutPageState();
+}
+
+class _AboutPageState extends ConsumerState<AboutPage> {
+  int _tapCount = 0;
+  bool _showEasterEgg = false;
+  final List<_HeartAnimation> _heartAnimations = [];
 
   static const _ackList = [
     '清粥小菜(考研版)',
@@ -423,141 +426,250 @@ class AboutPage extends StatelessWidget {
     'AAA水电刘哥 金水路17号',
   ];
 
+  static const _titles = [
+    '代码魔法师',
+    '熬夜冠军',
+    'Bug终结者',
+    '键盘战士',
+    '咖啡依赖症患者',
+    'Git push大师',
+    '改需求抵抗者',
+  ];
+
+  void _triggerEasterEgg() {
+    if (_showEasterEgg) return;
+
+    setState(() => _showEasterEgg = true);
+
+    ref.read(feedbackServiceProvider).heavyFeedback();
+
+    _startHeartRain();
+  }
+
+  void _startHeartRain() {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+
+    for (int i = 0; i < 30; i++) {
+      Future.delayed(Duration(milliseconds: i * 80), () {
+        if (!mounted) return;
+
+        final heart = _HeartAnimation(
+          startX: (screenWidth * 0.1) + (i % 6) * (screenWidth * 0.15),
+          endY: screenHeight + 40,
+          color: [
+            Colors.red,
+            Colors.pink,
+            Colors.orange,
+            Colors.purple,
+            Colors.deepOrange,
+          ][i % 5],
+          size: 24.0 + (i % 4) * 8,
+          delay: i * 80,
+        );
+
+        setState(() => _heartAnimations.add(heart));
+
+        Future.delayed(const Duration(milliseconds: 2500), () {
+          if (mounted) setState(() => _heartAnimations.remove(heart));
+        });
+      });
+    }
+  }
+
+  void _onDeveloperTap() {
+    _tapCount++;
+    if (_tapCount >= 7) {
+      _triggerEasterEgg();
+      _tapCount = 0;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('致谢')),
-      body: ListView(
-        padding: const EdgeInsets.all(20),
-        children: [
-          // --- 开发者信息 ---
-          const _InfoSection(
-            title: '开发者',
+    return Stack(
+      children: [
+        Scaffold(
+          appBar: AppBar(title: const Text('致谢')),
+          body: ListView(
+            padding: const EdgeInsets.all(20),
             children: [
-              _PersonTile(name: 'keleoz', role: '开发者', icon: Icons.code),
-            ],
-          ),
-
-          const SizedBox(height: 24),
-
-          // --- 致谢 ---
-          const _InfoSection(
-            title: '致谢',
-            children: [
-              _PersonTile(
-                name: 'Horldsense',
-                role: '技术顾问',
-                icon: Icons.lightbulb_outline,
-              ),
-              _PersonTile(
-                name: 'Horldsense',
-                role: 'iOS 适配',
-                icon: Icons.phone_iphone,
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 24),
-
-          // --- 致谢名单 ---
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                '致谢名单',
-                style: Theme.of(
-                  context,
-                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                '致学习部全体成员',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Wrap(
-                    spacing: 12,
-                    runSpacing: 12,
-                    children: _ackList.map((name) {
-                      return Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 8,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.primaryContainer.withValues(alpha: 0.5),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          name,
-                          style: TextStyle(
-                            color: Theme.of(context).colorScheme.onSurface,
-                            fontSize: 14,
-                          ),
-                        ),
-                      );
-                    }).toList(),
+              _InfoSection(
+                title: '开发者',
+                children: [
+                  InkWell(
+                    onTap: _onDeveloperTap,
+                    borderRadius: BorderRadius.circular(8),
+                    child: _PersonTile(
+                      name: 'keleoz',
+                      role: _showEasterEgg
+                          ? _titles[DateTime.now().second % _titles.length]
+                          : '开发者',
+                      icon: _showEasterEgg ? Icons.auto_awesome : Icons.code,
+                      showGlow: _showEasterEgg,
+                    ),
                   ),
-                ),
+                ],
               ),
-              const SizedBox(height: 12),
+
+              const SizedBox(height: 24),
+
+              const _InfoSection(
+                title: '致谢',
+                children: [
+                  _PersonTile(
+                    name: 'Horldsense',
+                    role: '技术顾问',
+                    icon: Icons.lightbulb_outline,
+                  ),
+                  _PersonTile(
+                    name: 'Horldsense',
+                    role: 'iOS 适配',
+                    icon: Icons.phone_iphone,
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 24),
+
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '致谢名单',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '致学习部全体成员',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Wrap(
+                        spacing: 12,
+                        runSpacing: 12,
+                        children: _ackList.map((name) {
+                          return Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .primaryContainer
+                                  .withValues(alpha: 0.5),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              name,
+                              style: TextStyle(
+                                color: Theme.of(context).colorScheme.onSurface,
+                                fontSize: 14,
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Center(
+                    child: Text(
+                      '排名不分先后',
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 24),
+
+              const _InfoSection(
+                title: '技术栈',
+                children: [
+                  ListTile(
+                    dense: true,
+                    leading: Icon(Icons.phone_android, size: 20),
+                    title: Text('Flutter + Riverpod + Drift'),
+                    subtitle: Text('客户端'),
+                  ),
+                  ListTile(
+                    dense: true,
+                    leading: Icon(Icons.cloud, size: 20),
+                    title: Text('FastAPI + MySQL'),
+                    subtitle: Text('服务端'),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 32),
+
               Center(
                 child: Text(
-                  '排名不分先后',
+                  '考勤助手 v0.5.0',
                   style: TextStyle(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    fontSize: 12,
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+                    fontSize: 13,
                   ),
                 ),
               ),
             ],
           ),
+        ),
 
-          const SizedBox(height: 24),
-
-          // --- 技术栈 ---
-          const _InfoSection(
-            title: '技术栈',
-            children: [
-              ListTile(
-                dense: true,
-                leading: Icon(Icons.phone_android, size: 20),
-                title: Text('Flutter + Riverpod + Drift'),
-                subtitle: Text('客户端'),
-              ),
-              ListTile(
-                dense: true,
-                leading: Icon(Icons.cloud, size: 20),
-                title: Text('FastAPI + MySQL'),
-                subtitle: Text('服务端'),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 32),
-
-          Center(
-            child: Text(
-              '考勤助手 v0.4.0',
-              style: TextStyle(
-                color: Theme.of(
-                  context,
-                ).colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
-                fontSize: 13,
-              ),
+        ..._heartAnimations.map(
+          (heart) => Positioned(
+            left: heart.startX,
+            top: 0,
+            child: TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0, end: heart.endY),
+              duration: const Duration(milliseconds: 2500),
+              curve: Curves.easeIn,
+              builder: (context, value, child) {
+                return Transform.translate(
+                  offset: Offset(0, value),
+                  child: Icon(
+                    Icons.favorite,
+                    color: heart.color,
+                    size: heart.size,
+                  ),
+                );
+              },
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
+}
+
+class _HeartAnimation {
+  final double startX;
+  final double endY;
+  final Color color;
+  final double size;
+  final int delay;
+
+  _HeartAnimation({
+    required this.startX,
+    required this.endY,
+    required this.color,
+    required this.size,
+    required this.delay,
+  });
 }
 
 class _InfoSection extends StatelessWidget {
@@ -588,21 +700,42 @@ class _PersonTile extends StatelessWidget {
   final String name;
   final String role;
   final IconData icon;
+  final bool showGlow;
 
   const _PersonTile({
     required this.name,
     required this.role,
     required this.icon,
+    this.showGlow = false,
   });
 
   @override
   Widget build(BuildContext context) {
     return ListTile(
-      leading: CircleAvatar(
-        backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-        child: Icon(icon, size: 20),
+      leading: Container(
+        decoration: showGlow
+            ? BoxDecoration(
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.purple.withValues(alpha: 0.5),
+                    blurRadius: 12,
+                    spreadRadius: 2,
+                  ),
+                ],
+              )
+            : null,
+        child: CircleAvatar(
+          backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+          child: Icon(icon, size: 20),
+        ),
       ),
-      title: Text(name),
+      title: Text(
+        name,
+        style: showGlow
+            ? TextStyle(color: Colors.purple, fontWeight: FontWeight.bold)
+            : null,
+      ),
       subtitle: Text(role),
     );
   }
