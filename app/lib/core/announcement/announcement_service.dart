@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:dio/dio.dart';
 
@@ -84,7 +85,13 @@ class AnnouncementService {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(content.trim(), style: const TextStyle(height: 1.6)),
+              MarkdownBody(
+                data: content.trim(),
+                styleSheet: MarkdownStyleSheet(
+                  p: const TextStyle(height: 1.6),
+                  listBullet: const TextStyle(height: 1.6),
+                ),
+              ),
               const SizedBox(height: 16),
               const Divider(),
               const SizedBox(height: 8),
@@ -95,9 +102,12 @@ class AnnouncementService {
                   color: Colors.blue.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Text(
-                  updateNotes.trim(),
-                  style: const TextStyle(fontSize: 13, height: 1.5),
+                child: MarkdownBody(
+                  data: updateNotes.trim(),
+                  styleSheet: MarkdownStyleSheet(
+                    p: const TextStyle(fontSize: 13, height: 1.5),
+                    listBullet: const TextStyle(fontSize: 13, height: 1.5),
+                  ),
                 ),
               ),
             ],
