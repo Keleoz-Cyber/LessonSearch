@@ -10,6 +10,7 @@ import argparse
 import re
 import sys
 from pathlib import Path
+from typing import Tuple
 
 import pandas as pd
 from pypinyin import lazy_pinyin, Style
@@ -36,7 +37,7 @@ MAJOR_SHORT_MAP = {
 }
 
 
-def parse_class_name(class_name: str) -> tuple[str, str]:
+def parse_class_name(class_name: str) -> Tuple[str, str]:
     """解析班级名称，返回 (专业简称, 班级编号)
     例: '计科2201' -> ('计科', '01')
     """
@@ -44,11 +45,11 @@ def parse_class_name(class_name: str) -> tuple[str, str]:
     if not match:
         return "", ""
     major_short = match.group(1)
-    class_code = match.group(2)[-2:]  # 取最后两位作为班级编号
+    class_code = match.group(2)[-2:]
     return major_short, class_code
 
 
-def generate_pinyin(name: str) -> tuple[str, str]:
+def generate_pinyin(name: str) -> Tuple[str, str]:
     full = "".join(lazy_pinyin(name, style=Style.TONE))
     abbr = "".join(lazy_pinyin(name, style=Style.FIRST_LETTER))
     return full, abbr
