@@ -684,6 +684,15 @@ async def cancel_submission(
     if submission.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="只能撤销自己的提交")
     
+    if submission.status == "cancelled":
+        raise HTTPException(status_code=400, detail="该提交已被撤销")
+    
+    if submission.status == "approved":
+        raise HTTPException(status_code=400, detail="管理员已审核通过，无法撤销")
+    
+    if submission.status == "rejected":
+        raise HTTPException(status_code=400, detail="管理员已拒绝该提交，无法撤销")
+    
     if submission.status != "pending":
         raise HTTPException(status_code=400, detail="只能撤销待审核的提交")
     

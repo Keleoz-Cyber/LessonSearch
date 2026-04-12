@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -653,6 +654,9 @@ class _SubmissionCard extends ConsumerWidget {
         ref.invalidate(mySubmissionsProvider);
         ref.invalidate(submittedTaskIdsProvider);
         Toast.show(context, '已撤回');
+      } on DioException catch (e) {
+        final message = e.response?.data['detail'] ?? '撤回失败';
+        Toast.show(context, message);
       } catch (e) {
         Toast.show(context, '撤回失败: $e');
       }
