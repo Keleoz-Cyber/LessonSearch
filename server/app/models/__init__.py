@@ -5,6 +5,7 @@ from app.models.record import AttendanceRecord
 from app.models.week import WeekConfig, WeekExport
 from app.models.submission import Submission, SubmissionRecord
 from app.models.duty import DutyAssignment
+from app.models.announcement import Announcement
 
 __all__ = [
     "User",
@@ -22,4 +23,5 @@ __all__ = [
     "Submission",
     "SubmissionRecord",
     "DutyAssignment",
+    "Announcement",
 ]
