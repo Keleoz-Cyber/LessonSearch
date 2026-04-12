@@ -1,3 +1,5 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../features/attendance/domain/models.dart';
@@ -17,9 +19,50 @@ import '../../features/records/presentation/record_detail_page.dart';
 import '../../features/settings/presentation/settings_page.dart';
 import '../../features/debug/sync_test_page.dart';
 import '../../features/home/presentation/home_page.dart';
+import '../../shared/providers.dart';
+
+final _routerKey = GlobalKey<NavigatorState>();
+
+String? _redirect(BuildContext context, GoRouterState state) {
+  final container = ProviderScope.containerOf(context);
+  final auth = container.read(authServiceProvider);
+  final isLoggedIn = auth.isLoggedIn;
+  final hasRealName = auth.hasRealName;
+  final goingToRealName = state.matchedLocation == '/real-name';
+
+  if (isLoggedIn && !hasRealName && !goingToRealName) {
+    return '/real-name';
+  }
+
+  if (isLoggedIn && hasRealName && goingToRealName) {
+    return '/';
+  }
+
+  final protectedRoutes = [
+    '/roll-call',
+    '/name-check',
+    '/confirmation',
+    '/text-gen',
+    '/records',
+    '/extension',
+    '/settings',
+  ];
+
+  final needsLogin = protectedRoutes.any(
+    (r) => state.matchedLocation.startsWith(r),
+  );
+
+  if (needsLogin && !isLoggedIn) {
+    return '/login';
+  }
+
+  return null;
+}
 
 final appRouter = GoRouter(
+  navigatorKey: _routerKey,
   initialLocation: '/',
+  redirect: _redirect,
   routes: [
     GoRoute(
       path: '/',

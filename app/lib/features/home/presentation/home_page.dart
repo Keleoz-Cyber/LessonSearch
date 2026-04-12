@@ -20,10 +20,19 @@ class _HomePageState extends ConsumerState<HomePage> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
+      _checkRealName();
+      if (!mounted) return;
       await AnnouncementService.checkAndShow(context);
       if (!mounted) return;
       await TaskResumeChecker.check(context, ref);
     });
+  }
+
+  void _checkRealName() {
+    final auth = ref.read(authServiceProvider);
+    if (auth.isLoggedIn && !auth.hasRealName) {
+      context.go('/real-name');
+    }
   }
 
   void _checkLoginAndNavigate(String route) {
