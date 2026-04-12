@@ -26,8 +26,9 @@ def _send_email(to: str, code: str):
     if not SMTP_USER or not SMTP_PASSWORD:
         raise HTTPException(status_code=500, detail="SMTP 未配置")
 
-    subject = "考勤助手APP验证码 ✨"
-    
+    subject = "考勤助手 验证码"
+    current_date = datetime.now().strftime("%Y.%m.%d")
+
     body = f"""
     <!DOCTYPE html>
     <html>
@@ -35,41 +36,52 @@ def _send_email(to: str, code: str):
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
     </head>
-    <body style="margin: 0; padding: 0; background-color: #fff0f5; font-family: 'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif;">
-        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 99%, #fecfef 100%); padding: 50px 15px;">
+    <body style="margin: 0; padding: 0; background-color: #f0f0eb; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f0f0eb; padding: 50px 15px;">
             <tr>
                 <td align="center">
-                    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width: 480px; background-color: #ffffff; border-radius: 24px; overflow: hidden; box-shadow: 0 12px 30px rgba(255, 154, 158, 0.4);">
+                    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width: 500px; background-color: #ffffff; border: 3px solid #111111; box-shadow: 8px 8px 0px #111111; text-align: left;">
+                        
                         <tr>
-                            <td style="padding: 45px 30px; text-align: center;">
-                                <div style="font-size: 48px; margin-bottom: 10px; line-height: 1;">💌</div>
-                                
-                                <h2 style="margin-top: 0; color: #ff6b81; font-size: 26px; font-weight: bold;">
-                                    你好呀！欢迎使用考勤助手 ✨
+                            <td style="border-bottom: 3px solid #111111; padding: 12px 25px; background-color: #111111;">
+                                <p style="color: #ffffff; font-family: 'Courier New', Courier, monospace; font-size: 13px; font-weight: bold; margin: 0; letter-spacing: 1px;">
+                                    SYS.AUTH // 考勤助手_V2 // {current_date}
+                                </p>
+                            </td>
+                        </tr>
+
+                        <tr>
+                            <td style="padding: 40px 30px;">
+                                <h2 style="margin-top: 0; color: #111111; font-size: 28px; font-weight: 800; text-transform: uppercase; letter-spacing: -0.5px; margin-bottom: 20px;">
+                                    身份验证协议
                                 </h2>
-                                <p style="color: #7a7a7a; font-size: 16px; line-height: 1.6; margin-bottom: 30px;">
-                                    超级开心遇见你！🥰 你的专属魔法验证码已经准备好啦：
+                                <p style="color: #444444; font-size: 16px; line-height: 1.6; font-weight: 500; margin-bottom: 30px;">
+                                    接收到新的授权请求。请提取下方的 6 位安全效验码，并录入系统终端以完成身份核实。
                                 </p>
                                 
-                                <div style="background-color: #fff4f6; border: 2px dashed #ffb8c6; border-radius: 16px; padding: 25px; margin-bottom: 30px;">
-                                    <span style="display: inline-block; font-size: 40px; font-weight: 900; color: #ff4757; letter-spacing: 12px; margin: 0; font-family: 'Courier New', Courier, monospace;">{code}</span>
+                                <div style="background-color: #FF5722; border: 3px solid #111111; padding: 20px; text-align: center; margin-bottom: 30px;">
+                                    <span style="display: inline-block; font-size: 46px; font-weight: 900; color: #111111; letter-spacing: 16px; margin: 0; font-family: 'Courier New', Courier, monospace; margin-right: -16px;">{code}</span>
                                 </div>
                                 
-                                <p style="color: #7a7a7a; font-size: 15px; line-height: 1.6; margin-bottom: 35px;">
-                                    💡 这个魔法代码在 <strong style="color: #ff4757;">5分钟</strong> 内有效哦，<br>千万不要偷偷告诉别人呀！🤫
-                                </p>
-                                
-                                <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                                <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom: 30px;">
                                     <tr>
-                                        <td style="border-top: 2px dotted #ffeeee; padding-top: 25px;">
-                                            <p style="color: #b2bec3; font-size: 13px; line-height: 1.6; margin: 0;">
-                                                如果这不是你本人的操作，请不用理会，你的账号超级安全哒！🛡️<br>
-                                                如果有任何小问号，随时呼唤学习部管理员哦。<br><br>
-                                                <span style="color: #ff9a9e; font-weight: bold;">—— 考勤助手团队 欢快地敬上 🎈</span>
-                                            </p>
+                                        <td width="50%" style="border: 2px solid #111111; padding: 12px; background-color: #f8f8f8;">
+                                            <p style="margin: 0; font-size: 12px; color: #666; font-family: 'Courier New', Courier, monospace; font-weight: bold;">[ 有效状态 ]</p>
+                                            <p style="margin: 5px 0 0 0; font-size: 15px; color: #111; font-weight: 800;">300 秒 (5分钟)</p>
+                                        </td>
+                                        <td width="10px"></td>
+                                        <td width="50%" style="border: 2px solid #111111; padding: 12px; background-color: #f8f8f8;">
+                                            <p style="margin: 0; font-size: 12px; color: #666; font-family: 'Courier New', Courier, monospace; font-weight: bold;">[ 安全级别 ]</p>
+                                            <p style="margin: 5px 0 0 0; font-size: 15px; color: #111; font-weight: 800;">请勿泄露</p>
                                         </td>
                                     </tr>
                                 </table>
+                                
+                                <p style="color: #666666; font-size: 13px; line-height: 1.6; margin: 0; padding-top: 20px; border-top: 2px dashed #cccccc;">
+                                    * 异常报告：如未执行此操作，请忽略本指令。<br>
+                                    * 技术支持：学习部系统管理员。<br><br>
+                                    <strong style="color: #111111; font-size: 14px;">—— 考勤助手 DEV_TEAM</strong>
+                                </p>
                             </td>
                         </tr>
                     </table>
