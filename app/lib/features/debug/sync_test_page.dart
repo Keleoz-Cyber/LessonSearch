@@ -195,9 +195,7 @@ class _SyncTestPageState extends ConsumerState<SyncTestPage> {
       final weekNumber = weekData['week_number'] as int;
       final startDate = weekData['start_date'] as String;
 
-      final startDateTime = DateTime.parse(startDate);
       final now = DateTime.now();
-
       final daysUntilMonday = (7 - now.weekday) % 7;
       final nextMonday = now.add(Duration(days: daysUntilMonday));
       final nextMondayZero = DateTime(
@@ -209,8 +207,7 @@ class _SyncTestPageState extends ConsumerState<SyncTestPage> {
         0,
       );
 
-      final secondsUntilReset = nextMondayZero.difference(now).inSeconds;
-      final hoursUntilReset = secondsUntilReset / 3600;
+      final hoursUntilReset = nextMondayZero.difference(now).inSeconds / 3600;
 
       _addLog('=== 周次重置测试 ===');
       _addLog('当前: 第$weekNumber周');
@@ -263,7 +260,7 @@ class _SyncTestPageState extends ConsumerState<SyncTestPage> {
       appBar: AppBar(
         title: const Text('调试工具'),
         actions: [
-          if (_loading)
+          if (_loading || _weekTestLoading)
             const Padding(
               padding: EdgeInsets.only(right: 16),
               child: SizedBox(
@@ -289,142 +286,288 @@ class _SyncTestPageState extends ConsumerState<SyncTestPage> {
       ),
       body: Column(
         children: [
-          // 统计卡片
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: Row(
-              children: [
-                _StatCard(label: '任务', count: _taskCount, color: Colors.blue),
-                const SizedBox(width: 8),
-                _StatCard(
-                  label: '记录',
-                  count: _recordCount,
-                  color: Colors.green,
-                ),
-                const SizedBox(width: 8),
-                _StatCard(
-                  label: '待同步',
-                  count: _syncQueueCount,
-                  color: Colors.orange,
-                ),
-                const SizedBox(width: 8),
-                _StatCard(label: '失败', count: _failedCount, color: Colors.red),
-              ],
-            ),
-          ),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // 数据统计
+                  _buildSectionHeader('数据统计', Icons.storage),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      _StatCard(
+                        label: '任务',
+                        count: _taskCount,
+                        color: Colors.blue,
+                        icon: Icons.assignment,
+                      ),
+                      const SizedBox(width: 12),
+                      _StatCard(
+                        label: '记录',
+                        count: _recordCount,
+                        color: Colors.green,
+                        icon: Icons.list_alt,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      _StatCard(
+                        label: '待同步',
+                        count: _syncQueueCount,
+                        color: Colors.orange,
+                        icon: Icons.cloud_upload,
+                      ),
+                      const SizedBox(width: 12),
+                      _StatCard(
+                        label: '失败',
+                        count: _failedCount,
+                        color: Colors.red,
+                        icon: Icons.error_outline,
+                      ),
+                    ],
+                  ),
 
-          // 周次测试卡片
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: Card(
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.calendar_today,
-                          size: 18,
-                          color: Colors.purple,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          '周次测试',
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      '当前: 第${_currentWeek}周 (${_weekStartDate} ~ $_weekEndDate)',
-                    ),
-                    const SizedBox(height: 4),
-                    Text('本周提交: ${_weekSubmissionCount}条'),
-                    const SizedBox(height: 4),
-                    Text('历史周次: ${_historyWeekCount}个'),
-                    const SizedBox(height: 12),
-                    FilledButton.icon(
-                      onPressed: _weekTestLoading ? null : _testWeekReset,
-                      icon: const Icon(Icons.science, size: 18),
-                      label: const Text('测试周次重置'),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: Colors.purple,
+                  const SizedBox(height: 24),
+
+                  // 周次测试
+                  _buildSectionHeader('周次测试', Icons.calendar_today),
+                  const SizedBox(height: 12),
+                  Card(
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      side: BorderSide(
+                        color: Colors.purple.withValues(alpha: 0.2),
                       ),
                     ),
-                  ],
-                ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 6,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.purple.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Text(
+                                  '第 ${_currentWeek} 周',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.purple,
+                                  ),
+                                ),
+                              ),
+                              const Spacer(),
+                              Text(
+                                '${_weekStartDate} ~ $_weekEndDate',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          Row(
+                            children: [
+                              _buildInfoChip(
+                                '本周提交',
+                                '${_weekSubmissionCount}',
+                                Colors.orange,
+                              ),
+                              const SizedBox(width: 12),
+                              _buildInfoChip(
+                                '历史周次',
+                                '${_historyWeekCount}',
+                                Colors.blue,
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          SizedBox(
+                            width: double.infinity,
+                            child: FilledButton.icon(
+                              onPressed: _weekTestLoading
+                                  ? null
+                                  : _testWeekReset,
+                              icon: const Icon(Icons.science, size: 18),
+                              label: const Text('测试周次重置'),
+                              style: FilledButton.styleFrom(
+                                backgroundColor: Colors.purple,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // 同步操作
+                  _buildSectionHeader('同步操作', Icons.sync),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: FilledButton.icon(
+                          onPressed: _loading ? null : _syncNow,
+                          icon: const Icon(Icons.sync, size: 18),
+                          label: const Text('立即同步'),
+                        ),
+                      ),
+                      if (_failedCount > 0) ...[
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: FilledButton.icon(
+                            onPressed: _loading ? null : _retryFailed,
+                            icon: const Icon(Icons.refresh, size: 18),
+                            label: Text('重试($_failedCount)'),
+                            style: FilledButton.styleFrom(
+                              backgroundColor: Colors.red,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: _clearSyncQueue,
+                      icon: const Icon(Icons.delete_outline, size: 18),
+                      label: const Text('清空同步队列'),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
 
-          // 操作按钮
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                FilledButton.icon(
-                  onPressed: _loading ? null : _syncNow,
-                  icon: const Icon(Icons.sync, size: 18),
-                  label: const Text('立即同步'),
-                ),
-                if (_failedCount > 0)
-                  FilledButton.icon(
-                    onPressed: _loading ? null : _retryFailed,
-                    icon: const Icon(Icons.refresh, size: 18),
-                    label: Text('重试失败 ($_failedCount)'),
-                    style: FilledButton.styleFrom(backgroundColor: Colors.red),
-                  ),
-                OutlinedButton(
-                  onPressed: _clearSyncQueue,
-                  child: const Text('清空队列'),
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 12),
           const Divider(height: 1),
 
           // 日志区域
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Container(
+            height: 200,
+            color: Theme.of(context).colorScheme.surfaceContainerHighest,
+            child: Column(
               children: [
-                Text('操作日志', style: Theme.of(context).textTheme.titleSmall),
-                TextButton(onPressed: _clearLogs, child: const Text('清空')),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.article_outlined, size: 16),
+                          const SizedBox(width: 8),
+                          Text(
+                            '操作日志',
+                            style: Theme.of(context).textTheme.titleSmall,
+                          ),
+                        ],
+                      ),
+                      TextButton.icon(
+                        onPressed: _clearLogs,
+                        icon: const Icon(Icons.clear_all, size: 16),
+                        label: const Text('清空'),
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: _logs.isEmpty
+                      ? Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.history,
+                                size: 32,
+                                color: Colors.grey[400],
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                '暂无日志',
+                                style: TextStyle(color: Colors.grey[500]),
+                              ),
+                            ],
+                          ),
+                        )
+                      : ListView.builder(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          itemCount: _logs.length,
+                          itemBuilder: (context, index) {
+                            final log = _logs[index];
+                            final isError = log.contains('❌');
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 4),
+                              child: Text(
+                                log,
+                                style: TextStyle(
+                                  fontFamily: 'monospace',
+                                  fontSize: 12,
+                                  color: isError ? Colors.red : null,
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                ),
               ],
             ),
           ),
-          Expanded(
-            child: _logs.isEmpty
-                ? const Center(
-                    child: Text('暂无日志', style: TextStyle(color: Colors.grey)),
-                  )
-                : ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    itemCount: _logs.length,
-                    itemBuilder: (context, index) {
-                      final log = _logs[index];
-                      final isError = log.contains('❌');
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 2),
-                        child: Text(
-                          log,
-                          style: TextStyle(
-                            fontFamily: 'monospace',
-                            fontSize: 12,
-                            color: isError ? Colors.red : null,
-                          ),
-                        ),
-                      );
-                    },
-                  ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSectionHeader(String title, IconData icon) {
+    return Row(
+      children: [
+        Icon(icon, size: 20, color: Theme.of(context).colorScheme.primary),
+        const SizedBox(width: 8),
+        Text(
+          title,
+          style: Theme.of(
+            context,
+          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildInfoChip(String label, String value, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        children: [
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
           ),
+          const SizedBox(height: 2),
+          Text(label, style: TextStyle(fontSize: 12, color: color)),
         ],
       ),
     );
@@ -435,35 +578,42 @@ class _StatCard extends StatelessWidget {
   final String label;
   final int count;
   final Color color;
+  final IconData icon;
 
   const _StatCard({
     required this.label,
     required this.count,
     required this.color,
+    required this.icon,
   });
 
   @override
   Widget build(BuildContext context) {
     return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(8),
+      child: Card(
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(color: color.withValues(alpha: 0.3)),
         ),
-        child: Column(
-          children: [
-            Text(
-              '$count',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: color,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              Icon(icon, size: 24, color: color),
+              const SizedBox(height: 8),
+              Text(
+                '$count',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: color,
+                ),
               ),
-            ),
-            const SizedBox(height: 2),
-            Text(label, style: TextStyle(fontSize: 11, color: color)),
-          ],
+              const SizedBox(height: 4),
+              Text(label, style: TextStyle(fontSize: 13, color: color)),
+            ],
+          ),
         ),
       ),
     );
