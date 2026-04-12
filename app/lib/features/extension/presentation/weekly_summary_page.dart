@@ -1,9 +1,11 @@
+import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:dio/dio.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:path_provider/path_provider.dart';
 
 import '../../../shared/providers.dart';
 import '../../../shared/widgets/toast.dart';
@@ -945,14 +947,11 @@ class _CurrentWeekTab extends ConsumerWidget {
       final bytes = Uint8List.fromList(response.data as List<int>);
       final filename = '第${weekNumber}周考勤表.xlsx';
 
-      await Share.shareXFiles([
-        XFile.fromData(
-          bytes,
-          name: filename,
-          mimeType:
-              'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        ),
-      ], subject: filename);
+      final tempDir = await getTemporaryDirectory();
+      final file = File('${tempDir.path}/$filename');
+      await file.writeAsBytes(bytes);
+
+      await Share.shareXFiles([XFile(file.path)], subject: filename);
 
       ref.invalidate(pendingSubmissionsProvider(weekNumber));
       ref.invalidate(exportStatusProvider(weekNumber));

@@ -42,7 +42,7 @@ class ExtensionPage extends ConsumerWidget {
                 _FeatureCard(
                   icon: Icons.file_upload_outlined,
                   title: '任务导入',
-                  subtitle: '从Excel导入考勤任务',
+                  subtitle: '手动导入考勤任务',
                   color: Colors.blue,
                   onTap: () => Toast.show(context, '敬请期待'),
                 ),
