@@ -1732,24 +1732,28 @@ class _HistoryWeekCard extends ConsumerWidget {
                                 loading: () => const SizedBox.shrink(),
                                 error: (_, __) => const SizedBox.shrink(),
                                 data: (summary) {
-                                  final lateCount =
-                                      summary['late_count'] as int? ?? 0;
-                                  final absentCount =
-                                      summary['absent_count'] as int? ?? 0;
-                                  final leaveCount =
-                                      summary['leave_count'] as int? ?? 0;
-                                  final otherCount =
-                                      summary['other_count'] as int? ?? 0;
-                                  final totalRecords =
-                                      lateCount +
-                                      absentCount +
-                                      leaveCount +
-                                      otherCount;
-                                  if (totalRecords > 0) {
+                                  final lateStudentCount =
+                                      summary['late_student_count'] as int? ??
+                                      0;
+                                  final absentStudentCount =
+                                      summary['absent_student_count'] as int? ??
+                                      0;
+                                  final leaveStudentCount =
+                                      summary['leave_student_count'] as int? ??
+                                      0;
+                                  final otherStudentCount =
+                                      summary['other_student_count'] as int? ??
+                                      0;
+                                  final totalStudents =
+                                      lateStudentCount +
+                                      absentStudentCount +
+                                      leaveStudentCount +
+                                      otherStudentCount;
+                                  if (totalStudents > 0) {
                                     return Padding(
                                       padding: const EdgeInsets.only(left: 8),
                                       child: Text(
-                                        '异常: $totalRecords条',
+                                        '异常: $totalStudents人',
                                         style: const TextStyle(
                                           fontSize: 12,
                                           color: Colors.red,

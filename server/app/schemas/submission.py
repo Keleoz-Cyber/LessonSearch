@@ -61,6 +61,10 @@ class WeekSummaryResponse(BaseModel):
     absent_count: int
     leave_count: int = 0
     other_count: int = 0
+    late_student_count: int = 0
+    absent_student_count: int = 0
+    leave_student_count: int = 0
+    other_student_count: int = 0
     is_published: bool
 
 
