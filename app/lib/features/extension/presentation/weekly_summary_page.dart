@@ -1,10 +1,9 @@
-import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:dio/dio.dart';
-import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../../shared/providers.dart';
 import '../../../shared/widgets/toast.dart';
@@ -330,18 +329,26 @@ class _CurrentWeekTab extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        submissionStatusAsync.when(
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, _) => Text('加载提交状态失败: $e'),
-          data: (status) => _buildSubmissionStatusCard(context, status),
-        ),
-        const SizedBox(height: 16),
-
         weekSummaryAsync.when(
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (e, _) => Text('加载汇总统计失败: $e'),
           data: (summary) =>
               _buildSummaryPreviewCard(context, ref, summary, weekNumber),
+        ),
+        const SizedBox(height: 16),
+
+        FilledButton.icon(
+          icon: const Icon(Icons.download),
+          label: const Text('导出并发布本周汇总'),
+          style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+          onPressed: () => _showExportDialog(context, ref, weekNumber),
+        ),
+        const SizedBox(height: 16),
+
+        submissionStatusAsync.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (e, _) => Text('加载提交状态失败: $e'),
+          data: (status) => _buildSubmissionStatusCard(context, status),
         ),
         const SizedBox(height: 16),
 
@@ -420,13 +427,6 @@ class _CurrentWeekTab extends ConsumerWidget {
                   .toList(),
             );
           },
-        ),
-        const SizedBox(height: 16),
-        FilledButton.icon(
-          icon: const Icon(Icons.download),
-          label: const Text('导出并发布本周汇总'),
-          style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
-          onPressed: () => _showExportDialog(context, ref, weekNumber),
         ),
       ],
     );
@@ -945,23 +945,14 @@ class _CurrentWeekTab extends ConsumerWidget {
       final bytes = Uint8List.fromList(response.data as List<int>);
       final filename = '第${weekNumber}周周考勤表.xlsx';
 
-      if (Platform.isAndroid) {
-        final dir = Directory('/storage/emulated/0/Download');
-        if (await dir.exists()) {
-          final file = File('${dir.path}/$filename');
-          await file.writeAsBytes(bytes);
-          Toast.show(context, '已保存到: ${dir.path}/$filename');
-        } else {
-          Toast.show(context, '导出成功');
-        }
-      } else if (Platform.isIOS) {
-        final dir = await getApplicationDocumentsDirectory();
-        final file = File('${dir.path}/$filename');
-        await file.writeAsBytes(bytes);
-        Toast.show(context, '已保存: ${file.path}');
-      } else {
-        Toast.show(context, '导出成功');
-      }
+      await Share.shareXFiles([
+        XFile.fromData(
+          bytes,
+          name: filename,
+          mimeType:
+              'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ),
+      ], subject: filename);
 
       ref.invalidate(pendingSubmissionsProvider(weekNumber));
       ref.invalidate(exportStatusProvider(weekNumber));
