@@ -1904,6 +1904,8 @@ class _SummaryDetailDialogState extends State<_SummaryDetailDialog> {
                         final row = filteredData[index];
                         final late = row['late'] as int;
                         final absent = row['absent'] as int;
+                        final leave = row['leave'] as int? ?? 0;
+                        final other = row['other'] as int? ?? 0;
                         final total = row['total'] as int;
 
                         return Card(
@@ -1961,17 +1963,15 @@ class _SummaryDetailDialogState extends State<_SummaryDetailDialog> {
                                 Column(
                                   crossAxisAlignment: CrossAxisAlignment.end,
                                   children: [
-                                    Row(
-                                      mainAxisSize: MainAxisSize.min,
+                                    Wrap(
+                                      spacing: 4,
+                                      runSpacing: 4,
                                       children: [
                                         if (late > 0)
                                           Container(
                                             padding: const EdgeInsets.symmetric(
                                               horizontal: 6,
                                               vertical: 2,
-                                            ),
-                                            margin: const EdgeInsets.only(
-                                              right: 4,
                                             ),
                                             decoration: BoxDecoration(
                                               color: Colors.orange.withValues(
@@ -1981,7 +1981,7 @@ class _SummaryDetailDialogState extends State<_SummaryDetailDialog> {
                                                   BorderRadius.circular(4),
                                             ),
                                             child: Text(
-                                              '迟到$late',
+                                              '迟$late',
                                               style: const TextStyle(
                                                 fontSize: 11,
                                                 color: Colors.orange,
@@ -2002,10 +2002,52 @@ class _SummaryDetailDialogState extends State<_SummaryDetailDialog> {
                                                   BorderRadius.circular(4),
                                             ),
                                             child: Text(
-                                              '旷课$absent',
+                                              '缺$absent',
                                               style: const TextStyle(
                                                 fontSize: 11,
                                                 color: Colors.red,
+                                              ),
+                                            ),
+                                          ),
+                                        if (leave > 0)
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 6,
+                                              vertical: 2,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: Colors.blue.withValues(
+                                                alpha: 0.1,
+                                              ),
+                                              borderRadius:
+                                                  BorderRadius.circular(4),
+                                            ),
+                                            child: Text(
+                                              '假$leave',
+                                              style: const TextStyle(
+                                                fontSize: 11,
+                                                color: Colors.blue,
+                                              ),
+                                            ),
+                                          ),
+                                        if (other > 0)
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 6,
+                                              vertical: 2,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: Colors.grey.withValues(
+                                                alpha: 0.1,
+                                              ),
+                                              borderRadius:
+                                                  BorderRadius.circular(4),
+                                            ),
+                                            child: Text(
+                                              '他$other',
+                                              style: const TextStyle(
+                                                fontSize: 11,
+                                                color: Colors.grey,
                                               ),
                                             ),
                                           ),

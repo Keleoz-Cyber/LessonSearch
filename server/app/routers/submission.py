@@ -439,7 +439,7 @@ async def get_week_summary_detail(
                 AttendanceRecord.id == sr.record_id
             ).first()
             
-            if record and record.status in ("late", "absent"):
+            if record and record.status in ("late", "absent", "leave", "other"):
                 student = db.query(Student).filter(
                     Student.id == record.student_id
                 ).first()
@@ -461,12 +461,18 @@ async def get_week_summary_detail(
                             "class_code": class_.class_code if class_ else "",
                             "late": 0,
                             "absent": 0,
+                            "leave": 0,
+                            "other": 0,
                         }
                     
                     if record.status == "late":
                         student_stats[sid]["late"] += 1
                     elif record.status == "absent":
                         student_stats[sid]["absent"] += 1
+                    elif record.status == "leave":
+                        student_stats[sid]["leave"] += 1
+                    elif record.status == "other":
+                        student_stats[sid]["other"] += 1
     
     sorted_students = sorted(
         student_stats.values(),
@@ -482,7 +488,9 @@ async def get_week_summary_detail(
             "student_no": s["student_no"],
             "late": s["late"],
             "absent": s["absent"],
-            "total": (s["late"] // 2) + s["absent"],
+            "leave": s["leave"],
+            "other": s["other"],
+            "total": (s["late"] // 2) + s["absent"] + s["leave"] + s["other"],
         })
     
     return {
