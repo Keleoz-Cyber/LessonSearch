@@ -1194,7 +1194,7 @@ class _PendingSubmissionCard extends ConsumerWidget {
 
   Future<void> _showDetailDialog(BuildContext context, WidgetRef ref) async {
     final submissionId = submission['id'] as int;
-    final recordsAsync = ref.read(submissionRecordsProvider(submissionId));
+    final submissionStatus = submission['status'] as String;
 
     await showDialog(
       context: context,
@@ -1202,103 +1202,152 @@ class _PendingSubmissionCard extends ConsumerWidget {
         title: Text('审核详情 - ${submission['user_name'] ?? '未知'}'),
         content: SizedBox(
           width: 400,
-          child: FutureBuilder<Map<String, dynamic>>(
-            future: ref
-                .read(submissionServiceProvider)
-                .getSubmissionRecords(submissionId),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
-              }
-              if (snapshot.hasError) {
-                return Text('加载失败: ${snapshot.error}');
-              }
-
-              final data = snapshot.data!;
-              final records = data['records'] as List? ?? [];
-              final lateCount = data['late_count'] as int? ?? 0;
-              final absentCount = data['absent_count'] as int? ?? 0;
-              final leaveCount = data['leave_count'] as int? ?? 0;
-
-              final lateRecords = records
-                  .where((r) => r['status'] == 'late')
-                  .toList();
-              final absentRecords = records
-                  .where((r) => r['status'] == 'absent')
-                  .toList();
-
-              return SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Row(
-                      children: [
-                        _buildMiniStat('迟到', lateCount, Colors.orange),
-                        const SizedBox(width: 12),
-                        _buildMiniStat('缺勤', absentCount, Colors.red),
-                        const SizedBox(width: 12),
-                        _buildMiniStat('请假', leaveCount, Colors.blue),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    if (absentRecords.isNotEmpty) ...[
+          child: submissionStatus == 'cancelled'
+              ? const Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.cancel_outlined, size: 48, color: Colors.grey),
+                      SizedBox(height: 16),
+                      Text('该提交已被撤销'),
+                      SizedBox(height: 8),
                       Text(
-                        '缺勤名单:',
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 8),
-                      ...absentRecords.map(
-                        (r) => Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 2),
-                          child: Text(
-                            '- ${r['student_name']} (${r['student_no']}) ${r['class_name']}',
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                    ],
-                    if (lateRecords.isNotEmpty) ...[
-                      Text(
-                        '迟到名单:',
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 8),
-                      ...lateRecords.map(
-                        (r) => Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 2),
-                          child: Text(
-                            '- ${r['student_name']} (${r['student_no']}) ${r['class_name']}',
-                          ),
-                        ),
+                        '成员已撤销此提交，无法审核',
+                        style: TextStyle(color: Colors.grey),
                       ),
                     ],
-                  ],
+                  ),
+                )
+              : FutureBuilder<Map<String, dynamic>>(
+                  future: ref
+                      .read(submissionServiceProvider)
+                      .getSubmissionRecords(submissionId),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    if (snapshot.hasError) {
+                      return Text('加载失败: ${snapshot.error}');
+                    }
+
+                    final data = snapshot.data!;
+                    final status = data['status'] as String?;
+                    if (status == 'cancelled') {
+                      return const Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.cancel_outlined,
+                              size: 48,
+                              color: Colors.grey,
+                            ),
+                            SizedBox(height: 16),
+                            Text('该提交已被撤销'),
+                            SizedBox(height: 8),
+                            Text(
+                              '成员已撤销此提交，无法审核',
+                              style: TextStyle(color: Colors.grey),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+
+                    final records = data['records'] as List? ?? [];
+                    final lateCount = data['late_count'] as int? ?? 0;
+                    final absentCount = data['absent_count'] as int? ?? 0;
+                    final leaveCount = data['leave_count'] as int? ?? 0;
+
+                    final lateRecords = records
+                        .where((r) => r['status'] == 'late')
+                        .toList();
+                    final absentRecords = records
+                        .where((r) => r['status'] == 'absent')
+                        .toList();
+
+                    if (records.isEmpty) {
+                      return const Center(child: Text('暂无异常记录'));
+                    }
+
+                    return SingleChildScrollView(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Row(
+                            children: [
+                              _buildMiniStat('迟到', lateCount, Colors.orange),
+                              const SizedBox(width: 12),
+                              _buildMiniStat('缺勤', absentCount, Colors.red),
+                              const SizedBox(width: 12),
+                              _buildMiniStat('请假', leaveCount, Colors.blue),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          if (absentRecords.isNotEmpty) ...[
+                            const Text(
+                              '缺勤名单:',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            const SizedBox(height: 8),
+                            ...absentRecords.map(
+                              (r) => Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 2,
+                                ),
+                                child: Text(
+                                  '- ${r['student_name']} (${r['student_no']}) ${r['class_name']}',
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                          ],
+                          if (lateRecords.isNotEmpty) ...[
+                            const Text(
+                              '迟到名单:',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            const SizedBox(height: 8),
+                            ...lateRecords.map(
+                              (r) => Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 2,
+                                ),
+                                child: Text(
+                                  '- ${r['student_name']} (${r['student_no']}) ${r['class_name']}',
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    );
+                  },
                 ),
-              );
-            },
-          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
             child: const Text('关闭'),
           ),
-          OutlinedButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              _showRejectDialog(context, ref);
-            },
-            style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('拒绝'),
-          ),
-          FilledButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              _approve(context, ref);
-            },
-            child: const Text('通过'),
-          ),
+          if (submissionStatus != 'cancelled') ...[
+            OutlinedButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+                _showRejectDialog(context, ref);
+              },
+              style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
+              child: const Text('拒绝'),
+            ),
+            FilledButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+                _approve(context, ref);
+              },
+              child: const Text('通过'),
+            ),
+          ],
         ],
       ),
     );
