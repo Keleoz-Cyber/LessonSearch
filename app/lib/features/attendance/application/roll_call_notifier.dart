@@ -175,7 +175,10 @@ class RollCallNotifier extends StateNotifier<RollCallState> {
       }
 
       if (allStudents.isEmpty) {
-        state = state.copyWith(isLoading: false, error: '所选班级没有学生数据');
+        state = state.copyWith(
+          isLoading: false,
+          error: '所选班级没有学生数据，请检查网络连接后重试',
+        );
         return;
       }
 

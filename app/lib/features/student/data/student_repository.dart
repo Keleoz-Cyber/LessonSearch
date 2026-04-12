@@ -186,20 +186,25 @@ class StudentRepository {
       }
     }
     if (missing.isNotEmpty) {
-      await syncStudentsBatch(missing);
       try {
-        final version = await _api.getSyncVersion();
-        final classVersions = version['class_versions'] as Map<String, dynamic>;
-        for (final classId in missing) {
-          final serverVersion = classVersions[classId.toString()] as String?;
-          if (serverVersion != null) {
-            await _prefs.setString(
-              '${_keyClassVersionPrefix}$classId',
-              serverVersion,
-            );
+        await syncStudentsBatch(missing);
+        try {
+          final version = await _api.getSyncVersion();
+          final classVersions =
+              version['class_versions'] as Map<String, dynamic>;
+          for (final classId in missing) {
+            final serverVersion = classVersions[classId.toString()] as String?;
+            if (serverVersion != null) {
+              await _prefs.setString(
+                '${_keyClassVersionPrefix}$classId',
+                serverVersion,
+              );
+            }
           }
-        }
-      } catch (_) {}
+        } catch (_) {}
+      } catch (e) {
+        throw Exception('同步学生数据失败: $e');
+      }
     }
   }
 

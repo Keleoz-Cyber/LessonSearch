@@ -206,6 +206,15 @@ class NameCheckNotifier extends StateNotifier<NameCheckState> {
             .toList();
       }
 
+      final totalStudents = NameCheckState._calcTotal(studentsByClass);
+      if (totalStudents == 0) {
+        state = state.copyWith(
+          isLoading: false,
+          error: '所选班级没有学生数据，请检查网络连接后重试',
+        );
+        return;
+      }
+
       final task = await _attendanceRepo.createTask(
         type: TaskType.nameCheck,
         classIds: classIds,

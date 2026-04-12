@@ -274,17 +274,19 @@ class SettingsPage extends ConsumerWidget {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('更新日志'),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: MarkdownBody(
-            data: updateNotes.trim(),
-            styleSheet: MarkdownStyleSheet(
-              h2: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: Theme.of(context).colorScheme.primary,
+        content: SingleChildScrollView(
+          child: SizedBox(
+            width: double.maxFinite,
+            child: MarkdownBody(
+              data: updateNotes.trim(),
+              styleSheet: MarkdownStyleSheet(
+                h2: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+                p: const TextStyle(fontSize: 13, height: 1.5),
+                listBullet: const TextStyle(fontSize: 13, height: 1.5),
               ),
-              p: const TextStyle(fontSize: 13, height: 1.5),
-              listBullet: const TextStyle(fontSize: 13, height: 1.5),
             ),
           ),
         ),
@@ -309,7 +311,7 @@ class SettingsPage extends ConsumerWidget {
       final downloadUrl = response['download_url'] as String;
       final releaseNotes = response['release_notes'] as String;
 
-      const currentVersion = '0.5.0';
+      const currentVersion = '0.5.1';
       debugPrint('[CheckUpdate] 当前版本: $currentVersion, 最新版本: $latestVersion');
 
       if (latestVersion == currentVersion) {
