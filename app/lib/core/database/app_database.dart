@@ -51,6 +51,10 @@ class AppDatabase extends _$AppDatabase {
     await delete(attendanceRecords).go();
     await delete(taskClasses).go();
     await delete(attendanceTasks).go();
+    await delete(students).go();
+    await delete(classes).go();
+    await delete(majors).go();
+    await delete(grades).go();
   }
 
   Future<int> getUnsyncedCount() async {

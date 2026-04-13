@@ -117,6 +117,15 @@ class ApiClient {
     return res.data as Map<String, dynamic>;
   }
 
+  Future<int> getDataVersion() async {
+    try {
+      final res = await dio.get('/data-version');
+      return res.data['version'] as int;
+    } catch (_) {
+      return 0;
+    }
+  }
+
   // === 任务 ===
 
   Future<Map<String, dynamic>> createTask(Map<String, dynamic> body) async {

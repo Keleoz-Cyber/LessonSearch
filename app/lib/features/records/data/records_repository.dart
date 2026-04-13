@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 
 import '../../../core/database/app_database.dart';
+import '../../attendance/data/local/attendance_local_ds.dart';
 import '../../attendance/domain/models.dart' as domain;
 
 /// 查课记录汇总信息
@@ -68,8 +69,9 @@ class RecordEntry {
 /// 查课记录数据访问
 class RecordsRepository {
   final AppDatabase _db;
+  final AttendanceLocalDataSource _localDS;
 
-  RecordsRepository(this._db);
+  RecordsRepository(this._db, this._localDS);
 
   /// 获取所有已完成/已放弃的任务摘要
   Future<List<TaskSummary>> getTaskSummaries() async {
@@ -197,6 +199,23 @@ class RecordsRepository {
         updatedAt: Value(DateTime.now()),
       ),
     );
+
+    final record = await (_db.select(
+      _db.attendanceRecords,
+    )..where((r) => r.id.equals(recordId))).getSingleOrNull();
+
+    if (record != null) {
+      await _localDS.enqueueSync(
+        entityType: 'record',
+        entityId: recordId.toString(),
+        action: 'update',
+        payload: {
+          'record_id': recordId,
+          'status': status.value,
+          'remark': remark,
+        },
+      );
+    }
   }
 
   /// 获取任务关联的所有班级学生（用于点名记录显示全员）

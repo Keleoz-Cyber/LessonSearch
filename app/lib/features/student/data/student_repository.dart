@@ -14,6 +14,7 @@ class StudentRepository {
 
   static const _keyBaseVersion = 'sync_base_version';
   static const _keyClassVersionPrefix = 'sync_class_version_';
+  static const _keyDataVersion = 'data_version';
 
   StudentRepository(this._db, this._api, this._prefs);
 
@@ -104,10 +105,35 @@ class StudentRepository {
   }
 
   Future<void> ensureBaseData() async {
+    await checkDataVersion();
     final count = await (_db.select(_db.grades)).get();
     if (count.isEmpty) {
       await syncBaseData();
     }
+  }
+
+  Future<bool> checkDataVersion() async {
+    try {
+      final serverVersion = await _api.getDataVersion();
+      final localVersion = _prefs.getInt(_keyDataVersion) ?? 0;
+
+      if (serverVersion > localVersion) {
+        await _clearBaseData();
+        await syncBaseData();
+        await _prefs.setInt(_keyDataVersion, serverVersion);
+        return true;
+      }
+      return false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<void> _clearBaseData() async {
+    await _db.delete(_db.students).go();
+    await _db.delete(_db.classes).go();
+    await _db.delete(_db.majors).go();
+    await _db.delete(_db.grades).go();
   }
 
   Future<bool> checkBaseDataUpdate() async {

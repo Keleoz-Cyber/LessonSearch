@@ -130,7 +130,10 @@ final nameCheckProvider =
 
 /// 查课记录仓库
 final recordsRepositoryProvider = Provider<RecordsRepository>((ref) {
-  return RecordsRepository(ref.watch(databaseProvider));
+  return RecordsRepository(
+    ref.watch(databaseProvider),
+    ref.watch(attendanceLocalDSProvider),
+  );
 });
 
 /// 主题模式（暗色/亮色/跟随系统）
