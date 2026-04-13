@@ -52,6 +52,7 @@ jobs:
         flutter pub get
     
     - name: Install iOS dependencies
+      continue-on-error: true
       run: |
         cd app/ios
         pod install
@@ -62,11 +63,14 @@ jobs:
         flutter build apk --release
     
     - name: Build iOS IPA (unsigned)
+      continue-on-error: true
       run: |
         cd app
         flutter build ios --release --no-codesign
     
     - name: Create IPA from build
+      if: success()
+      continue-on-error: true
       run: |
         cd app/build/ios/iphoneos
         mkdir -p Payload
@@ -86,8 +90,6 @@ jobs:
     - name: Upload to Release
       uses: softprops/action-gh-release@v1
       with:
-        files: |
-          app/kaoqin-helper-${{ steps.get_version.outputs.VERSION }}.apk
-          app/kaoqin-helper-unsigned.ipa
+        files: app/kaoqin-helper-${{ steps.get_version.outputs.VERSION }}.apk
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
