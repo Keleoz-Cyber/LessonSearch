@@ -230,40 +230,27 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
                         );
                       },
                     )
-                  : LayoutBuilder(
-                      builder: (context, constraints) {
-                        const crossAxisCount = 2;
-                        final itemWidth =
-                            (constraints.maxWidth - 12 * 2 - 8) /
-                            crossAxisCount;
-                        const itemHeight = 56.0;
-                        return GridView.builder(
-                          padding: const EdgeInsets.all(12),
-                          gridDelegate:
-                              SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: crossAxisCount,
-                                mainAxisSpacing: 8,
-                                crossAxisSpacing: 8,
-                                childAspectRatio: itemWidth / itemHeight,
-                              ),
-                          itemCount: students.length,
-                          itemBuilder: (context, index) {
-                            final sw = students[index];
-                            final isFocused = _focusedIndex == index;
+                  : ListView.builder(
+                      padding: const EdgeInsets.all(12),
+                      itemCount: students.length,
+                      itemBuilder: (context, index) {
+                        final sw = students[index];
+                        final isFocused = _focusedIndex == index;
 
-                            return RepaintBoundary(
-                              key: ValueKey(sw.student.id),
-                              child: _StudentCard(
-                                name: sw.student.name,
-                                studentNo: sw.student.studentNo,
-                                status: sw.status,
-                                remark: sw.remark,
-                                isFocused: isFocused,
-                                onTap: () =>
-                                    setState(() => _focusedIndex = index),
-                              ),
-                            );
-                          },
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: RepaintBoundary(
+                            key: ValueKey(sw.student.id),
+                            child: _StudentCard(
+                              name: sw.student.name,
+                              studentNo: sw.student.studentNo,
+                              status: sw.status,
+                              remark: sw.remark,
+                              isFocused: isFocused,
+                              onTap: () =>
+                                  setState(() => _focusedIndex = index),
+                            ),
+                          ),
                         );
                       },
                     ),
@@ -662,36 +649,26 @@ class _ClassStudentGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        const crossAxisCount = 2;
-        final itemWidth = (constraints.maxWidth - 12 * 2 - 8) / crossAxisCount;
-        const itemHeight = 56.0;
-        return GridView.builder(
-          padding: const EdgeInsets.all(12),
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: crossAxisCount,
-            mainAxisSpacing: 8,
-            crossAxisSpacing: 8,
-            childAspectRatio: itemWidth / itemHeight,
-          ),
-          itemCount: students.length,
-          itemBuilder: (context, index) {
-            final sw = students[index];
-            final isFocused = focusedIndex == index;
+    return ListView.builder(
+      padding: const EdgeInsets.all(12),
+      itemCount: students.length,
+      itemBuilder: (context, index) {
+        final sw = students[index];
+        final isFocused = focusedIndex == index;
 
-            return RepaintBoundary(
-              key: ValueKey(sw.student.id),
-              child: _StudentCard(
-                name: sw.student.name,
-                studentNo: sw.student.studentNo,
-                status: sw.status,
-                remark: sw.remark,
-                isFocused: isFocused,
-                onTap: () => onTap(index),
-              ),
-            );
-          },
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: RepaintBoundary(
+            key: ValueKey(sw.student.id),
+            child: _StudentCard(
+              name: sw.student.name,
+              studentNo: sw.student.studentNo,
+              status: sw.status,
+              remark: sw.remark,
+              isFocused: isFocused,
+              onTap: () => onTap(index),
+            ),
+          ),
         );
       },
     );

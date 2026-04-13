@@ -1,7 +1,7 @@
 name: lesson_search
 description: "考勤助手 - 课堂考勤查课工具"
 publish_to: 'none'
-version: 0.5.1+19
+version: 0.5.2+20
 
 environment:
   sdk: ^3.11.0

@@ -531,35 +531,32 @@ class _SubmissionCard extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Text(
+                classNames ?? '未知班级',
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 6),
               Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          classNames ?? '未知班级',
-                          style: Theme.of(context).textTheme.titleMedium
-                              ?.copyWith(fontWeight: FontWeight.w600),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          '第 ${submission['week_number']} 周 · $recordCount 条记录',
-                          style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.onSurfaceVariant,
-                              ),
-                        ),
-                      ],
-                    ),
-                  ),
                   StatusBadge(
                     label: _getStatusText(),
                     color: _getStatusColor(),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    '第 ${submission['week_number']} 周',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    '· $recordCount 条记录',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
                   ),
                 ],
               ),
