@@ -179,9 +179,16 @@ class SyncService {
         );
         await _remote.createRecords(taskId, [record]);
       case 'update':
-        final id = int.parse(recordId);
+        final taskId = payload['task_id'] as String?;
+        final studentId = payload['student_id'] as int?;
         final status = AttendanceStatus.fromString(payload['status'] as String);
-        await _remote.updateRecord(id, status);
+
+        if (taskId != null && studentId != null) {
+          await _remote.updateRecordByTaskStudent(taskId, studentId, status);
+        } else {
+          final id = int.parse(recordId);
+          await _remote.updateRecord(id, status);
+        }
     }
   }
 

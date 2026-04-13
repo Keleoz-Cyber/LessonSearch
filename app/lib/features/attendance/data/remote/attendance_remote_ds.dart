@@ -69,4 +69,14 @@ class AttendanceRemoteDataSource {
   ) async {
     return await _api.updateRecord(recordId, {'status': status.value});
   }
+
+  Future<Map<String, dynamic>> updateRecordByTaskStudent(
+    String taskId,
+    int studentId,
+    AttendanceStatus status,
+  ) async {
+    return await _api.updateRecordByTaskStudent(taskId, studentId, {
+      'status': status.value,
+    });
+  }
 }

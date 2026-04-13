@@ -176,6 +176,19 @@ class ApiClient {
     return res.data as Map<String, dynamic>;
   }
 
+  Future<Map<String, dynamic>> updateRecordByTaskStudent(
+    String taskId,
+    int studentId,
+    Map<String, dynamic> body,
+  ) async {
+    final res = await dio.put(
+      '/records/by-task-student',
+      data: body,
+      queryParameters: {'task_id': taskId, 'student_id': studentId},
+    );
+    return res.data as Map<String, dynamic>;
+  }
+
   // === 通用请求 ===
 
   Future<Map<String, dynamic>> put(

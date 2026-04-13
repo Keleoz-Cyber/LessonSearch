@@ -41,7 +41,7 @@ class SettingsPage extends ConsumerWidget {
           const ListTile(
             leading: Icon(Icons.tag),
             title: Text('版本号'),
-            subtitle: Text('0.5.1'),
+            subtitle: Text('0.5.2'),
           ),
 
           const Divider(),
@@ -311,7 +311,7 @@ class SettingsPage extends ConsumerWidget {
       final downloadUrl = response['download_url'] as String;
       final releaseNotes = response['release_notes'] as String;
 
-      const currentVersion = '0.5.1';
+      const currentVersion = '0.5.2';
       debugPrint('[CheckUpdate] 当前版本: $currentVersion, 最新版本: $latestVersion');
 
       if (latestVersion == currentVersion) {
@@ -628,7 +628,7 @@ class _AboutPageState extends ConsumerState<AboutPage> {
 
               Center(
                 child: Text(
-                  '考勤助手 v0.5.1',
+                  '考勤助手 v0.5.2',
                   style: TextStyle(
                     color: Theme.of(
                       context,

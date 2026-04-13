@@ -1,4 +1,5 @@
 import 'package:drift/drift.dart';
+import 'package:flutter/foundation.dart';
 
 import '../../../core/database/app_database.dart';
 import '../../attendance/data/local/attendance_local_ds.dart';
@@ -205,15 +206,25 @@ class RecordsRepository {
     )..where((r) => r.id.equals(recordId))).getSingleOrNull();
 
     if (record != null) {
+      debugPrint(
+        '[RecordsRepository] updateRecord: id=$recordId, status=${status.value}, enqueueing sync',
+      );
       await _localDS.enqueueSync(
         entityType: 'record',
         entityId: recordId.toString(),
         action: 'update',
         payload: {
           'record_id': recordId,
+          'task_id': record.taskId,
+          'student_id': record.studentId,
           'status': status.value,
           'remark': remark,
         },
+      );
+      debugPrint('[RecordsRepository] updateRecord: sync enqueued');
+    } else {
+      debugPrint(
+        '[RecordsRepository] updateRecord: record not found after update',
       );
     }
   }
