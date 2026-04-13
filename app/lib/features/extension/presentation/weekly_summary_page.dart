@@ -1489,8 +1489,11 @@ class _ReviewedSubmissionCard extends ConsumerWidget {
         context: context,
         builder: (ctx) => AlertDialog(
           title: Text('审核详情 - ${submission['user_name'] ?? '未知'}'),
-          content: SizedBox(
-            width: 400,
+          content: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth: MediaQuery.of(context).size.width * 0.9,
+              maxHeight: MediaQuery.of(context).size.height * 0.7,
+            ),
             child: records.isEmpty
                 ? EmptyState.noAbnormal()
                 : SingleChildScrollView(
@@ -1808,9 +1811,11 @@ class _SummaryDetailDialogState extends State<_SummaryDetailDialog> {
           ),
         ],
       ),
-      content: SizedBox(
-        width: 350,
-        height: 500,
+      content: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: MediaQuery.of(context).size.width * 0.85,
+          maxHeight: MediaQuery.of(context).size.height * 0.6,
+        ),
         child: Column(
           children: [
             if (sortedClasses.isNotEmpty)
