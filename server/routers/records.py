@@ -55,20 +55,6 @@ def list_records(task_id: str, db: Session = Depends(get_db)):
 record_router = APIRouter(prefix="/records", tags=["考勤记录"])
 
 
-@record_router.put("/{record_id}", response_model=RecordOut)
-def update_record(record_id: int, body: RecordUpdate, db: Session = Depends(get_db)):
-    record = db.query(AttendanceRecord).filter(AttendanceRecord.id == record_id).first()
-    if not record:
-        raise HTTPException(status_code=404, detail="记录不存在")
-
-    record.status = body.status
-    if body.remark is not None:
-        record.remark = body.remark
-    db.commit()
-    db.refresh(record)
-    return record
-
-
 @record_router.put("/by-task-student", response_model=RecordOut)
 def update_record_by_task_student(
     task_id: str,
@@ -80,6 +66,20 @@ def update_record_by_task_student(
         AttendanceRecord.task_id == task_id,
         AttendanceRecord.student_id == student_id,
     ).first()
+    if not record:
+        raise HTTPException(status_code=404, detail="记录不存在")
+
+    record.status = body.status
+    if body.remark is not None:
+        record.remark = body.remark
+    db.commit()
+    db.refresh(record)
+    return record
+
+
+@record_router.put("/{record_id}", response_model=RecordOut)
+def update_record(record_id: int, body: RecordUpdate, db: Session = Depends(get_db)):
+    record = db.query(AttendanceRecord).filter(AttendanceRecord.id == record_id).first()
     if not record:
         raise HTTPException(status_code=404, detail="记录不存在")
 
