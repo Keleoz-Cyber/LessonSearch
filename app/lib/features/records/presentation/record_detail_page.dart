@@ -206,28 +206,15 @@ class _RecordDetailPageState extends ConsumerState<RecordDetailPage> {
                         ),
                       ),
                     ),
-                    // 两列网格布局
-                    LayoutBuilder(
-                      builder: (context, constraints) {
-                        return Wrap(
-                          spacing: 8,
-                          runSpacing: 4,
-                          children: entry.value.map((record) {
-                            final called =
-                                record.status == AttendanceStatus.present;
-                            final itemWidth = (constraints.maxWidth - 8) / 2;
-                            return SizedBox(
-                              width: itemWidth,
-                              child: _RollCallItem(
-                                name: record.studentName,
-                                studentNo: record.studentNo,
-                                called: called,
-                              ),
-                            );
-                          }).toList(),
-                        );
-                      },
-                    ),
+                    // 单列布局
+                    ...entry.value.map((record) {
+                      final called = record.status == AttendanceStatus.present;
+                      return _RollCallItem(
+                        name: record.studentName,
+                        studentNo: record.studentNo,
+                        called: called,
+                      );
+                    }),
                     const Divider(),
                   ],
                 );
