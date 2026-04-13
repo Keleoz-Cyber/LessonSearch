@@ -230,26 +230,29 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
                         );
                       },
                     )
-                  : ListView.builder(
+                  : GridView.builder(
                       padding: const EdgeInsets.all(12),
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            mainAxisSpacing: 8,
+                            crossAxisSpacing: 8,
+                            childAspectRatio: 2.5,
+                          ),
                       itemCount: students.length,
                       itemBuilder: (context, index) {
                         final sw = students[index];
                         final isFocused = _focusedIndex == index;
 
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: RepaintBoundary(
-                            key: ValueKey(sw.student.id),
-                            child: _StudentCard(
-                              name: sw.student.name,
-                              studentNo: sw.student.studentNo,
-                              status: sw.status,
-                              remark: sw.remark,
-                              isFocused: isFocused,
-                              onTap: () =>
-                                  setState(() => _focusedIndex = index),
-                            ),
+                        return RepaintBoundary(
+                          key: ValueKey(sw.student.id),
+                          child: _StudentCard(
+                            name: sw.student.name,
+                            studentNo: sw.student.studentNo,
+                            status: sw.status,
+                            remark: sw.remark,
+                            isFocused: isFocused,
+                            onTap: () => setState(() => _focusedIndex = index),
                           ),
                         );
                       },
@@ -649,25 +652,28 @@ class _ClassStudentGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListView.builder(
+    return GridView.builder(
       padding: const EdgeInsets.all(12),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        mainAxisSpacing: 8,
+        crossAxisSpacing: 8,
+        childAspectRatio: 2.5,
+      ),
       itemCount: students.length,
       itemBuilder: (context, index) {
         final sw = students[index];
         final isFocused = focusedIndex == index;
 
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 8),
-          child: RepaintBoundary(
-            key: ValueKey(sw.student.id),
-            child: _StudentCard(
-              name: sw.student.name,
-              studentNo: sw.student.studentNo,
-              status: sw.status,
-              remark: sw.remark,
-              isFocused: isFocused,
-              onTap: () => onTap(index),
-            ),
+        return RepaintBoundary(
+          key: ValueKey(sw.student.id),
+          child: _StudentCard(
+            name: sw.student.name,
+            studentNo: sw.student.studentNo,
+            status: sw.status,
+            remark: sw.remark,
+            isFocused: isFocused,
+            onTap: () => onTap(index),
           ),
         );
       },
