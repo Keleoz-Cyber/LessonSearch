@@ -562,14 +562,13 @@ class _CurrentWeekTab extends ConsumerWidget {
                 ],
               ),
               const SizedBox(height: 12),
-              Row(
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
                 children: [
                   _buildMiniStat('迟到', lateCount, Colors.orange),
-                  const SizedBox(width: 8),
                   _buildMiniStat('缺勤', absentCount, Colors.red),
-                  const SizedBox(width: 8),
                   _buildMiniStat('请假', leaveCount, Colors.blue),
-                  const SizedBox(width: 8),
                   _buildMiniStat('其他', otherCount, Colors.grey),
                 ],
               ),
@@ -1127,14 +1126,13 @@ class _PendingSubmissionCard extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Row(
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
                           children: [
                             _buildMiniStat('迟到', lateCount, Colors.orange),
-                            const SizedBox(width: 8),
                             _buildMiniStat('缺勤', absentCount, Colors.red),
-                            const SizedBox(width: 8),
                             _buildMiniStat('请假', leaveCount, Colors.blue),
-                            const SizedBox(width: 8),
                             _buildMiniStat('其他', otherCount, Colors.grey),
                           ],
                         ),
@@ -1501,12 +1499,12 @@ class _ReviewedSubmissionCard extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Row(
+                        Wrap(
+                          spacing: 12,
+                          runSpacing: 8,
                           children: [
                             _buildMiniStat('迟到', lateCount, Colors.orange),
-                            const SizedBox(width: 12),
                             _buildMiniStat('缺勤', absentCount, Colors.red),
-                            const SizedBox(width: 12),
                             _buildMiniStat('请假', leaveCount, Colors.blue),
                           ],
                         ),
