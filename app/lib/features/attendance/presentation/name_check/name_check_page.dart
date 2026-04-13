@@ -230,30 +230,40 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
                         );
                       },
                     )
-                  : GridView.builder(
-                      padding: const EdgeInsets.all(12),
-                      gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
-                            mainAxisSpacing: 8,
-                            crossAxisSpacing: 8,
-                            childAspectRatio: 2.5,
-                          ),
-                      itemCount: students.length,
-                      itemBuilder: (context, index) {
-                        final sw = students[index];
-                        final isFocused = _focusedIndex == index;
+                  : LayoutBuilder(
+                      builder: (context, constraints) {
+                        final crossAxisCount = 2;
+                        final itemWidth =
+                            (constraints.maxWidth - 12 * 2 - 8) /
+                            crossAxisCount;
+                        const itemHeight = 56.0;
+                        return GridView.builder(
+                          padding: const EdgeInsets.all(12),
+                          gridDelegate:
+                              SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: crossAxisCount,
+                                mainAxisSpacing: 8,
+                                crossAxisSpacing: 8,
+                                childAspectRatio: itemWidth / itemHeight,
+                              ),
+                          itemCount: students.length,
+                          itemBuilder: (context, index) {
+                            final sw = students[index];
+                            final isFocused = _focusedIndex == index;
 
-                        return RepaintBoundary(
-                          key: ValueKey(sw.student.id),
-                          child: _StudentCard(
-                            name: sw.student.name,
-                            studentNo: sw.student.studentNo,
-                            status: sw.status,
-                            remark: sw.remark,
-                            isFocused: isFocused,
-                            onTap: () => setState(() => _focusedIndex = index),
-                          ),
+                            return RepaintBoundary(
+                              key: ValueKey(sw.student.id),
+                              child: _StudentCard(
+                                name: sw.student.name,
+                                studentNo: sw.student.studentNo,
+                                status: sw.status,
+                                remark: sw.remark,
+                                isFocused: isFocused,
+                                onTap: () =>
+                                    setState(() => _focusedIndex = index),
+                              ),
+                            );
+                          },
                         );
                       },
                     ),
@@ -652,29 +662,36 @@ class _ClassStudentGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GridView.builder(
-      padding: const EdgeInsets.all(12),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        mainAxisSpacing: 6,
-        crossAxisSpacing: 6,
-        childAspectRatio: 3.2,
-      ),
-      itemCount: students.length,
-      itemBuilder: (context, index) {
-        final sw = students[index];
-        final isFocused = focusedIndex == index;
-
-        return RepaintBoundary(
-          key: ValueKey(sw.student.id),
-          child: _StudentCard(
-            name: sw.student.name,
-            studentNo: sw.student.studentNo,
-            status: sw.status,
-            remark: sw.remark,
-            isFocused: isFocused,
-            onTap: () => onTap(index),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final crossAxisCount = 2;
+        final itemWidth = (constraints.maxWidth - 12 * 2 - 8) / crossAxisCount;
+        const itemHeight = 56.0;
+        return GridView.builder(
+          padding: const EdgeInsets.all(12),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: crossAxisCount,
+            mainAxisSpacing: 8,
+            crossAxisSpacing: 8,
+            childAspectRatio: itemWidth / itemHeight,
           ),
+          itemCount: students.length,
+          itemBuilder: (context, index) {
+            final sw = students[index];
+            final isFocused = focusedIndex == index;
+
+            return RepaintBoundary(
+              key: ValueKey(sw.student.id),
+              child: _StudentCard(
+                name: sw.student.name,
+                studentNo: sw.student.studentNo,
+                status: sw.status,
+                remark: sw.remark,
+                isFocused: isFocused,
+                onTap: () => onTap(index),
+              ),
+            );
+          },
         );
       },
     );
