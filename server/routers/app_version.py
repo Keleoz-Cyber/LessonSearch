@@ -40,16 +40,10 @@ async def get_latest_version():
     latest = data[0]
     
     version = latest.get("tag_name", "").lstrip("v")
-    download_url = ""
     release_notes = latest.get("body", "")
     
-    for asset in latest.get("assets", []):
-        if asset.get("name", "").endswith(".apk"):
-            download_url = asset.get("browser_download_url", "")
-            break
-    
-    if not download_url:
-        download_url = f"https://github.com/Keleoz-Cyber/LessonSearch/releases/tag/v{version}"
+    # 优先使用 Gitee 下载链接（国内用户更快）
+    download_url = f"https://gitee.com/keleoz/kaoqin-helper-releases/releases/download/v{version}/kaoqin-helper-v{version}.apk"
     
     result = VersionInfo(
         version=version,
