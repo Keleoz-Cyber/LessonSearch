@@ -145,12 +145,21 @@ class AttendanceRepository {
     AttendanceStatus status, {
     String? remark,
   }) async {
+    // 先获取记录信息（用于同步）
+    final record = await _local.getRecordById(recordId);
+    if (record == null) return;
+
     await _local.updateRecordStatus(recordId, status, remark: remark);
     await _local.enqueueSync(
       entityType: 'record',
       entityId: recordId.toString(),
       action: 'update',
-      payload: {'status': status.value, if (remark != null) 'remark': remark},
+      payload: {
+        'task_id': record.taskId,
+        'student_id': record.studentId,
+        'status': status.value,
+        if (remark != null) 'remark': remark,
+      },
     );
   }
 

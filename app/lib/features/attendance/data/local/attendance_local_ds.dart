@@ -204,6 +204,15 @@ class AttendanceLocalDataSource {
     )..where((r) => r.id.equals(recordId))).go();
   }
 
+  /// 获取单个考勤记录
+  Future<domain.AttendanceRecord?> getRecordById(int recordId) async {
+    final row = await (_db.select(
+      _db.attendanceRecords,
+    )..where((r) => r.id.equals(recordId))).getSingleOrNull();
+    if (row == null) return null;
+    return _mapRowToRecord(row);
+  }
+
   Future<List<domain.AttendanceRecord>> getRecordsByTask(String taskId) async {
     final rows =
         await (_db.select(_db.attendanceRecords)
