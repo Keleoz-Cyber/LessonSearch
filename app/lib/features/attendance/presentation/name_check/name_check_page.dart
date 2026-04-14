@@ -285,30 +285,30 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
     final classId = state.currentClass?.id;
     if (classId == null) return const SizedBox();
 
-    void mark(
-      AttendanceStatus status, {
-      String? remark,
-      bool autoNext = false,
-    }) {
+    void mark(AttendanceStatus status, {String? remark}) {
       if (_focusedIndex == null || _focusedIndex! >= students.length) return;
       ref.read(feedbackServiceProvider).feedback();
       ref
           .read(nameCheckProvider.notifier)
           .markStudent(classId, _focusedIndex!, status, remark: remark);
+      // 标记状态后保持当前焦点
+      setState(() => _focusedIndex = _focusedIndex);
+    }
 
-      // 编辑模式：修改状态后不自动跳转，保持当前焦点
-      if (state.isEditing) {
-        setState(() => _focusedIndex = _focusedIndex);
-        return;
+    void goToNext() {
+      if (_focusedIndex == null || _focusedIndex! >= students.length) return;
+      ref.read(feedbackServiceProvider).feedback();
+
+      final currentStudent = students[_focusedIndex!];
+
+      // 如果当前学生是pending状态，先标记为到课
+      if (currentStudent.status == AttendanceStatus.pending) {
+        ref
+            .read(nameCheckProvider.notifier)
+            .markStudent(classId, _focusedIndex!, AttendanceStatus.present);
       }
 
-      // 非自动跳转模式（点击缺勤、请假、其他按钮）：保持当前焦点
-      if (!autoNext) {
-        setState(() => _focusedIndex = _focusedIndex);
-        return;
-      }
-
-      // 自动跳转模式（点击"到课（下一位）"按钮）：查找下一个待处理学生
+      // 查找下一个待处理学生
       final nextIndex = students.indexWhere(
         (s) => s.status == AttendanceStatus.pending,
         _focusedIndex! + 1,
@@ -437,9 +437,7 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
             SizedBox(
               width: double.infinity,
               child: FilledButton(
-                onPressed: _focusedIndex != null
-                    ? () => mark(AttendanceStatus.present, autoNext: true)
-                    : null,
+                onPressed: _focusedIndex != null ? () => goToNext() : null,
                 style: FilledButton.styleFrom(
                   minimumSize: const Size.fromHeight(44),
                 ),
