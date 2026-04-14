@@ -13,6 +13,10 @@ class RankingItem(BaseModel):
     rank_value: float
     trend_value: Optional[float] = None
     trend_rank: Optional[str] = None
+    absent_count: Optional[int] = None
+    leave_count: Optional[int] = None
+    late_count: Optional[int] = None
+    other_count: Optional[int] = None
 
 
 class RankingSummaryResponse(BaseModel):

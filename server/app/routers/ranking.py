@@ -64,6 +64,10 @@ async def get_ranking_list(
             rank_value=float(item.rank_value),
             trend_value=float(item.trend_value) if item.trend_value else None,
             trend_rank=item.trend_rank,
+            absent_count=item.total_absent,
+            leave_count=item.total_leave,
+            late_count=item.total_late,
+            other_count=item.total_other,
         ))
 
     return RankingListResponse(
