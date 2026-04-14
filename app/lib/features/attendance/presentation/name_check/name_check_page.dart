@@ -285,7 +285,11 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
     final classId = state.currentClass?.id;
     if (classId == null) return const SizedBox();
 
-    void mark(AttendanceStatus status, {String? remark}) {
+    void mark(
+      AttendanceStatus status, {
+      String? remark,
+      bool autoNext = false,
+    }) {
       if (_focusedIndex == null || _focusedIndex! >= students.length) return;
       ref.read(feedbackServiceProvider).feedback();
       ref
@@ -298,7 +302,13 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
         return;
       }
 
-      // 正常记名流程：查找当前班级下一个待处理学生
+      // 非自动跳转模式（点击缺勤、请假、其他按钮）：保持当前焦点
+      if (!autoNext) {
+        setState(() => _focusedIndex = _focusedIndex);
+        return;
+      }
+
+      // 自动跳转模式（点击"到课（下一位）"按钮）：查找下一个待处理学生
       final nextIndex = students.indexWhere(
         (s) => s.status == AttendanceStatus.pending,
         _focusedIndex! + 1,
@@ -428,7 +438,7 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
               width: double.infinity,
               child: FilledButton(
                 onPressed: _focusedIndex != null
-                    ? () => mark(AttendanceStatus.present)
+                    ? () => mark(AttendanceStatus.present, autoNext: true)
                     : null,
                 style: FilledButton.styleFrom(
                   minimumSize: const Size.fromHeight(44),
