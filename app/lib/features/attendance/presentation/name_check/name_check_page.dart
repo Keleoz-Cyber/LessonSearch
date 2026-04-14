@@ -308,17 +308,21 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
 
       final currentStudent = students[_focusedIndex!];
 
+      // 如果所有班级都没有pending，标记当前学生为到课（用于修改状态）
+      if (!hasPendingInAllClasses) {
+        ref
+            .read(nameCheckProvider.notifier)
+            .markStudent(classId, _focusedIndex!, AttendanceStatus.present);
+        setState(() => _focusedIndex = _focusedIndex);
+        return;
+      }
+
+      // 还有pending学生
       // 只有当前学生是pending时才标记为到课
       if (currentStudent.status == AttendanceStatus.pending) {
         ref
             .read(nameCheckProvider.notifier)
             .markStudent(classId, _focusedIndex!, AttendanceStatus.present);
-      }
-
-      // 如果所有班级都有状态，不跳转
-      if (!hasPendingInAllClasses) {
-        setState(() => _focusedIndex = _focusedIndex);
-        return;
       }
 
       // 查找当前班级下一个pending
