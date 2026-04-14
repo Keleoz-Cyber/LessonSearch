@@ -285,6 +285,11 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
     final classId = state.currentClass?.id;
     if (classId == null) return const SizedBox();
 
+    final hasPendingInClass = students.any(
+      (s) => s.status == AttendanceStatus.pending,
+    );
+    final nextButtonText = hasPendingInClass ? '到课（下一位）' : '到课';
+
     void mark(AttendanceStatus status, {String? remark}) {
       if (_focusedIndex == null || _focusedIndex! >= students.length) return;
       ref.read(feedbackServiceProvider).feedback();
@@ -300,25 +305,38 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
       ref.read(feedbackServiceProvider).feedback();
 
       final currentStudent = students[_focusedIndex!];
-
-      // 如果当前学生是pending状态，先标记为到课
-      if (currentStudent.status == AttendanceStatus.pending) {
-        ref
-            .read(nameCheckProvider.notifier)
-            .markStudent(classId, _focusedIndex!, AttendanceStatus.present);
-      }
-
-      // 查找下一个待处理学生（只限当前班级）
-      final nextIndex = students.indexWhere(
+      final hasPendingInClass = students.any(
         (s) => s.status == AttendanceStatus.pending,
-        _focusedIndex! + 1,
       );
 
-      if (nextIndex >= 0) {
-        setState(() => _focusedIndex = nextIndex);
+      // 标记当前学生为到课（如果不是pending也标记，用于修改状态）
+      ref
+          .read(nameCheckProvider.notifier)
+          .markStudent(classId, _focusedIndex!, AttendanceStatus.present);
+
+      if (hasPendingInClass) {
+        // 如果班级还有pending学生，跳转到下一个pending
+        final nextIndex = students.indexWhere(
+          (s) => s.status == AttendanceStatus.pending,
+          _focusedIndex! + 1,
+        );
+
+        if (nextIndex >= 0) {
+          setState(() => _focusedIndex = nextIndex);
+        } else {
+          // 从头找pending
+          final firstPending = students.indexWhere(
+            (s) => s.status == AttendanceStatus.pending,
+          );
+          if (firstPending >= 0) {
+            setState(() => _focusedIndex = firstPending);
+          } else {
+            // 没有pending了，保持当前焦点
+            setState(() => _focusedIndex = _focusedIndex);
+          }
+        }
       } else {
-        // 当前班级没有下一个pending，保持当前焦点
-        // 用户可以手动滑动切换班级
+        // 所有学生都有状态，只标记，不跳转
         setState(() => _focusedIndex = _focusedIndex);
       }
     }
@@ -421,7 +439,7 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
                 style: FilledButton.styleFrom(
                   minimumSize: const Size.fromHeight(44),
                 ),
-                child: const Text('到课（下一位）'),
+                child: Text(nextButtonText),
               ),
             ),
           ],
