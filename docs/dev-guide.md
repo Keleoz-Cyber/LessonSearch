@@ -1,6 +1,6 @@
 # 考勤助手 开发文档
 
-> 版本：0.5.2 | 更新日期：2026-04-13 | 仓库：https://github.com/Keleoz-Cyber/LessonSearch
+> 版本：0.5.3 | 更新日期：2026-04-13 | 仓库：https://github.com/Keleoz-Cyber/LessonSearch
 
 ---
 
