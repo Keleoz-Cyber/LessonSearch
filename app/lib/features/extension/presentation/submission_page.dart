@@ -146,6 +146,13 @@ class _SubmissionPageState extends ConsumerState<SubmissionPage>
 
     setState(() => _loading = true);
 
+    // 提交前强制同步，确保本地编辑已同步到服务端
+    try {
+      await ref.read(syncServiceProvider).syncNow();
+    } catch (e) {
+      debugPrint('[Submission] 同步失败: $e');
+    }
+
     int successCount = 0;
     int failCount = 0;
     final errors = <String>[];
