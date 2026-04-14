@@ -318,7 +318,7 @@ class SettingsPage extends ConsumerWidget {
       final downloadUrl = response['download_url'] as String;
       final releaseNotes = response['release_notes'] as String;
 
-      const currentVersion = '0.5.3';
+      const currentVersion = '0.5.5';
       debugPrint('[CheckUpdate] 当前版本: $currentVersion, 最新版本: $latestVersion');
 
       if (latestVersion == currentVersion) {
