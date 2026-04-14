@@ -1,6 +1,7 @@
 """
 排行榜 API
 """
+from datetime import datetime
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from sqlalchemy import and_
@@ -64,8 +65,6 @@ async def get_ranking_list(
             trend_value=float(item.trend_value) if item.trend_value else None,
             trend_rank=item.trend_rank,
         ))
-
-    from datetime import datetime
 
     return RankingListResponse(
         period_type=period_type,
