@@ -195,6 +195,7 @@ class _RankingPageState extends ConsumerState<RankingPage> {
   Widget _buildContent(BuildContext context, Map<String, dynamic> data) {
     final summary = data['summary'] as Map<String, dynamic>;
     final items = data['items'] as List<dynamic>;
+    final calculatedAt = data['calculated_at'] as String?;
 
     if (items.isEmpty) {
       return EmptyState(
@@ -212,7 +213,7 @@ class _RankingPageState extends ConsumerState<RankingPage> {
           return _buildSummaryCard(context, summary);
         }
         if (index == 1) {
-          return _buildRulesSection(context);
+          return _buildRulesSection(context, calculatedAt);
         }
         final itemIndex = index - 2;
         final item = items[itemIndex] as Map<String, dynamic>;
@@ -225,7 +226,7 @@ class _RankingPageState extends ConsumerState<RankingPage> {
     );
   }
 
-  Widget _buildRulesSection(BuildContext context) {
+  Widget _buildRulesSection(BuildContext context, String? calculatedAt) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
@@ -270,6 +271,28 @@ class _RankingPageState extends ConsumerState<RankingPage> {
                 children: [
                   const Divider(height: 1),
                   const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: _goldLight.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.schedule, size: 16, color: _goldDark),
+                        const SizedBox(width: 8),
+                        Text(
+                          '每日凌晨2点自动更新',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: _goldDark,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
                   _buildPeriodRule(context),
                   const SizedBox(height: 12),
                   _buildRankTypeRule(context),
@@ -301,6 +324,27 @@ class _RankingPageState extends ConsumerState<RankingPage> {
                       ],
                     ),
                   ),
+                  if (calculatedAt != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 12),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.update,
+                            size: 14,
+                            color: Colors.grey.shade500,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            '上次更新: ${_formatCalculatedAt(calculatedAt)}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey.shade500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -783,6 +827,15 @@ class _RankingPageState extends ConsumerState<RankingPage> {
       return value.toInt().toString();
     } else {
       return value.toStringAsFixed(2);
+    }
+  }
+
+  String _formatCalculatedAt(String calculatedAt) {
+    try {
+      final dt = DateTime.parse(calculatedAt);
+      return '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+    } catch (_) {
+      return calculatedAt;
     }
   }
 }
