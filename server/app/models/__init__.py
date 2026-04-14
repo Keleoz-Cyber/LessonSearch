@@ -6,6 +6,7 @@ from app.models.week import WeekConfig, WeekExport
 from app.models.submission import Submission, SubmissionRecord
 from app.models.duty import DutyAssignment
 from app.models.announcement import Announcement
+from app.models.ranking import RankingCache, RankingSummary
 
 __all__ = [
     "User",
@@ -24,4 +25,6 @@ __all__ = [
     "SubmissionRecord",
     "DutyAssignment",
     "Announcement",
+    "RankingCache",
+    "RankingSummary",
 ]
