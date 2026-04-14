@@ -1788,7 +1788,10 @@ class _SummaryDetailDialogState extends State<_SummaryDetailDialog> {
   Widget build(BuildContext context) {
     final classes = <String>{};
     for (final row in widget.tableData) {
-      classes.add(row['class_name'] as String);
+      final className = row['class_name'];
+      if (className != null) {
+        classes.add(className as String);
+      }
     }
     final sortedClasses = classes.toList()..sort();
 
@@ -1798,71 +1801,87 @@ class _SummaryDetailDialogState extends State<_SummaryDetailDialog> {
               .where((r) => r['class_name'] == _selectedClass)
               .toList();
 
-    return AlertDialog(
-      title: Row(
-        children: [
-          Text('第${widget.weekNumber}周汇总'),
-          const Spacer(),
-          Text(
-            '共${filteredData.length}人',
-            style: const TextStyle(fontSize: 14, color: Colors.grey),
-          ),
-        ],
-      ),
-      content: ConstrainedBox(
+    return Dialog(
+      child: Container(
         constraints: BoxConstraints(
-          maxWidth: MediaQuery.of(context).size.width * 0.85,
-          maxHeight: MediaQuery.of(context).size.height * 0.6,
+          maxWidth: MediaQuery.of(context).size.width * 0.9,
+          maxHeight: MediaQuery.of(context).size.height * 0.8,
         ),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+              child: Row(
+                children: [
+                  Text(
+                    '第${widget.weekNumber}周汇总',
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                  const Spacer(),
+                  Text(
+                    '共${filteredData.length}人',
+                    style: const TextStyle(fontSize: 14, color: Colors.grey),
+                  ),
+                ],
+              ),
+            ),
             if (sortedClasses.isNotEmpty)
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
-                ),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  children: [
-                    const Text('班级筛选:', style: TextStyle(fontSize: 13)),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: DropdownButton<String>(
-                        value: _selectedClass,
-                        isExpanded: true,
-                        hint: const Text('全部班级'),
-                        items: [
-                          const DropdownMenuItem(
-                            value: null,
-                            child: Text('全部班级'),
-                          ),
-                          ...sortedClasses.map(
-                            (c) => DropdownMenuItem(value: c, child: Text(c)),
-                          ),
-                        ],
-                        onChanged: (v) => setState(() => _selectedClass = v),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      const Text('班级筛选:', style: TextStyle(fontSize: 13)),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: DropdownButton<String>(
+                          value: _selectedClass,
+                          isExpanded: true,
+                          hint: const Text('全部班级'),
+                          items: [
+                            const DropdownMenuItem(
+                              value: null,
+                              child: Text('全部班级'),
+                            ),
+                            ...sortedClasses.map(
+                              (c) => DropdownMenuItem(value: c, child: Text(c)),
+                            ),
+                          ],
+                          onChanged: (v) => setState(() => _selectedClass = v),
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
-            const SizedBox(height: 8),
-            Expanded(
+            Flexible(
               child: filteredData.isEmpty
-                  ? EmptyState.noAbnormal()
+                  ? Padding(
+                      padding: const EdgeInsets.all(32),
+                      child: EmptyState.noAbnormal(),
+                    )
                   : ListView.builder(
+                      shrinkWrap: true,
+                      padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
                       itemCount: filteredData.length,
                       itemBuilder: (context, index) {
                         final row = filteredData[index];
-                        final late = row['late'] as int;
-                        final absent = row['absent'] as int;
-                        final leave = row['leave'] as int? ?? 0;
-                        final other = row['other'] as int? ?? 0;
-                        final total = row['total'] as int;
+                        final late = (row['late'] as int?) ?? 0;
+                        final absent = (row['absent'] as int?) ?? 0;
+                        final leave = (row['leave'] as int?) ?? 0;
+                        final other = (row['other'] as int?) ?? 0;
+                        final total = (row['total'] as int?) ?? 0;
 
                         return Card(
                           margin: const EdgeInsets.symmetric(vertical: 4),
@@ -1898,14 +1917,14 @@ class _SummaryDetailDialogState extends State<_SummaryDetailDialog> {
                                         CrossAxisAlignment.start,
                                     children: [
                                       Text(
-                                        row['name'] as String,
+                                        (row['name'] as String?) ?? '未知',
                                         style: const TextStyle(
                                           fontWeight: FontWeight.bold,
                                         ),
                                       ),
                                       const SizedBox(height: 4),
                                       Text(
-                                        row['class_name'] as String,
+                                        (row['class_name'] as String?) ?? '',
                                         style: TextStyle(
                                           fontSize: 12,
                                           color: Theme.of(
@@ -1937,7 +1956,7 @@ class _SummaryDetailDialogState extends State<_SummaryDetailDialog> {
                                                   BorderRadius.circular(4),
                                             ),
                                             child: Text(
-                                              '迟$late',
+                                              '迟${late}',
                                               style: const TextStyle(
                                                 fontSize: 11,
                                                 color: Colors.orange,
@@ -1958,7 +1977,7 @@ class _SummaryDetailDialogState extends State<_SummaryDetailDialog> {
                                                   BorderRadius.circular(4),
                                             ),
                                             child: Text(
-                                              '缺$absent',
+                                              '缺${absent}',
                                               style: const TextStyle(
                                                 fontSize: 11,
                                                 color: Colors.red,
@@ -1979,7 +1998,7 @@ class _SummaryDetailDialogState extends State<_SummaryDetailDialog> {
                                                   BorderRadius.circular(4),
                                             ),
                                             child: Text(
-                                              '假$leave',
+                                              '假${leave}',
                                               style: const TextStyle(
                                                 fontSize: 11,
                                                 color: Colors.blue,
@@ -2000,7 +2019,7 @@ class _SummaryDetailDialogState extends State<_SummaryDetailDialog> {
                                                   BorderRadius.circular(4),
                                             ),
                                             child: Text(
-                                              '他$other',
+                                              '其${other}',
                                               style: const TextStyle(
                                                 fontSize: 11,
                                                 color: Colors.grey,
@@ -2010,24 +2029,14 @@ class _SummaryDetailDialogState extends State<_SummaryDetailDialog> {
                                       ],
                                     ),
                                     const SizedBox(height: 4),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 8,
-                                        vertical: 4,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: Colors.purple.withValues(
-                                          alpha: 0.1,
-                                        ),
-                                        borderRadius: BorderRadius.circular(4),
-                                      ),
-                                      child: Text(
-                                        '累计: $total',
-                                        style: const TextStyle(
-                                          fontSize: 12,
-                                          color: Colors.purple,
-                                          fontWeight: FontWeight.bold,
-                                        ),
+                                    Text(
+                                      '累计: $total',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.bold,
+                                        color: total > 0
+                                            ? Colors.red
+                                            : Colors.green,
                                       ),
                                     ),
                                   ],
@@ -2039,15 +2048,19 @@ class _SummaryDetailDialogState extends State<_SummaryDetailDialog> {
                       },
                     ),
             ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('关闭'),
+                ),
+              ),
+            ),
           ],
         ),
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('关闭'),
-        ),
-      ],
     );
   }
 }

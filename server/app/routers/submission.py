@@ -150,7 +150,7 @@ async def get_submissions(
     if status:
         query = query.filter(Submission.status == status)
     
-    submissions = query.order_by(Submission.submitted_at.desc()).all()
+    submissions = query.order_by(Submission.submitted_at.desc()).limit(100).all()
     
     result = []
     for sub in submissions:
@@ -254,7 +254,7 @@ async def get_reviewed_submissions(
     if week_number:
         query = query.filter(Submission.week_number == week_number)
     
-    submissions = query.order_by(Submission.review_time.desc()).all()
+    submissions = query.order_by(Submission.review_time.desc()).limit(100).all()
     
     result = []
     for sub in submissions:

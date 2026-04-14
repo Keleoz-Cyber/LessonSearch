@@ -53,7 +53,7 @@ class ExtensionPage extends ConsumerWidget {
                   title: '排行榜',
                   subtitle: '查看考勤统计排行',
                   color: Colors.purple,
-                  onTap: () => Toast.show(context, '敬请期待'),
+                  onTap: () => context.push('/extension/ranking'),
                 ),
               ],
             ),

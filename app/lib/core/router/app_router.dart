@@ -14,6 +14,7 @@ import '../../features/auth/presentation/real_name_page.dart';
 import '../../features/extension/presentation/extension_page.dart';
 import '../../features/extension/presentation/submission_page.dart';
 import '../../features/extension/presentation/weekly_summary_page.dart';
+import '../../features/ranking/presentation/ranking_page.dart';
 import '../../features/records/presentation/records_list_page.dart';
 import '../../features/records/presentation/record_detail_page.dart';
 import '../../features/settings/presentation/settings_page.dart';
@@ -102,6 +103,11 @@ final appRouter = GoRouter(
       path: '/extension/weekly-summary',
       name: 'weekly-summary',
       builder: (context, state) => const WeeklySummaryPage(),
+    ),
+    GoRoute(
+      path: '/extension/ranking',
+      name: 'ranking',
+      builder: (context, state) => const RankingPage(),
     ),
 
     GoRoute(
