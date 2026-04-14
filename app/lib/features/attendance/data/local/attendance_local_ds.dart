@@ -236,6 +236,33 @@ class AttendanceLocalDataSource {
     required String action,
     Map<String, dynamic>? payload,
   }) async {
+    // 如果是 update 操作，检查是否有未同步的 create 条目
+    if (action == 'update') {
+      final pendingCreate =
+          await (_db.select(_db.syncQueue)..where(
+                (s) =>
+                    s.entityType.equals(entityType) &
+                    s.entityId.equals(entityId) &
+                    s.action.equals('create') &
+                    s.syncStatus.equals('pending'),
+              ))
+              .getSingleOrNull();
+
+      if (pendingCreate != null) {
+        // 更新 create 条目的 payload 为最新状态，不新增 update 条目
+        final existingPayload = pendingCreate.payload != null
+            ? jsonDecode(pendingCreate.payload!) as Map<String, dynamic>
+            : <String, dynamic>{};
+        final mergedPayload = {...existingPayload, ...?payload};
+        await (_db.update(
+          _db.syncQueue,
+        )..where((s) => s.id.equals(pendingCreate.id))).write(
+          SyncQueueCompanion(payload: Value(jsonEncode(mergedPayload))),
+        );
+        return;
+      }
+    }
+
     // 检查是否已存在相同的 pending item
     final existing =
         await (_db.select(_db.syncQueue)..where(
