@@ -290,41 +290,9 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
       final classStudents = state.studentsByClass[cls.id] ?? [];
       return classStudents.any((s) => s.status == AttendanceStatus.pending);
     });
-    final nextButtonText = hasPendingInAllClasses ? '到课（下一位）' : '到课';
 
-    void mark(AttendanceStatus status, {String? remark}) {
-      if (_focusedIndex == null || _focusedIndex! >= students.length) return;
-      ref.read(feedbackServiceProvider).feedback();
-      ref
-          .read(nameCheckProvider.notifier)
-          .markStudent(classId, _focusedIndex!, status, remark: remark);
-      // 标记状态后保持当前焦点
-      setState(() => _focusedIndex = _focusedIndex);
-    }
-
-    void goToNext() {
-      if (_focusedIndex == null || _focusedIndex! >= students.length) return;
-      ref.read(feedbackServiceProvider).feedback();
-
-      final currentStudent = students[_focusedIndex!];
-
-      // 如果所有班级都没有pending，标记当前学生为到课（用于修改状态）
-      if (!hasPendingInAllClasses) {
-        ref
-            .read(nameCheckProvider.notifier)
-            .markStudent(classId, _focusedIndex!, AttendanceStatus.present);
-        setState(() => _focusedIndex = _focusedIndex);
-        return;
-      }
-
-      // 还有pending学生
-      // 只有当前学生是pending时才标记为到课
-      if (currentStudent.status == AttendanceStatus.pending) {
-        ref
-            .read(nameCheckProvider.notifier)
-            .markStudent(classId, _focusedIndex!, AttendanceStatus.present);
-      }
-
+    // 跳转到下一个pending学生
+    void jumpToNextPending() {
       // 查找当前班级下一个pending
       final nextIndex = students.indexWhere(
         (s) => s.status == AttendanceStatus.pending,
@@ -360,6 +328,36 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
 
       // 没有找到pending，保持焦点
       setState(() => _focusedIndex = _focusedIndex);
+    }
+
+    void mark(AttendanceStatus status, {String? remark}) {
+      if (_focusedIndex == null || _focusedIndex! >= students.length) return;
+      ref.read(feedbackServiceProvider).feedback();
+      ref
+          .read(nameCheckProvider.notifier)
+          .markStudent(classId, _focusedIndex!, status, remark: remark);
+
+      // 有pending时自动跳转，无pending时焦点不动
+      if (hasPendingInAllClasses) {
+        jumpToNextPending();
+      } else {
+        setState(() => _focusedIndex = _focusedIndex);
+      }
+    }
+
+    void markPresent() {
+      if (_focusedIndex == null || _focusedIndex! >= students.length) return;
+      ref.read(feedbackServiceProvider).feedback();
+      ref
+          .read(nameCheckProvider.notifier)
+          .markStudent(classId, _focusedIndex!, AttendanceStatus.present);
+
+      // 有pending时自动跳转，无pending时焦点不动
+      if (hasPendingInAllClasses) {
+        jumpToNextPending();
+      } else {
+        setState(() => _focusedIndex = _focusedIndex);
+      }
     }
 
     Future<void> markOther() async {
@@ -456,11 +454,11 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
             SizedBox(
               width: double.infinity,
               child: FilledButton(
-                onPressed: _focusedIndex != null ? () => goToNext() : null,
+                onPressed: _focusedIndex != null ? () => markPresent() : null,
                 style: FilledButton.styleFrom(
                   minimumSize: const Size.fromHeight(44),
                 ),
-                child: Text(nextButtonText),
+                child: const Text('到课'),
               ),
             ),
           ],
