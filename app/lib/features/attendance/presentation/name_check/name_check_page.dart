@@ -308,7 +308,7 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
             .markStudent(classId, _focusedIndex!, AttendanceStatus.present);
       }
 
-      // 查找下一个待处理学生
+      // 查找下一个待处理学生（只限当前班级）
       final nextIndex = students.indexWhere(
         (s) => s.status == AttendanceStatus.pending,
         _focusedIndex! + 1,
@@ -316,29 +316,9 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
 
       if (nextIndex >= 0) {
         setState(() => _focusedIndex = nextIndex);
-      } else if (state.classes.length > 1) {
-        // 当前班级已全部处理，切换到下一个班级
-        final nextClassIndex = state.currentClassIndex + 1;
-        if (nextClassIndex < state.classes.length) {
-          final nextClass = state.classes[nextClassIndex];
-          final nextClassStudents = state.studentsByClass[nextClass.id] ?? [];
-          final firstPending = nextClassStudents.indexWhere(
-            (s) => s.status == AttendanceStatus.pending,
-          );
-
-          ref.read(nameCheckProvider.notifier).switchClass(nextClassIndex);
-          _pageController.animateToPage(
-            nextClassIndex,
-            duration: const Duration(milliseconds: 200),
-            curve: Curves.easeInOut,
-          );
-          setState(() => _focusedIndex = firstPending >= 0 ? firstPending : 0);
-        } else {
-          // 已经是最后一个班级，保持当前焦点
-          setState(() => _focusedIndex = _focusedIndex);
-        }
       } else {
-        // 单班级，保持当前焦点
+        // 当前班级没有下一个pending，保持当前焦点
+        // 用户可以手动滑动切换班级
         setState(() => _focusedIndex = _focusedIndex);
       }
     }
