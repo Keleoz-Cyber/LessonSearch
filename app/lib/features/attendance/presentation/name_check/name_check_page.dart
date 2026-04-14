@@ -285,10 +285,12 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
     final classId = state.currentClass?.id;
     if (classId == null) return const SizedBox();
 
-    final hasPendingInClass = students.any(
-      (s) => s.status == AttendanceStatus.pending,
-    );
-    final nextButtonText = hasPendingInClass ? '到课（下一位）' : '到课';
+    // 检查所有班级是否有pending学生
+    final hasPendingInAllClasses = state.classes.any((cls) {
+      final classStudents = state.studentsByClass[cls.id] ?? [];
+      return classStudents.any((s) => s.status == AttendanceStatus.pending);
+    });
+    final nextButtonText = hasPendingInAllClasses ? '到课（下一位）' : '到课';
 
     void mark(AttendanceStatus status, {String? remark}) {
       if (_focusedIndex == null || _focusedIndex! >= students.length) return;
@@ -305,40 +307,55 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
       ref.read(feedbackServiceProvider).feedback();
 
       final currentStudent = students[_focusedIndex!];
-      final hasPendingInClass = students.any(
+
+      // 只有当前学生是pending时才标记为到课
+      if (currentStudent.status == AttendanceStatus.pending) {
+        ref
+            .read(nameCheckProvider.notifier)
+            .markStudent(classId, _focusedIndex!, AttendanceStatus.present);
+      }
+
+      // 如果所有班级都有状态，不跳转
+      if (!hasPendingInAllClasses) {
+        setState(() => _focusedIndex = _focusedIndex);
+        return;
+      }
+
+      // 查找当前班级下一个pending
+      final nextIndex = students.indexWhere(
         (s) => s.status == AttendanceStatus.pending,
+        _focusedIndex! + 1,
       );
 
-      // 标记当前学生为到课（如果不是pending也标记，用于修改状态）
-      ref
-          .read(nameCheckProvider.notifier)
-          .markStudent(classId, _focusedIndex!, AttendanceStatus.present);
+      if (nextIndex >= 0) {
+        setState(() => _focusedIndex = nextIndex);
+        return;
+      }
 
-      if (hasPendingInClass) {
-        // 如果班级还有pending学生，跳转到下一个pending
-        final nextIndex = students.indexWhere(
-          (s) => s.status == AttendanceStatus.pending,
-          _focusedIndex! + 1,
-        );
-
-        if (nextIndex >= 0) {
-          setState(() => _focusedIndex = nextIndex);
-        } else {
-          // 从头找pending
-          final firstPending = students.indexWhere(
+      // 当前班级没有pending，查找其他班级
+      if (state.classes.length > 1) {
+        for (int i = 0; i < state.classes.length; i++) {
+          if (i == state.currentClassIndex) continue;
+          final cls = state.classes[i];
+          final classStudents = state.studentsByClass[cls.id] ?? [];
+          final firstPending = classStudents.indexWhere(
             (s) => s.status == AttendanceStatus.pending,
           );
           if (firstPending >= 0) {
+            ref.read(nameCheckProvider.notifier).switchClass(i);
+            _pageController.animateToPage(
+              i,
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeInOut,
+            );
             setState(() => _focusedIndex = firstPending);
-          } else {
-            // 没有pending了，保持当前焦点
-            setState(() => _focusedIndex = _focusedIndex);
+            return;
           }
         }
-      } else {
-        // 所有学生都有状态，只标记，不跳转
-        setState(() => _focusedIndex = _focusedIndex);
       }
+
+      // 没有找到pending，保持焦点
+      setState(() => _focusedIndex = _focusedIndex);
     }
 
     Future<void> markOther() async {
