@@ -16,6 +16,7 @@ class Submission(Base):
     reviewer_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     review_time = Column(DateTime, nullable=True)
     review_note = Column(Text, nullable=True)
+    class_names = Column(String(200), nullable=True)  # 提交时保存班级名称
     submitted_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 

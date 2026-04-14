@@ -32,39 +32,6 @@ from app.routers.week import get_current_week_config, calculate_week_number
 router = APIRouter(prefix="/submissions", tags=["submissions"])
 
 
-def _get_submission_class_names(db: Session, submission_id: int) -> str:
-    """获取提交的班级名称"""
-    try:
-        submission_records = db.query(SubmissionRecord).filter(
-            SubmissionRecord.submission_id == submission_id
-        ).all()
-        
-        if not submission_records:
-            print(f"[DEBUG] No submission_records for submission {submission_id}")
-            return ""
-        
-        class_ids = set()
-        for sr in submission_records:
-            record = db.query(AttendanceRecord).filter(AttendanceRecord.id == sr.record_id).first()
-            if record:
-                print(f"[DEBUG] Record {record.id} has class_id: {record.class_id}")
-                if record.class_id:
-                    class_ids.add(record.class_id)
-        
-        print(f"[DEBUG] Found class_ids: {class_ids}")
-        
-        if not class_ids:
-            return ""
-        
-        classes = db.query(Class).filter(Class.id.in_(class_ids)).all()
-        names = [c.display_name for c in classes if c.display_name]
-        print(f"[DEBUG] Class names: {names}")
-        return ", ".join(names)
-    except Exception as e:
-        print(f"Error getting class names for submission {submission_id}: {e}")
-        return ""
-
-
 @router.post("/", response_model=SubmissionResponse)
 async def create_submission(
     body: CreateSubmissionRequest,
@@ -97,10 +64,18 @@ async def create_submission(
             detail="部分记录已提交，无法重复提交"
         )
     
+    # 获取班级名称
+    class_ids = set([r.class_id for r in records if r.class_id])
+    class_names = ""
+    if class_ids:
+        classes = db.query(Class).filter(Class.id.in_(class_ids)).all()
+        class_names = ", ".join([c.display_name for c in classes if c.display_name])
+    
     submission = Submission(
         user_id=current_user.id,
         week_number=body.week_number,
-        status="pending"
+        status="pending",
+        class_names=class_names
     )
     db.add(submission)
     db.flush()
@@ -174,8 +149,6 @@ async def get_submissions(
             ).all()
             record_count = len(submission_records)
             
-            class_names = _get_submission_class_names(db, sub.id)
-            
             result.append(SubmissionDetailResponse(
                 id=sub.id,
                 user_id=sub.user_id,
@@ -190,7 +163,7 @@ async def get_submissions(
                 submitted_at=sub.submitted_at,
                 task_count=1,
                 record_count=record_count,
-                class_names=class_names or ""
+                class_names=sub.class_names or ""
             ))
         except Exception as e:
             print(f"Error processing submission {sub.id}: {e}")
@@ -225,8 +198,6 @@ async def get_pending_submissions(
         ).all()
         record_count = len(submission_records)
         
-        class_names = _get_submission_class_names(db, sub.id)
-        
         result.append(SubmissionDetailResponse(
             id=sub.id,
             user_id=sub.user_id,
@@ -241,7 +212,7 @@ async def get_pending_submissions(
             submitted_at=sub.submitted_at,
             task_count=1,
             record_count=record_count,
-            class_names=class_names
+            class_names=sub.class_names or ""
         ))
     
     return result
@@ -278,8 +249,6 @@ async def get_reviewed_submissions(
         ).all()
         record_count = len(submission_records)
         
-        class_names = _get_submission_class_names(db, sub.id)
-        
         result.append(SubmissionDetailResponse(
             id=sub.id,
             user_id=sub.user_id,
@@ -294,7 +263,7 @@ async def get_reviewed_submissions(
             submitted_at=sub.submitted_at,
             task_count=1,
             record_count=record_count,
-            class_names=class_names
+            class_names=sub.class_names or ""
         ))
     
     return result

@@ -16,6 +16,7 @@ class SubmissionResponse(BaseModel):
     user_id: int
     week_number: int
     status: str
+    class_names: Optional[str] = None
     reviewer_id: Optional[int] = None
     review_time: Optional[datetime] = None
     review_note: Optional[str] = None
