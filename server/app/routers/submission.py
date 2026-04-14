@@ -39,17 +39,27 @@ def _get_submission_class_names(db: Session, submission_id: int) -> str:
             SubmissionRecord.submission_id == submission_id
         ).all()
         
+        if not submission_records:
+            print(f"[DEBUG] No submission_records for submission {submission_id}")
+            return ""
+        
         class_ids = set()
         for sr in submission_records:
             record = db.query(AttendanceRecord).filter(AttendanceRecord.id == sr.record_id).first()
-            if record and hasattr(record, 'class_id') and record.class_id:
-                class_ids.add(record.class_id)
+            if record:
+                print(f"[DEBUG] Record {record.id} has class_id: {record.class_id}")
+                if record.class_id:
+                    class_ids.add(record.class_id)
+        
+        print(f"[DEBUG] Found class_ids: {class_ids}")
         
         if not class_ids:
             return ""
         
         classes = db.query(Class).filter(Class.id.in_(class_ids)).all()
-        return ", ".join([c.name for c in classes if hasattr(c, 'name') and c.name])
+        names = [c.display_name for c in classes if c.display_name]
+        print(f"[DEBUG] Class names: {names}")
+        return ", ".join(names)
     except Exception as e:
         print(f"Error getting class names for submission {submission_id}: {e}")
         return ""
