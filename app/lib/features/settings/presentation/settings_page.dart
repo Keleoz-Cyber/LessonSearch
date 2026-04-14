@@ -254,9 +254,16 @@ class SettingsPage extends ConsumerWidget {
       builder: (ctx) => AlertDialog(
         title: const Text(announcementTitle),
         content: SingleChildScrollView(
-          child: Text(
-            announcementContent.trim(),
-            style: const TextStyle(height: 1.6),
+          child: MarkdownBody(
+            data: announcementContent.trim(),
+            styleSheet: MarkdownStyleSheet(
+              h2: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+              p: const TextStyle(height: 1.6),
+              listBullet: const TextStyle(height: 1.6),
+            ),
           ),
         ),
         actions: [
