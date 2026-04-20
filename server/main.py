@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from routers import grades, majors, classes, students, tasks, records, auth, app_version, sync
+from routers import grades, majors, classes, students, tasks, records, auth, app_version, sync, data_version
 from app.routers import week, user, submission, duty, announcement, ranking
 from app.core.database import Base
 from app.models import *
@@ -26,6 +26,7 @@ app.include_router(submission.router, prefix="/api")
 app.include_router(duty.router, prefix="/api")
 app.include_router(announcement.router, prefix="/api")
 app.include_router(ranking.router, prefix="/api")
+app.include_router(data_version.router, prefix="/api")
 
 
 @app.get("/health")
