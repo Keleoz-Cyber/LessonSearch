@@ -28,7 +28,7 @@ DATABASE_URL = (
 
 # JWT 配置
 JWT_SECRET = os.getenv("JWT_SECRET", "your-secret-key-change-in-production")
-JWT_EXPIRE_HOURS = int(os.getenv("JWT_EXPIRE_HOURS", "168"))  # 7天
+JWT_EXPIRE_HOURS = int(os.getenv("JWT_EXPIRE_HOURS", "720"))  # 30天
 
 # SMTP 配置（发送验证码）
 SMTP_HOST = os.getenv("SMTP_HOST", "smtp.qq.com")

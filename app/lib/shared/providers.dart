@@ -62,7 +62,14 @@ final soundEnabledProvider = Provider<bool>((ref) {
 /// 全局 API 客户端
 final apiClientProvider = Provider<ApiClient>((ref) {
   final authService = ref.watch(authServiceProvider);
-  return ApiClient(token: authService.token);
+  return ApiClient(
+    token: authService.token,
+    onAuthExpired: () {
+      authService.clearAuth();
+      ref.invalidate(authServiceProvider);
+      ref.invalidate(isLoggedInProvider);
+    },
+  );
 });
 
 /// 本地数据源

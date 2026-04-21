@@ -1,12 +1,15 @@
 import 'package:dio/dio.dart';
 
+typedef OnAuthExpired = void Function();
+
 class ApiClient {
   static const String defaultBaseUrl = 'https://api.keleoz.cn/api';
 
   late final Dio dio;
   String? _token;
+  OnAuthExpired? onAuthExpired;
 
-  ApiClient({String? baseUrl, String? token}) {
+  ApiClient({String? baseUrl, String? token, this.onAuthExpired}) {
     _token = token;
     dio = Dio(
       BaseOptions(
@@ -30,6 +33,7 @@ class ApiClient {
         onError: (error, handler) {
           if (error.response?.statusCode == 401) {
             _token = null;
+            onAuthExpired?.call();
           }
           handler.next(error);
         },
