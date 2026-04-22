@@ -1,6 +1,6 @@
 # 考勤助手 开发文档
 
-> 版本：0.5.3 | 更新日期：2026-04-13 | 仓库：https://github.com/Keleoz-Cyber/LessonSearch
+> 版本：0.5.5 | 更新日期：2026-04-20 | 仓库：https://github.com/Keleoz-Cyber/LessonSearch
 
 ---
 
@@ -19,6 +19,8 @@
 | 实名制 | 登录后必须填写真实姓名，路由+首页双重检查 |
 | 数据隔离 | 登出清空本地用户数据 |
 | 实时公告 | 从服务端获取公告内容，Markdown渲染 |
+| 排行榜 | 支持近7天/近30天/总榜，多榜单统计与规则说明 |
+| 登录过期处理 | 401 自动清理登录态并跳转登录页（新客户端） |
 
 ### 技术栈
 
@@ -125,6 +127,12 @@ app/lib/
 │   │       ├── submission_page.dart    # 名单提交页
 │   │       └── weekly_summary_page.dart # 周名单汇总页
 │   │
+│   ├── ranking/                   # 排行榜
+│   │   ├── data/
+│   │   │   └── ranking_service.dart
+│   │   └── presentation/
+│   │       └── ranking_page.dart
+│   │
 │   ├── settings/
 │   │   └ presentation/
 │   │       └── settings_page.dart  # 设置页 + 关于页 + 主题切换 + 登出
@@ -147,7 +155,7 @@ server/
 ├── app/
 │   ├── core/
 │   │   ├── config.py              # 数据库配置 + JWT/SMTP配置
-│   │   ├── database.py            # SQLAlchemy SessionLocal + Base
+│   │   ├── database.py            # SQLAlchemy SessionLocal + Base + 连接池配置
 │   │   ├── security.py            # JWT生成/验证 + 密码处理
 │   │   └── exceptions.py          # 自定义异常
 │   │
@@ -160,7 +168,8 @@ server/
 │   │   ├── week.py                # WeekConfig, WeekExport
 │   │   ├── submission.py          # Submission, SubmissionRecord
 │   │   ├── duty.py                # DutyAssignment
-│   │   └── announcement.py        # Announcement
+│   │   ├── announcement.py        # Announcement
+│   │   └── ranking.py             # RankingCache, RankingSummary
 │   │
 │   ├── schemas/                   # Pydantic请求/响应模型
 │   │   ├── __init__.py
@@ -181,6 +190,7 @@ server/
 │   │   ├── week.py                # GET /api/week/current
 │   │   ├── submission.py          # 提交审核API
 │   │   ├── duty.py                # 职务相关API
+│   │   ├── ranking.py             # 排行榜API
 │   │   └ announcement.py          # GET /api/announcement
 │   │
 │   └── services/                  # 业务逻辑（可选）
@@ -244,7 +254,7 @@ scripts/
 ```
 sharedPreferencesProvider
     ↓
-authServiceProvider → apiClientProvider（自动携带token）
+authServiceProvider → apiClientProvider（自动携带token，401过期回调）
     ↓
 databaseProvider
     ↓
