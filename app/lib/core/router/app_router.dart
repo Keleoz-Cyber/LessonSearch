@@ -18,7 +18,7 @@ import '../../features/ranking/presentation/ranking_page.dart';
 import '../../features/records/presentation/records_list_page.dart';
 import '../../features/records/presentation/record_detail_page.dart';
 import '../../features/settings/presentation/settings_page.dart';
-import '../../features/debug/sync_test_page.dart';
+import '../../features/debug/debug_page.dart';
 import '../../features/home/presentation/home_page.dart';
 import '../../shared/providers.dart';
 
@@ -188,7 +188,7 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/debug/sync',
       name: 'sync-test',
-      builder: (context, state) => const SyncTestPage(),
+      builder: (context, state) => const DebugPage(),
     ),
   ],
 );

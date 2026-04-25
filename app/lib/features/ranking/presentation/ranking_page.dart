@@ -11,10 +11,34 @@ class RankingPage extends ConsumerStatefulWidget {
   ConsumerState<RankingPage> createState() => _RankingPageState();
 }
 
-class _RankingPageState extends ConsumerState<RankingPage> {
+class _RankingPageState extends ConsumerState<RankingPage>
+    with WidgetsBindingObserver {
   String _periodType = '7d';
   String _rankType = 'score';
   bool _rulesExpanded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _refresh();
+    }
+  }
+
+  void _refresh() {
+    ref.invalidate(rankingListProvider((period: _periodType, type: _rankType)));
+  }
 
   static const Color _goldPrimary = Color(0xFFD4AF37);
   static const Color _goldLight = Color(0xFFF5DEB3);
@@ -205,7 +229,14 @@ class _RankingPageState extends ConsumerState<RankingPage> {
       );
     }
 
-    return ListView.builder(
+    return RefreshIndicator(
+      color: _goldPrimary,
+      onRefresh: () async {
+        _refresh();
+        await ref.read(rankingListProvider((period: _periodType, type: _rankType)).future);
+      },
+      child: ListView.builder(
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.all(16),
       itemCount: items.length + 2,
       itemBuilder: (context, index) {
@@ -223,6 +254,7 @@ class _RankingPageState extends ConsumerState<RankingPage> {
           child: _buildRankingItem(context, item),
         );
       },
+    ),
     );
   }
 
