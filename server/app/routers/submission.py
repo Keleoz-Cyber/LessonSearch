@@ -600,18 +600,23 @@ async def export_week_excel(
         key=lambda x: (x["major_short_name"], int(x["class_code"]) if x["class_code"].isdigit() else 0, x["student_no"])
     )
     
+    filtered_students = [
+        s for s in sorted_students
+        if s["late"] > 0 or s["absent"] > 0
+    ]
+    
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = f"第{week_number}周考勤"
     
-    headers = ["序号", "姓名", "班级", "学号", "迟到", "缺勤", "请假", "其他", "累计"]
+    headers = ["序号", "姓名", "班级", "学号", "迟到", "缺勤", "累计"]
     ws.append(headers)
     
     for cell in ws[1]:
         cell.font = Font(bold=True)
         cell.alignment = Alignment(horizontal="center")
     
-    for i, s in enumerate(sorted_students, 1):
+    for i, s in enumerate(filtered_students, 1):
         row = [
             i,
             s["name"],
@@ -619,13 +624,11 @@ async def export_week_excel(
             s["student_no"],
             s["late"],
             s["absent"],
-            s["leave"],
-            s["other"],
             None,
         ]
         ws.append(row)
         
-        ws.cell(row=i+1, column=9).value = f"=ROUNDDOWN(E{i+1}/2+F{i+1},0)"
+        ws.cell(row=i+1, column=7).value = f"=ROUNDDOWN(E{i+1}/2+F{i+1},0)"
     
     thin_border = Border(
         left=Side(style='thin'),
@@ -633,7 +636,7 @@ async def export_week_excel(
         top=Side(style='thin'),
         bottom=Side(style='thin')
     )
-    for row in ws.iter_rows(min_row=1, max_row=ws.max_row, min_col=1, max_col=9):
+    for row in ws.iter_rows(min_row=1, max_row=ws.max_row, min_col=1, max_col=7):
         for cell in row:
             cell.border = thin_border
             cell.alignment = Alignment(horizontal="center")
@@ -645,8 +648,6 @@ async def export_week_excel(
     ws.column_dimensions['E'].width = 8
     ws.column_dimensions['F'].width = 8
     ws.column_dimensions['G'].width = 8
-    ws.column_dimensions['H'].width = 8
-    ws.column_dimensions['I'].width = 8
     
     output = BytesIO()
     wb.save(output)
