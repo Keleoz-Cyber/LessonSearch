@@ -30,7 +30,7 @@ class _AppState extends ConsumerState<App> {
           router.go('/login');
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('登录已过期，请重新登录'),
+              content: Text('登录已过期，本地数据已保留，请重新登录'),
               duration: Duration(seconds: 3),
             ),
           );

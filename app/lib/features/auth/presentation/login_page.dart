@@ -99,6 +99,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       ref.invalidate(apiClientProvider);
 
       if (mounted) {
+        // 登录成功后触发同步，拉取服务端最新数据
+        ref.read(syncServiceProvider).syncNow();
+
         final realName = response['user']['real_name'];
         if (realName == null || realName.toString().trim().isEmpty) {
           context.go('/real-name');
