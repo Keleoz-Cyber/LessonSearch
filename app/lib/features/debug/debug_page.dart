@@ -325,10 +325,14 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
                   _InfoRow(
                       label: 'Token 状态',
                       value: auth.token != null ? '有效' : '无效'),
-                  if (auth.token != null)
+                  if (auth.token != null) ...[
                     _InfoRow(
                         label: 'Token 长度',
                         value: '${auth.token!.length} 字符'),
+                    _InfoRow(
+                        label: '自动刷新',
+                        value: '剩余<7天时自动刷新'),
+                  ],
                   const SizedBox(height: 8),
                   SizedBox(
                     width: double.infinity,
