@@ -141,6 +141,20 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
     }
   }
 
+  void _simulateTokenExpiry() {
+    final authService = ref.read(authServiceProvider);
+    authService.clearAuth();
+    ref.invalidate(authServiceProvider);
+    ref.invalidate(isLoggedInProvider);
+    ref.invalidate(apiClientProvider);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Token 已清除，即将跳转登录页测试过期流程'),
+        duration: Duration(seconds: 2),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final auth = ref.watch(authServiceProvider);
@@ -290,6 +304,47 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
           ),
 
           const SizedBox(height: 20),
+          _sectionHeader(context, 'Token 测试', Icons.token),
+          const SizedBox(height: 8),
+          Card(
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: BorderSide(color: Colors.red.withValues(alpha: 0.3)),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _InfoRow(
+                      label: 'Token 状态',
+                      value: auth.token != null ? '有效' : '无效'),
+                  if (auth.token != null)
+                    _InfoRow(
+                        label: 'Token 长度',
+                        value: '${auth.token!.length} 字符'),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: auth.isLoggedIn ? _simulateTokenExpiry : null,
+                      icon: const Icon(Icons.logout, size: 18,
+                          color: Colors.red),
+                      label: const Text('模拟 Token 过期',
+                          style: TextStyle(color: Colors.red)),
+                      style: OutlinedButton.styleFrom(
+                        side: BorderSide(
+                            color: Colors.red.withValues(alpha: 0.3)),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 20),
           _sectionHeader(context, '版本信息', Icons.info),
           const SizedBox(height: 8),
           Card(
@@ -302,7 +357,7 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
               padding: const EdgeInsets.all(12),
               child: Column(
                 children: [
-                  _InfoRow(label: 'App版本', value: '0.5.5'),
+                  _InfoRow(label: 'App版本', value: '0.5.6'),
                   _InfoRow(
                       label: 'API地址', value: ApiClient.defaultBaseUrl),
                   _InfoRow(label: '平台', value: Platform.operatingSystem),
