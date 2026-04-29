@@ -144,7 +144,8 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
 
   Future<void> _simulateTokenExpiry() async {
     final authService = ref.read(authServiceProvider);
-    await authService.clearAuth();
+    // 只清除 token，保留 userId，模拟"token 过期"状态
+    await authService.clearTokenOnly();
     ref.invalidate(authServiceProvider);
     ref.invalidate(isLoggedInProvider);
     ref.invalidate(apiClientProvider);

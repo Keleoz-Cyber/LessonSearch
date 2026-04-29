@@ -70,4 +70,9 @@ class AuthService {
     ];
     await Future.wait(keys.map((k) => _prefs.remove(k)));
   }
+
+  /// 仅清除 token，保留用户信息（用于模拟 token 过期场景）
+  Future<void> clearTokenOnly() async {
+    await _prefs.remove(_tokenKey);
+  }
 }
