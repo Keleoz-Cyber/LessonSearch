@@ -142,21 +142,21 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
     }
   }
 
-  void _simulateTokenExpiry() {
+  Future<void> _simulateTokenExpiry() async {
     final authService = ref.read(authServiceProvider);
-    authService.clearAuth();
+    await authService.clearAuth();
     ref.invalidate(authServiceProvider);
     ref.invalidate(isLoggedInProvider);
     ref.invalidate(apiClientProvider);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Token 已清除，正在跳转登录页...'),
-        duration: Duration(seconds: 1),
-      ),
-    );
-    Future.delayed(const Duration(milliseconds: 500), () {
-      if (mounted) context.go('/login');
-    });
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Token 已清除，正在跳转登录页...'),
+          duration: Duration(seconds: 1),
+        ),
+      );
+      context.go('/login');
+    }
   }
 
   @override

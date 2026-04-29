@@ -41,6 +41,21 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   Future<void> _checkTokenValidity() async {
     final auth = ref.read(authServiceProvider);
+
+    // 之前有登录记录但 Token 没了（过期或被清除），强制跳转登录
+    if (auth.token == null && auth.userId != null) {
+      if (mounted) {
+        context.go('/login');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('登录状态已失效，请重新登录'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+      return;
+    }
+
     if (!auth.isLoggedIn || auth.token == null) return;
 
     try {
@@ -49,7 +64,7 @@ class _HomePageState extends ConsumerState<HomePage> {
     } on DioException catch (e) {
       if (e.response?.statusCode == 401) {
         if (mounted) {
-          auth.clearAuth();
+          await auth.clearAuth();
           ref.invalidate(authServiceProvider);
           ref.invalidate(isLoggedInProvider);
           context.go('/login');
