@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -139,6 +141,51 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
       setState(() => _networkResult = msg);
     } finally {
       setState(() => _networkLoading = false);
+    }
+  }
+
+  String? _tokenRemainingTime;
+
+  void _checkTokenExpiry() {
+    final token = ref.read(authServiceProvider).token;
+    if (token == null || token.isEmpty) {
+      setState(() => _tokenRemainingTime = '未登录');
+      return;
+    }
+
+    try {
+      final parts = token.split('.');
+      if (parts.length != 3) {
+        setState(() => _tokenRemainingTime = '无效 Token');
+        return;
+      }
+
+      // base64url decode payload
+      var payload = parts[1];
+      payload += List.generate((4 - payload.length % 4) % 4, (_) => '=').join();
+      final decoded = utf8.decode(base64Url.decode(payload));
+      final map = jsonDecode(decoded) as Map<String, dynamic>;
+      final exp = map['exp'] as int?;
+
+      if (exp == null) {
+        setState(() => _tokenRemainingTime = '无过期时间');
+        return;
+      }
+
+      final expiry = DateTime.fromMillisecondsSinceEpoch(exp * 1000);
+      final now = DateTime.now();
+      final diff = expiry.difference(now);
+
+      if (diff.isNegative) {
+        setState(() => _tokenRemainingTime = '已过期');
+      } else {
+        final days = diff.inDays;
+        final hours = diff.inHours % 24;
+        final minutes = diff.inMinutes % 60;
+        setState(() => _tokenRemainingTime = '${days}天 ${hours}小时 ${minutes}分');
+      }
+    } catch (e) {
+      setState(() => _tokenRemainingTime = '解析失败: $e');
     }
   }
 
@@ -334,20 +381,55 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
                         value: '剩余<7天时自动刷新'),
                   ],
                   const SizedBox(height: 8),
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: auth.isLoggedIn ? _simulateTokenExpiry : null,
-                      icon: const Icon(Icons.logout, size: 18,
-                          color: Colors.red),
-                      label: const Text('模拟 Token 过期',
-                          style: TextStyle(color: Colors.red)),
-                      style: OutlinedButton.styleFrom(
-                        side: BorderSide(
-                            color: Colors.red.withValues(alpha: 0.3)),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: auth.isLoggedIn ? _checkTokenExpiry : null,
+                          icon: const Icon(Icons.timer, size: 18),
+                          label: const Text('查看剩余时间'),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: auth.isLoggedIn ? _simulateTokenExpiry : null,
+                          icon: const Icon(Icons.logout, size: 18,
+                              color: Colors.red),
+                          label: const Text('模拟过期',
+                              style: TextStyle(color: Colors.red)),
+                          style: OutlinedButton.styleFrom(
+                            side: BorderSide(
+                                color: Colors.red.withValues(alpha: 0.3)),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (_tokenRemainingTime != null) ...[
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.access_time, size: 16, color: Colors.orange[700]),
+                          const SizedBox(width: 8),
+                          Text(
+                            '剩余时间: $_tokenRemainingTime',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.orange[700],
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                  ),
+                  ],
                 ],
               ),
             ),
