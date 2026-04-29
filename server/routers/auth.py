@@ -27,7 +27,6 @@ def _send_email(to: str, code: str):
         raise HTTPException(status_code=500, detail="SMTP 未配置")
 
     subject = "考勤助手 验证码"
-    current_date = datetime.now().strftime("%Y.%m.%d")
 
     body = f"""
     <!DOCTYPE html>
@@ -35,53 +34,53 @@ def _send_email(to: str, code: str):
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>考勤助手-梦幻验证码</title>
+        <style>
+            @keyframes border-glow {{
+                0% {{ box-shadow: 0 0 15px rgba(255, 182, 193, 0.4); border-color: rgba(255, 255, 255, 0.5); }}
+                50% {{ box-shadow: 0 0 35px rgba(135, 206, 250, 0.7); border-color: rgba(255, 255, 255, 0.9); }}
+                100% {{ box-shadow: 0 0 15px rgba(255, 182, 193, 0.4); border-color: rgba(255, 255, 255, 0.5); }}
+            }}
+            .glow-card {{
+                animation: border-glow 4s ease-in-out infinite;
+            }}
+        </style>
     </head>
-    <body style="margin: 0; padding: 0; background-color: #f0f0eb; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
-        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f0f0eb; padding: 50px 15px;">
+    <body style="margin: 0; padding: 0; background-color: #fdfbfb; font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; -webkit-font-smoothing: antialiased;">
+        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-image: linear-gradient(135deg, #ff9a9e 0%, #fad0c4 10%, #fad0c4 20%, #a1c4fd 50%, #c2e9fb 80%, #ff9a9e 100%); padding: 50px 15px;">
             <tr>
                 <td align="center">
-                    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width: 500px; background-color: #ffffff; border: 3px solid #111111; box-shadow: 8px 8px 0px #111111; text-align: left;">
-                        
+                    <table width="100%" cellpadding="0" cellspacing="0" border="0" class="glow-card" style="max-width: 480px; background-color: rgba(255, 255, 255, 0.85); border-radius: 24px; border: 2px solid rgba(255, 255, 255, 0.6); overflow: hidden; backdrop-filter: blur(10px); box-shadow: 0 15px 35px rgba(0,0,0,0.05); text-align: center;">
                         <tr>
-                            <td style="border-bottom: 3px solid #111111; padding: 12px 25px; background-color: #111111;">
-                                <p style="color: #ffffff; font-family: 'Courier New', Courier, monospace; font-size: 13px; font-weight: bold; margin: 0; letter-spacing: 1px;">
-                                    SYS.AUTH // 考勤助手_V2 // {current_date}
-                                </p>
-                            </td>
-                        </tr>
-
-                        <tr>
-                            <td style="padding: 40px 30px;">
-                                <h2 style="margin-top: 0; color: #111111; font-size: 28px; font-weight: 800; text-transform: uppercase; letter-spacing: -0.5px; margin-bottom: 20px;">
-                                    身份验证协议
+                            <td style="padding: 50px 30px;">
+                                <div style="font-size: 56px; margin-bottom: 20px; line-height: 1;">🪐</div>
+                                
+                                <h2 style="margin-top: 0; background-image: linear-gradient(to right, #ff758c 0%, #ff7eb3 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 28px; font-weight: 700; letter-spacing: -0.5px;">
+                                    专属你的时刻，开始啦✨
                                 </h2>
-                                <p style="color: #444444; font-size: 16px; line-height: 1.6; font-weight: 500; margin-bottom: 30px;">
-                                    接收到新的授权请求。请提取下方的 6 位安全效验码，并录入系统终端以完成身份核实。
+                                <p style="color: #6a6a7a; font-size: 16px; line-height: 1.6; margin-bottom: 30px;">
+                                    欢迎来到考勤助手的梦幻空间。请使用下方的时空密钥，开启您的新体验：
                                 </p>
                                 
-                                <div style="background-color: #FF5722; border: 3px solid #111111; padding: 20px; text-align: center; margin-bottom: 30px;">
-                                    <span style="display: inline-block; font-size: 46px; font-weight: 900; color: #111111; letter-spacing: 16px; margin: 0; font-family: 'Courier New', Courier, monospace; margin-right: -16px;">{code}</span>
+                                <div class="glow-card" style="background: linear-gradient(135deg, rgba(255, 117, 140, 0.05) 0%, rgba(255, 126, 179, 0.05) 100%); border: 1px dashed rgba(255, 117, 140, 0.3); border-radius: 16px; padding: 25px; margin-bottom: 30px; display: inline-block;">
+                                    <span style="font-size: 48px; font-weight: 800; color: #ff6b81; letter-spacing: 16px; font-family: 'Courier New', Courier, monospace; text-shadow: 0 0 10px rgba(255, 107, 129, 0.3);">{code}</span>
                                 </div>
                                 
-                                <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom: 30px;">
+                                <p style="color: #8c8ca0; font-size: 14px; line-height: 1.6; margin-bottom: 40px;">
+                                    ⏱️ 这个魔法密钥将在 <strong style="color: #ff6b81;">5分钟</strong> 后化作星尘。<br>请妥善保管，切勿分享给他人。🤫
+                                </p>
+                                
+                                <table width="100%" cellpadding="0" cellspacing="0" border="0">
                                     <tr>
-                                        <td width="50%" style="border: 2px solid #111111; padding: 12px; background-color: #f8f8f8;">
-                                            <p style="margin: 0; font-size: 12px; color: #666; font-family: 'Courier New', Courier, monospace; font-weight: bold;">[ 有效状态 ]</p>
-                                            <p style="margin: 5px 0 0 0; font-size: 15px; color: #111; font-weight: 800;">300 秒 (5分钟)</p>
-                                        </td>
-                                        <td width="10px"></td>
-                                        <td width="50%" style="border: 2px solid #111111; padding: 12px; background-color: #f8f8f8;">
-                                            <p style="margin: 0; font-size: 12px; color: #666; font-family: 'Courier New', Courier, monospace; font-weight: bold;">[ 安全级别 ]</p>
-                                            <p style="margin: 5px 0 0 0; font-size: 15px; color: #111; font-weight: 800;">请勿泄露</p>
+                                        <td style="border-top: 1px solid rgba(0,0,0,0.05); padding-top: 25px;">
+                                            <p style="color: #b0b0c0; font-size: 12px; line-height: 1.6; margin: 0;">
+                                                如果您未请求此操作，请忽略此邮件，您的账户依然安全。🛡️<br>
+                                                如有任何小问号，随时联系管理员。<br><br>
+                                                <span style="color: #a1c4fd; font-weight: bold;">—— 考勤助手梦幻 DEV_TEAM 💫</span>
+                                            </p>
                                         </td>
                                     </tr>
                                 </table>
-                                
-                                <p style="color: #666666; font-size: 13px; line-height: 1.6; margin: 0; padding-top: 20px; border-top: 2px dashed #cccccc;">
-                                    * 异常报告：如未执行此操作，请忽略本指令。<br>
-                                    * 技术支持：学习部系统管理员。<br><br>
-                                    <strong style="color: #111111; font-size: 14px;">—— 考勤助手 DEV_TEAM</strong>
-                                </p>
                             </td>
                         </tr>
                     </table>
