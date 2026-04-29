@@ -12,6 +12,7 @@ from app.core.database import SessionLocal
 from app.models import (
     AttendanceRecord,
     AttendanceTask,
+    Student,
     Submission,
     SubmissionRecord,
     Class,
