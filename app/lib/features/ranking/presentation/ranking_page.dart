@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../shared/widgets/empty_state.dart';
+import '../../../shared/widgets/loading_overlay.dart';
 import '../data/ranking_service.dart';
 
 class RankingPage extends ConsumerStatefulWidget {
@@ -123,10 +124,9 @@ class _RankingPageState extends ConsumerState<RankingPage>
                       .map(
                         (_) => rankingAsync.when(
                           data: (data) => _buildContent(context, data),
-                          loading: () => Center(
-                            child: CircularProgressIndicator(
-                              color: _goldPrimary,
-                            ),
+                          loading: () => const LoadingOverlay(
+                            isLoading: true,
+                            child: SizedBox.expand(),
                           ),
                           error: (err, stack) => Center(
                             child: Column(

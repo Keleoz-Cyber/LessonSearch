@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../shared/providers.dart';
+import '../../../shared/widgets/loading_overlay.dart';
 import '../../../shared/widgets/toast.dart';
 import '../data/records_repository.dart';
 import '../../attendance/domain/models.dart';
@@ -148,7 +149,10 @@ class _RecordDetailPageState extends ConsumerState<RecordDetailPage> {
     if (_loading) {
       return Scaffold(
         appBar: AppBar(title: const Text('记录详情')),
-        body: const Center(child: CircularProgressIndicator()),
+        body: const LoadingOverlay(
+          isLoading: true,
+          child: SizedBox.expand(),
+        ),
       );
     }
 

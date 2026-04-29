@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../shared/providers.dart';
+import '../../../shared/widgets/loading_overlay.dart';
 import '../../../shared/widgets/toast.dart';
 import '../../../features/extension/presentation/submission_page.dart';
 import '../data/records_repository.dart';
@@ -39,31 +40,32 @@ class _RecordsListPageState extends ConsumerState<RecordsListPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('查课记录')),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : _summaries.isEmpty
-          ? const Center(child: Text('暂无查课记录'))
-          : RefreshIndicator(
-              onRefresh: _load,
-              child: ListView.builder(
-                padding: const EdgeInsets.all(12),
-                itemCount: _summaries.length,
-                itemBuilder: (context, index) {
-                  final s = _summaries[index];
-                  return _TaskCard(
-                    summary: s,
-                    onTap: () async {
-                      await context.push('/records/${s.id}');
-                      _load();
-                    },
-                    onDelete: () => _confirmDelete(s),
-                    onResume: s.status == TaskStatus.inProgress
-                        ? () => _resumeTask(s)
-                        : null,
-                  );
-                },
+      body: LoadingOverlay(
+        isLoading: _loading,
+        child: _summaries.isEmpty
+            ? const Center(child: Text('暂无查课记录'))
+            : RefreshIndicator(
+                onRefresh: _load,
+                child: ListView.builder(
+                  padding: const EdgeInsets.all(12),
+                  itemCount: _summaries.length,
+                  itemBuilder: (context, index) {
+                    final s = _summaries[index];
+                    return _TaskCard(
+                      summary: s,
+                      onTap: () async {
+                        await context.push('/records/${s.id}');
+                        _load();
+                      },
+                      onDelete: () => _confirmDelete(s),
+                      onResume: s.status == TaskStatus.inProgress
+                          ? () => _resumeTask(s)
+                          : null,
+                    );
+                  },
+                ),
               ),
-            ),
+      ),
     );
   }
 
