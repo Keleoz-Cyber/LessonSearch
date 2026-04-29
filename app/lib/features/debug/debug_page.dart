@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/network/api_client.dart';
 import '../../../core/sync/sync_service.dart';
@@ -149,10 +150,13 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
     ref.invalidate(apiClientProvider);
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('Token 已清除，即将跳转登录页测试过期流程'),
-        duration: Duration(seconds: 2),
+        content: Text('Token 已清除，正在跳转登录页...'),
+        duration: Duration(seconds: 1),
       ),
     );
+    Future.delayed(const Duration(milliseconds: 500), () {
+      if (mounted) context.go('/login');
+    });
   }
 
   @override
