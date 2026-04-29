@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../shared/widgets/empty_state.dart';
+import '../../../shared/widgets/loading_overlay.dart';
 import '../data/ranking_service.dart';
 
 class RankingPage extends ConsumerStatefulWidget {
@@ -123,10 +124,9 @@ class _RankingPageState extends ConsumerState<RankingPage>
                       .map(
                         (_) => rankingAsync.when(
                           data: (data) => _buildContent(context, data),
-                          loading: () => Center(
-                            child: CircularProgressIndicator(
-                              color: _goldPrimary,
-                            ),
+                          loading: () => const LoadingOverlay(
+                            isLoading: true,
+                            child: SizedBox.expand(),
                           ),
                           error: (err, stack) => Center(
                             child: Column(
@@ -339,20 +339,82 @@ class _RankingPageState extends ConsumerState<RankingPage>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          '异常分数计算公式',
+                          _rankType == 'score'
+                              ? '异常分数计算公式'
+                              : _rankType == 'rate'
+                              ? '缺勤率计算公式'
+                              : '缺勤人次统计说明',
                           style: TextStyle(
                             color: _goldDark,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
                         const SizedBox(height: 8),
-                        Text(
-                          'Σ(缺勤×1.0 + 请假×0.5 + 迟到×0.3 + 其他×0.2) ÷ 应到人次',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: Colors.grey.shade700,
+                        if (_rankType == 'score') ...[
+                          Text(
+                            '分子：Σ(缺勤×1.0 + 请假×0.5 + 迟到×0.3 + 其他×0.2)',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.grey.shade700,
+                            ),
                           ),
-                        ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '分母：班级人数 × 查课次数',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.grey.shade700,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '例：34人班级被查2次，异常加权18，分数 = 18÷68 = 0.26',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey.shade500,
+                            ),
+                          ),
+                        ] else if (_rankType == 'rate') ...[
+                          Text(
+                            '分子：缺勤人次',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.grey.shade700,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '分母：班级人数 × 查课次数',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.grey.shade700,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '例：34人班级被查2次，缺勤6次，缺勤率 = 6÷68 = 8.8%',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey.shade500,
+                            ),
+                          ),
+                        ] else ...[
+                          Text(
+                            '统计该周期内所有已审核提交中的"缺勤"状态累计人次',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.grey.shade700,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '注：多次查课同一人多次缺勤会累计，反映该班缺勤总频次',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey.shade500,
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -388,11 +450,11 @@ class _RankingPageState extends ConsumerState<RankingPage>
   Widget _buildPeriodRule(BuildContext context) {
     String periodText;
     if (_periodType == '7d') {
-      periodText = '统计最近7天的考勤数据，每日凌晨2点自动更新';
+      periodText = '统计最近7天的考勤数据。分数 = 异常加权人次 ÷ (班级人数 × 查课次数)，每日凌晨2点自动更新';
     } else if (_periodType == '30d') {
-      periodText = '统计最近30天的考勤数据，每日凌晨2点自动更新';
+      periodText = '统计最近30天的考勤数据。分数 = 异常加权人次 ÷ (班级人数 × 查课次数)，每日凌晨2点自动更新';
     } else {
-      periodText = '统计所有历史考勤数据，每日凌晨2点自动更新';
+      periodText = '统计所有历史考勤数据。分数 = 异常加权人次 ÷ (班级人数 × 查课次数)，每日凌晨2点自动更新';
     }
 
     return Row(
@@ -421,11 +483,11 @@ class _RankingPageState extends ConsumerState<RankingPage>
   Widget _buildRankTypeRule(BuildContext context) {
     String rankText;
     if (_rankType == 'score') {
-      rankText = '异常分数：综合考量缺勤、请假、迟到、其他状态，权重越高影响越大';
+      rankText = '异常分数：综合考量缺勤、请假、迟到、其他状态。分母 = 班级人数 × 查课次数，避免查课次数多的班级虚高';
     } else if (_rankType == 'rate') {
-      rankText = '缺勤率：仅统计"缺勤"状态人次占总应到人次的百分比';
+      rankText = '缺勤率：仅统计"缺勤"状态人次。分母 = 班级人数 × 查课次数，体现每次查课的平均缺勤率';
     } else {
-      rankText = '缺勤人次：仅统计"缺勤"状态的累计人次';
+      rankText = '缺勤人次：仅统计"缺勤"状态的累计人次（原始数据，不做除法）';
     }
 
     return Row(

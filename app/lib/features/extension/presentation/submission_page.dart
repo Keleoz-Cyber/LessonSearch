@@ -7,6 +7,7 @@ import 'package:dio/dio.dart';
 
 import '../../../core/router/app_router.dart';
 import '../../../shared/providers.dart';
+import '../../../shared/widgets/loading_overlay.dart';
 import '../../../shared/widgets/toast.dart';
 import '../../../shared/widgets/status_badge.dart';
 import '../../../shared/widgets/empty_state.dart';
@@ -204,7 +205,10 @@ class _SubmissionPageState extends ConsumerState<SubmissionPage>
         ),
       ),
       body: currentWeekAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const LoadingOverlay(
+          isLoading: true,
+          child: SizedBox.expand(),
+        ),
         error: (e, _) => Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -224,7 +228,10 @@ class _SubmissionPageState extends ConsumerState<SubmissionPage>
           final weekNumber = weekData['week_number'] as int;
 
           return myDutyAsync.when(
-            loading: () => const Center(child: CircularProgressIndicator()),
+            loading: () => const LoadingOverlay(
+              isLoading: true,
+              child: SizedBox.expand(),
+            ),
             error: (e, _) => Center(
               child: Column(
                 mainAxisSize: MainAxisSize.min,

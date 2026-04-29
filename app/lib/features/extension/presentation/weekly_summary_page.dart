@@ -8,6 +8,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../../../shared/providers.dart';
+import '../../../shared/widgets/loading_overlay.dart';
 import '../../../shared/widgets/toast.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../data/submission_service.dart';
@@ -141,7 +142,10 @@ class _WeeklySummaryPageState extends ConsumerState<WeeklySummaryPage>
         ),
       ),
       body: currentWeekAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const LoadingOverlay(
+          isLoading: true,
+          child: SizedBox.expand(),
+        ),
         error: (e, _) => Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
