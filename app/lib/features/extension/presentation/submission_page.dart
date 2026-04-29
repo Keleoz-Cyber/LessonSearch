@@ -117,9 +117,10 @@ class _SubmissionPageState extends ConsumerState<SubmissionPage>
     _tabController = TabController(length: 2, vsync: this);
     _tabController.addListener(_onTabChanged);
 
-    // 进入页面时强制同步，确保本地数据与服务端一致
+    // 进入页面时强制同步并刷新职务状态
     Future.microtask(() {
       ref.read(syncServiceProvider).syncNow();
+      ref.invalidate(myDutyProvider);
     });
   }
 

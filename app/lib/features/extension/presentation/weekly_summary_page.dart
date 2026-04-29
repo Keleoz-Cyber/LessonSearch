@@ -103,6 +103,11 @@ class _WeeklySummaryPageState extends ConsumerState<WeeklySummaryPage>
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
     _tabController.addListener(_onTabChanged);
+
+    // 进入页面时刷新职务状态
+    Future.microtask(() {
+      ref.invalidate(myDutyProvider);
+    });
   }
 
   @override
