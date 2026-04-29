@@ -154,8 +154,12 @@ def calculate_class_stats(
 
     # 按班级统计
     class_stats = {}
+    class_submission_ids = {}  # 统计每个班级被查了多少次
 
-    for record in records:
+    for sr in submission_records:
+        record = next((r for r in records if r.id == sr.record_id), None)
+        if not record:
+            continue
         class_id = record.class_id
         if class_id not in class_stats:
             class_stats[class_id] = {
@@ -165,17 +169,21 @@ def calculate_class_stats(
                 "other": 0,
                 "present": 0,
             }
+            class_submission_ids[class_id] = set()
+
+        class_submission_ids[class_id].add(sr.submission_id)
 
         status = record.status
         if status in class_stats[class_id]:
             class_stats[class_id][status] += 1
 
-    # 用班级人数作为分母
+    # 分母 = 班级人数 × 查课次数
     for class_id in list(class_stats.keys()):
         student_count = db.query(func.count(Student.id)).filter(
             Student.class_id == class_id
         ).scalar()
-        class_stats[class_id]["total_expected"] = student_count or 1
+        check_count = len(class_submission_ids.get(class_id, set()))
+        class_stats[class_id]["total_expected"] = (student_count or 1) * max(check_count, 1)
 
     # 计算排名值
     for class_id, stats in class_stats.items():
