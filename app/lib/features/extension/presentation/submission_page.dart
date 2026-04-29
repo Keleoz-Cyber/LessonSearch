@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:dio/dio.dart';
 
+import '../../../core/logger/logger_service.dart';
 import '../../../core/router/app_router.dart';
 import '../../../shared/providers.dart';
 import '../../../shared/widgets/loading_overlay.dart';
@@ -152,7 +153,7 @@ class _SubmissionPageState extends ConsumerState<SubmissionPage>
     try {
       await ref.read(syncServiceProvider).syncNow();
     } catch (e) {
-      debugPrint('[Submission] 同步失败: $e');
+      LoggerService.sync('同步失败: $e', isError: true);
     }
 
     int successCount = 0;

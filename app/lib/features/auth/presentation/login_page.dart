@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/logger/logger_service.dart';
 import '../../../shared/providers.dart';
 import '../../../shared/widgets/toast.dart';
 
@@ -39,6 +40,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
     try {
       final apiClient = ref.read(apiClientProvider);
+      LoggerService.network('发送验证码到: $email');
       await apiClient.sendVerificationCode(email);
 
       Toast.show(context, '验证码已发送');
@@ -57,7 +59,12 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       } else if (status == 500) {
         hint = '服务器错误，请检查SMTP配置';
       } else {
-        hint = e.response?.data['detail'] ?? '发送失败';
+        final detail = e.response?.data['detail'];
+        if (detail is List) {
+          hint = detail.isNotEmpty ? detail.first.toString() : '发送失败';
+        } else {
+          hint = detail?.toString() ?? '发送失败';
+        }
       }
       Toast.show(context, hint);
     } on Exception {

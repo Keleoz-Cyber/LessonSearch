@@ -1,5 +1,7 @@
 import 'package:dio/dio.dart';
 
+import '../logger/logger_service.dart';
+
 typedef OnAuthExpired = void Function();
 typedef OnTokenRefreshed = void Function(String newToken);
 
@@ -30,6 +32,9 @@ class ApiClient {
           if (_token != null) {
             options.headers['Authorization'] = 'Bearer $_token';
           }
+          LoggerService.network(
+            '→ ${options.method} ${options.uri}',
+          );
           handler.next(options);
         },
         onResponse: (response, handler) {
@@ -37,11 +42,21 @@ class ApiClient {
           if (newToken != null) {
             _token = newToken;
             onTokenRefreshed?.call(newToken);
+            LoggerService.network('Token refreshed');
           }
+          LoggerService.network(
+            '← ${response.statusCode} ${response.requestOptions.uri}',
+          );
           handler.next(response);
         },
         onError: (error, handler) {
-          if (error.response?.statusCode == 401) {
+          final statusCode = error.response?.statusCode;
+          final uri = error.requestOptions.uri;
+          LoggerService.network(
+            '✗ $statusCode $uri: ${error.message}',
+            isError: true,
+          );
+          if (statusCode == 401) {
             _token = null;
             onAuthExpired?.call();
           }

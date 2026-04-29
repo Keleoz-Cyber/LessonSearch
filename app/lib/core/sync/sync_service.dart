@@ -1,8 +1,10 @@
 import 'dart:async';
 import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 
 import '../../features/attendance/data/local/attendance_local_ds.dart';
+import '../logger/logger_service.dart';
 import '../../features/attendance/data/remote/attendance_remote_ds.dart';
 import '../../features/attendance/domain/models.dart';
 
@@ -60,8 +62,8 @@ class SyncService {
           );
           await _local.markSynced(item.id);
           successCount++;
-          debugPrint(
-            '[Sync] OK: ${item.entityType}/${item.action} #${item.entityId}',
+          LoggerService.sync(
+            'OK: ${item.entityType}/${item.action} #${item.entityId}',
           );
         } catch (e) {
           final newRetry = item.retryCount + 1;
@@ -77,25 +79,27 @@ class SyncService {
           if (is404) {
             // 服务端不存在，跳过并标记为已同步
             await _local.markSynced(item.id);
-            debugPrint(
-              '[Sync] SKIP (404): ${item.entityType}/${item.action} #${item.entityId}',
+            LoggerService.sync(
+              'SKIP (404): ${item.entityType}/${item.action} #${item.entityId}',
             );
             successCount++;
           } else if (isNetwork) {
             await _local.markSyncFailed(item.id, retryCount: newRetry);
             failCount++;
-            debugPrint('[Sync] 网络不可用，稍后重试');
+            LoggerService.sync('网络不可用，稍后重试');
             break;
           } else {
             await _local.markSyncFailed(item.id, retryCount: newRetry);
             failCount++;
             if (newRetry >= _maxRetries) {
-              debugPrint(
-                '[Sync] GIVE UP: ${item.entityType}/${item.action} #${item.entityId} ($e)',
+              LoggerService.sync(
+                'GIVE UP: ${item.entityType}/${item.action} #${item.entityId} ($e)',
+                isError: true,
               );
             } else {
-              debugPrint(
-                '[Sync] RETRY $newRetry/$_maxRetries: ${item.entityType}/${item.action} #${item.entityId} ($e)',
+              LoggerService.sync(
+                'RETRY $newRetry/$_maxRetries: ${item.entityType}/${item.action} #${item.entityId} ($e)',
+                isError: true,
               );
             }
           }
@@ -103,7 +107,7 @@ class SyncService {
       }
 
       state.value = failCount > 0 ? SyncState.error : SyncState.idle;
-      debugPrint('[Sync] 完成: 成功=$successCount 失败=$failCount');
+      LoggerService.sync('完成: 成功=$successCount 失败=$failCount');
       return (success: successCount, failed: failCount, skipped: 0);
     } finally {
       _isSyncing = false;
@@ -122,7 +126,7 @@ class SyncService {
           ? jsonDecode(payloadJson) as Map<String, dynamic>
           : <String, dynamic>{};
     } catch (e) {
-      debugPrint('[Sync] JSON 解析失败: $entityType/$entityId - $e');
+      LoggerService.sync('JSON 解析失败: $entityType/$entityId - $e', isError: true);
       rethrow;
     }
 
@@ -132,7 +136,7 @@ class SyncService {
       case 'record':
         await _syncRecord(entityId, action, payload);
       default:
-        debugPrint('[Sync] 未知 entityType: $entityType');
+        LoggerService.sync('未知 entityType: $entityType', isError: true);
     }
   }
 

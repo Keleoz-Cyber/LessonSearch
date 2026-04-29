@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/announcement/announcement_config.dart';
+import '../../../core/logger/logger_service.dart';
 import '../../../shared/providers.dart';
 import '../../../shared/widgets/toast.dart';
 
@@ -41,7 +42,7 @@ class SettingsPage extends ConsumerWidget {
           const ListTile(
             leading: Icon(Icons.tag),
             title: Text('版本号'),
-            subtitle: Text('0.5.5'),
+            subtitle: Text('0.5.6'),
           ),
 
           const Divider(),
@@ -309,17 +310,17 @@ class SettingsPage extends ConsumerWidget {
 
   Future<void> _checkUpdate(BuildContext context, WidgetRef ref) async {
     try {
-      debugPrint('[CheckUpdate] 开始检查更新...');
+      LoggerService.sync('开始检查更新...');
       final apiClient = ref.read(apiClientProvider);
       final response = await apiClient.checkUpdate();
-      debugPrint('[CheckUpdate] 响应: $response');
+      LoggerService.sync('响应: $response');
 
       final latestVersion = response['version'] as String;
       final downloadUrl = response['download_url'] as String;
       final releaseNotes = response['release_notes'] as String;
 
-      const currentVersion = '0.5.5';
-      debugPrint('[CheckUpdate] 当前版本: $currentVersion, 最新版本: $latestVersion');
+      const currentVersion = '0.5.6';
+      LoggerService.sync('当前版本: $currentVersion, 最新版本: $latestVersion');
 
       if (latestVersion == currentVersion) {
         if (context.mounted) {
@@ -359,8 +360,8 @@ class SettingsPage extends ConsumerWidget {
         );
       }
     } catch (e, stackTrace) {
-      debugPrint('[CheckUpdate] 错误: $e');
-      debugPrint('[CheckUpdate] 堆栈: $stackTrace');
+      LoggerService.error('检查更新错误: $e');
+      LoggerService.error('堆栈: $stackTrace');
       if (context.mounted) {
         Toast.show(context, '检查更新失败: $e');
       }
@@ -635,7 +636,7 @@ class _AboutPageState extends ConsumerState<AboutPage> {
 
               Center(
                 child: Text(
-                  '考勤助手 v0.5.5',
+                  '考勤助手 v0.5.6',
                   style: TextStyle(
                     color: Theme.of(
                       context,

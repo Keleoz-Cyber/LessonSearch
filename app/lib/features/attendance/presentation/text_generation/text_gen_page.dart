@@ -133,7 +133,34 @@ class _TextGenPageState extends ConsumerState<TextGenPage>
         .join('、');
   }
 
-  void _copyAndOpenApp(String text, bool isWechat) async {
+  void _copyAndOpenApp(String text, bool isWechat, {bool confirm = false}) async {
+    if (confirm) {
+      final result = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          icon: const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 48),
+          title: const Text('重要警告'),
+          content: const Text(
+            '确认该记录为最终记录吗？\n\n'
+            '确认后将复制文本并跳转微信，此操作不可撤销。',
+            style: TextStyle(fontSize: 15),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('取消'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              style: FilledButton.styleFrom(backgroundColor: Colors.orange),
+              child: const Text('确认最终记录'),
+            ),
+          ],
+        ),
+      );
+      if (result != true) return;
+    }
+
     Clipboard.setData(ClipboardData(text: text));
     Toast.show(context, '已复制到剪贴板');
 
@@ -200,14 +227,14 @@ class _TextGenPageState extends ConsumerState<TextGenPage>
           bottom: TabBar(
             controller: _tabController,
             tabs: const [
-              Tab(text: '总群汇报'),
               Tab(text: '学委汇报'),
+              Tab(text: '总群汇报'),
             ],
           ),
         ),
         body: TabBarView(
           controller: _tabController,
-          children: [_buildGroupReportView(), _buildCommitteeReportView()],
+          children: [_buildCommitteeReportView(), _buildGroupReportView()],
         ),
         bottomNavigationBar: SafeArea(
           top: false,
@@ -241,7 +268,7 @@ class _TextGenPageState extends ConsumerState<TextGenPage>
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           child: FilledButton.icon(
-            onPressed: () => _copyAndOpenApp(_groupReport, true),
+            onPressed: () => _copyAndOpenApp(_groupReport, true, confirm: true),
             icon: const Icon(Icons.wechat),
             label: const Text('复制并打开微信'),
             style: FilledButton.styleFrom(

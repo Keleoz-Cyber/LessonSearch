@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart';
 
-import '../../../shared/providers.dart';
+import '../../../core/logger/logger_service.dart';
 import '../../../shared/widgets/toast.dart';
 
 enum LogFilter { all, sync, network, error }
@@ -27,8 +27,8 @@ class _LogTabState extends ConsumerState<LogTab> {
   };
 
   static const _filterKeywords = <LogFilter, List<String>>{
-    LogFilter.sync: ['同步', 'Sync', 'sync', '队列'],
-    LogFilter.network: ['网络', '连接', '超时', 'timeout', 'Network', 'API'],
+    LogFilter.sync: ['[Sync]', '同步', 'Sync', 'sync', '队列'],
+    LogFilter.network: ['[Net]', '网络', '连接', '超时', 'timeout', 'HTTP', 'Dio'],
     LogFilter.error: ['\u274c', '失败', '错误', 'Error', 'error', '异常'],
   };
 
@@ -39,31 +39,14 @@ class _LogTabState extends ConsumerState<LogTab> {
   }
 
   Future<void> _loadLogs() async {
-    final saved =
-        ref.read(sharedPreferencesProvider).getStringList('debug_logs') ?? [];
+    final logs = LoggerService.getLogs();
     if (!mounted) return;
-    setState(() => _logs = saved);
-  }
-
-  Future<void> _saveLogs() async {
-    await ref
-        .read(sharedPreferencesProvider)
-        .setStringList('debug_logs', _logs);
-  }
-
-  void _addLog(String msg, {bool isError = false}) {
-    final ts = DateTime.now().toString().substring(11, 19);
-    final log = '[$ts] ${isError ? "\u274c " : ""}$msg';
-    setState(() {
-      _logs.insert(0, log);
-      if (_logs.length > 200) _logs.removeRange(200, _logs.length);
-    });
-    _saveLogs();
+    setState(() => _logs = logs);
   }
 
   Future<void> _clearLogs() async {
+    await LoggerService.clear();
     setState(() => _logs.clear());
-    await _saveLogs();
   }
 
   List<String> get _filteredLogs {
