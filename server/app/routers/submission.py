@@ -569,6 +569,7 @@ async def export_week_excel(
                         "major_short_name": major.short_name if major else "",
                         "class_code": class_.class_code if class_ else "",
                         "status": record.status,
+                        "record_time": record.updated_at or record.created_at,
                     })
     
     student_stats = {}
@@ -585,6 +586,7 @@ async def export_week_excel(
                 "absent": 0,
                 "leave": 0,
                 "other": 0,
+                "record_times": [],
             }
         if r["status"] == "late":
             student_stats[sid]["late"] += 1
@@ -594,6 +596,19 @@ async def export_week_excel(
             student_stats[sid]["leave"] += 1
         elif r["status"] == "other":
             student_stats[sid]["other"] += 1
+        
+        # 记录时间和状态
+        if r["record_time"]:
+            status_label = {
+                "late": "迟",
+                "absent": "缺",
+                "leave": "假",
+                "other": "其"
+            }.get(r["status"], "")
+            student_stats[sid]["record_times"].append({
+                "time": r["record_time"],
+                "status_label": status_label
+            })
     
     sorted_students = sorted(
         student_stats.values(),
@@ -609,7 +624,7 @@ async def export_week_excel(
     ws = wb.active
     ws.title = f"第{week_number}周考勤"
     
-    headers = ["序号", "姓名", "班级", "学号", "迟到", "缺勤", "累计"]
+    headers = ["序号", "姓名", "班级", "学号", "迟到", "缺勤", "累计", "记录时间"]
     ws.append(headers)
     
     for cell in ws[1]:
@@ -617,6 +632,18 @@ async def export_week_excel(
         cell.alignment = Alignment(horizontal="center")
     
     for i, s in enumerate(filtered_students, 1):
+        # 格式化时间记录
+        time_str = ""
+        if s["record_times"]:
+            # 按时间排序
+            sorted_times = sorted(s["record_times"], key=lambda x: x["time"])
+            time_parts = []
+            for rt in sorted_times:
+                t = rt["time"]
+                formatted = f"{t.month:02d}-{t.day:02d} {t.hour:02d}:{t.minute:02d}({rt['status_label']})"
+                time_parts.append(formatted)
+            time_str = "\n".join(time_parts)
+        
         row = [
             i,
             s["name"],
@@ -625,6 +652,7 @@ async def export_week_excel(
             s["late"],
             s["absent"],
             None,
+            time_str,
         ]
         ws.append(row)
         
@@ -636,10 +664,14 @@ async def export_week_excel(
         top=Side(style='thin'),
         bottom=Side(style='thin')
     )
-    for row in ws.iter_rows(min_row=1, max_row=ws.max_row, min_col=1, max_col=7):
+    for row in ws.iter_rows(min_row=1, max_row=ws.max_row, min_col=1, max_col=8):
         for cell in row:
             cell.border = thin_border
-            cell.alignment = Alignment(horizontal="center")
+            # 时间列(H列)保持左对齐，其他列居中
+            if cell.column == 8:
+                cell.alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
+            else:
+                cell.alignment = Alignment(horizontal="center")
     
     ws.column_dimensions['A'].width = 6
     ws.column_dimensions['B'].width = 12
@@ -648,6 +680,7 @@ async def export_week_excel(
     ws.column_dimensions['E'].width = 8
     ws.column_dimensions['F'].width = 8
     ws.column_dimensions['G'].width = 8
+    ws.column_dimensions['H'].width = 20
     
     output = BytesIO()
     wb.save(output)
