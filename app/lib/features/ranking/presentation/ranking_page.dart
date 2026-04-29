@@ -339,36 +339,82 @@ class _RankingPageState extends ConsumerState<RankingPage>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          '异常分数计算公式',
+                          _rankType == 'score'
+                              ? '异常分数计算公式'
+                              : _rankType == 'rate'
+                              ? '缺勤率计算公式'
+                              : '缺勤人次统计说明',
                           style: TextStyle(
                             color: _goldDark,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
                         const SizedBox(height: 8),
-                        Text(
-                          '分子：Σ(缺勤×1.0 + 请假×0.5 + 迟到×0.3 + 其他×0.2)',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: Colors.grey.shade700,
+                        if (_rankType == 'score') ...[
+                          Text(
+                            '分子：Σ(缺勤×1.0 + 请假×0.5 + 迟到×0.3 + 其他×0.2)',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.grey.shade700,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          '分母：班级人数 × 查课次数',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: Colors.grey.shade700,
+                          const SizedBox(height: 4),
+                          Text(
+                            '分母：班级人数 × 查课次数',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.grey.shade700,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          '例：34人班级被查2次，异常人次18，分数 = 18÷68 = 0.26',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey.shade500,
+                          const SizedBox(height: 4),
+                          Text(
+                            '例：34人班级被查2次，异常加权18，分数 = 18÷68 = 0.26',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey.shade500,
+                            ),
                           ),
-                        ),
+                        ] else if (_rankType == 'rate') ...[
+                          Text(
+                            '分子：缺勤人次',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.grey.shade700,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '分母：班级人数 × 查课次数',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.grey.shade700,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '例：34人班级被查2次，缺勤6次，缺勤率 = 6÷68 = 8.8%',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey.shade500,
+                            ),
+                          ),
+                        ] else ...[
+                          Text(
+                            '统计该周期内所有已审核提交中的"缺勤"状态累计人次',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.grey.shade700,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '注：多次查课同一人多次缺勤会累计，反映该班缺勤总频次',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey.shade500,
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ),
