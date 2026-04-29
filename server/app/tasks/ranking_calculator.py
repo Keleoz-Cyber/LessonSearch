@@ -159,7 +159,6 @@ def calculate_class_stats(
         class_id = record.class_id
         if class_id not in class_stats:
             class_stats[class_id] = {
-                "total_expected": 0,
                 "absent": 0,
                 "late": 0,
                 "leave": 0,
@@ -167,10 +166,16 @@ def calculate_class_stats(
                 "present": 0,
             }
 
-        class_stats[class_id]["total_expected"] += 1
         status = record.status
         if status in class_stats[class_id]:
             class_stats[class_id][status] += 1
+
+    # 用班级人数作为分母
+    for class_id in list(class_stats.keys()):
+        student_count = db.query(func.count(Student.id)).filter(
+            Student.class_id == class_id
+        ).scalar()
+        class_stats[class_id]["total_expected"] = student_count or 1
 
     # 计算排名值
     for class_id, stats in class_stats.items():
