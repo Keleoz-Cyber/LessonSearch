@@ -2,7 +2,7 @@ import random
 import smtplib
 from datetime import datetime, timedelta
 from email.mime.text import MIMEText
-from fastapi import APIRouter, Depends, HTTPException, Header
+from fastapi import APIRouter, Depends, HTTPException, Header, Response
 from sqlalchemy.orm import Session
 import jwt
 
@@ -123,6 +123,7 @@ def _verify_token(token: str) -> int:
 def get_current_user(
     authorization: str | None = Header(None),
     db: Session = Depends(get_db),
+    response: Response = None,
 ) -> User:
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="未登录")
@@ -133,6 +134,18 @@ def get_current_user(
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=401, detail="用户不存在")
+
+    # Token 自动刷新：如果剩余有效期 < 7 天，生成新 Token
+    if response:
+        try:
+            payload = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
+            exp = datetime.fromtimestamp(payload["exp"])
+            remaining = exp - datetime.now()
+            if remaining < timedelta(days=7):
+                new_token = _create_token(user.id)
+                response.headers["X-Token-Refresh"] = new_token
+        except Exception:
+            pass
 
     return user
 

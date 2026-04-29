@@ -59,6 +59,10 @@ class AuthService {
     await _prefs.setString(_userRealNameKey, realName);
   }
 
+  Future<void> updateToken(String token) async {
+    await _prefs.setString(_tokenKey, token);
+  }
+
   Future<void> clearAuth() async {
     final keys = [
       _tokenKey,

@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 
 typedef OnAuthExpired = void Function();
+typedef OnTokenRefreshed = void Function(String newToken);
 
 class ApiClient {
   static const String defaultBaseUrl = 'https://api.keleoz.cn/api';
@@ -8,8 +9,9 @@ class ApiClient {
   late final Dio dio;
   String? _token;
   OnAuthExpired? onAuthExpired;
+  OnTokenRefreshed? onTokenRefreshed;
 
-  ApiClient({String? baseUrl, String? token, this.onAuthExpired}) {
+  ApiClient({String? baseUrl, String? token, this.onAuthExpired, this.onTokenRefreshed}) {
     _token = token;
     dio = Dio(
       BaseOptions(
@@ -29,6 +31,14 @@ class ApiClient {
             options.headers['Authorization'] = 'Bearer $_token';
           }
           handler.next(options);
+        },
+        onResponse: (response, handler) {
+          final newToken = response.headers.value('X-Token-Refresh');
+          if (newToken != null) {
+            _token = newToken;
+            onTokenRefreshed?.call(newToken);
+          }
+          handler.next(response);
         },
         onError: (error, handler) {
           if (error.response?.statusCode == 401) {

@@ -69,6 +69,9 @@ final apiClientProvider = Provider<ApiClient>((ref) {
       ref.invalidate(authServiceProvider);
       ref.invalidate(isLoggedInProvider);
     },
+    onTokenRefreshed: (newToken) {
+      authService.updateToken(newToken);
+    },
   );
 });
 
