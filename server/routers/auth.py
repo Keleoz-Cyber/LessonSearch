@@ -103,9 +103,10 @@ def _send_email(to: str, code: str):
 
 
 def _create_token(user_id: int) -> str:
+    from datetime import timezone
     payload = {
         "user_id": user_id,
-        "exp": datetime.now() + timedelta(hours=JWT_EXPIRE_HOURS),
+        "exp": datetime.now(timezone.utc) + timedelta(hours=JWT_EXPIRE_HOURS),
     }
     return jwt.encode(payload, JWT_SECRET, algorithm="HS256")
 
@@ -139,8 +140,9 @@ def get_current_user(
     if response:
         try:
             payload = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
-            exp = datetime.fromtimestamp(payload["exp"])
-            remaining = exp - datetime.now()
+            from datetime import timezone
+            exp = datetime.fromtimestamp(payload["exp"], tz=timezone.utc)
+            remaining = exp - datetime.now(timezone.utc)
             if remaining < timedelta(days=7):
                 new_token = _create_token(user.id)
                 response.headers["X-Token-Refresh"] = new_token
@@ -152,6 +154,8 @@ def get_current_user(
 
 @router.post("/send-code")
 def send_code(body: SendCodeRequest, db: Session = Depends(get_db)):
+    import sys
+    print(f"[DEBUG] send-code body: {body}", file=sys.stderr)
     existing = db.query(VerificationCode).filter(
         VerificationCode.email == body.email,
         VerificationCode.used == False,
