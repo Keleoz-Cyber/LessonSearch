@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -21,6 +22,8 @@ class _HomePageState extends ConsumerState<HomePage> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
+      await _checkTokenValidity();
+      if (!mounted) return;
       _checkRealName();
       if (!mounted) return;
       await AnnouncementService.checkAndShow(context);
@@ -33,6 +36,33 @@ class _HomePageState extends ConsumerState<HomePage> {
     final auth = ref.read(authServiceProvider);
     if (auth.isLoggedIn && !auth.hasRealName) {
       context.go('/real-name');
+    }
+  }
+
+  Future<void> _checkTokenValidity() async {
+    final auth = ref.read(authServiceProvider);
+    if (!auth.isLoggedIn || auth.token == null) return;
+
+    try {
+      final apiClient = ref.read(apiClientProvider);
+      await apiClient.dio.get('/auth/me');
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 401) {
+        if (mounted) {
+          auth.clearAuth();
+          ref.invalidate(authServiceProvider);
+          ref.invalidate(isLoggedInProvider);
+          context.go('/login');
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('登录已过期，请重新登录'),
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
+      }
+    } catch (_) {
+      // 忽略其他网络错误
     }
   }
 
