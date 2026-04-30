@@ -6,7 +6,6 @@ import 'package:go_router/go_router.dart';
 
 import 'core/router/app_router.dart';
 import 'core/logger/logger_service.dart';
-import 'core/sync/sync_success_animation.dart';
 import 'shared/providers.dart';
 
 class App extends ConsumerStatefulWidget {
@@ -17,40 +16,12 @@ class App extends ConsumerStatefulWidget {
 }
 
 class _AppState extends ConsumerState<App> {
-  bool _showSyncSuccess = false;
-  int _syncSuccessCount = 0;
-  StreamSubscription? _syncSubscription;
-
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _listenAuthState();
-      _listenSyncResult();
       _checkPendingSyncOnStartup();
-    });
-  }
-
-  @override
-  void dispose() {
-    _syncSubscription?.cancel();
-    super.dispose();
-  }
-
-  /// 监听同步结果，成功时显示动画
-  void _listenSyncResult() {
-    final syncService = ref.read(syncServiceProvider);
-    _syncSubscription = syncService.onSyncComplete.listen((event) {
-      debugPrint('Sync complete: success=${event.success}, failed=${event.failed}');
-      if (event.success > 0 && event.failed == 0) {
-        if (mounted) {
-          debugPrint('Showing sync success animation');
-          setState(() {
-            _showSyncSuccess = true;
-            _syncSuccessCount = event.success;
-          });
-        }
-      }
     });
   }
 
@@ -184,11 +155,13 @@ class _AppState extends ConsumerState<App> {
         return Stack(
           children: [
             child!,
-            // 同步进度条（顶部）
+            // 同步进度条（顶部）- 仅在 showProgressUI 为 true 时显示
             ValueListenableBuilder(
               valueListenable: syncService.progress,
               builder: (context, progress, _) {
-                if (progress == null) return const SizedBox.shrink();
+                if (progress == null || !syncService.showProgressUI) {
+                  return const SizedBox.shrink();
+                }
                 return Positioned(
                   top: 0,
                   left: 0,
@@ -252,18 +225,7 @@ class _AppState extends ConsumerState<App> {
                 );
               },
             ),
-            // 同步成功动画覆盖层
-            if (_showSyncSuccess)
-              Positioned.fill(
-                child: SyncSuccessOverlay(
-                  successCount: _syncSuccessCount,
-                  onDismiss: () {
-                    setState(() {
-                      _showSyncSuccess = false;
-                    });
-                  },
-                ),
-              ),
+
           ],
         );
       },
