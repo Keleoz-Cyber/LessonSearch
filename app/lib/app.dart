@@ -26,8 +26,8 @@ class _AppState extends ConsumerState<App> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _listenAuthState();
-      _checkPendingSyncOnStartup();
       _listenSyncResult();
+      _checkPendingSyncOnStartup();
     });
   }
 
@@ -41,8 +41,10 @@ class _AppState extends ConsumerState<App> {
   void _listenSyncResult() {
     final syncService = ref.read(syncServiceProvider);
     _syncSubscription = syncService.onSyncComplete.listen((event) {
+      debugPrint('Sync complete: success=${event.success}, failed=${event.failed}');
       if (event.success > 0 && event.failed == 0) {
         if (mounted) {
+          debugPrint('Showing sync success animation');
           setState(() {
             _showSyncSuccess = true;
             _syncSuccessCount = event.success;
@@ -99,7 +101,9 @@ class _AppState extends ConsumerState<App> {
         LoggerService.sync('启动检查: 发现 ${pendingItems.length} 条待同步记录，开始自动同步');
         
         // 自动同步
+        debugPrint('Starting startup sync...');
         final result = await syncService.syncNow();
+        debugPrint('Startup sync done: success=${result.success}, failed=${result.failed}');
         
         if (result.failed == 0) {
           LoggerService.sync('启动同步完成: 成功=${result.success} 条');
