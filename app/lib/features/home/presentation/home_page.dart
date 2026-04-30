@@ -250,6 +250,13 @@ class _HomePageState extends ConsumerState<HomePage> {
       data: (count) {
         if (count == 0) return const SizedBox.shrink();
 
+        // 如果有未同步记录且当前不在同步中，自动触发同步
+        if (syncState != SyncState.syncing && count > 0) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            ref.read(syncServiceProvider).syncNow();
+          });
+        }
+
         return Padding(
           padding: const EdgeInsets.only(bottom: 16),
           child: Card(

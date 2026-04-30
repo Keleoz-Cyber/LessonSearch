@@ -39,7 +39,7 @@ class SyncService {
   final ValueNotifier<({int current, int total})?> progress = ValueNotifier(null);
 
   // 是否显示同步进度条和动画（记名过程中设为 false 避免干扰）
-  bool showProgressUI = true;
+  final ValueNotifier<bool> showProgressUI = ValueNotifier(true);
   
   // 使用 StreamController 确保每次同步完成都发送事件（即使结果相同）
   final _syncCompleteController = StreamController<SyncCompleteEvent>.broadcast();

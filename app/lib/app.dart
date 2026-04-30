@@ -16,12 +16,39 @@ class App extends ConsumerStatefulWidget {
 }
 
 class _AppState extends ConsumerState<App> {
+  StreamSubscription? _syncSubscription;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _listenAuthState();
+      _listenSyncComplete();
       _checkPendingSyncOnStartup();
+    });
+  }
+
+  @override
+  void dispose() {
+    _syncSubscription?.cancel();
+    super.dispose();
+  }
+
+  /// 监听同步完成，显示提示
+  void _listenSyncComplete() {
+    final syncService = ref.read(syncServiceProvider);
+    _syncSubscription = syncService.onSyncComplete.listen((event) {
+      if (event.success > 0 && event.failed == 0 && syncService.showProgressUI.value) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('已同步 ${event.success} 条记录到服务器'),
+              duration: const Duration(seconds: 2),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      }
     });
   }
 
@@ -156,10 +183,11 @@ class _AppState extends ConsumerState<App> {
           children: [
             child!,
             // 同步进度条（顶部）- 仅在 showProgressUI 为 true 时显示
-            ValueListenableBuilder(
-              valueListenable: syncService.progress,
-              builder: (context, progress, _) {
-                if (progress == null || !syncService.showProgressUI) {
+            AnimatedBuilder(
+              animation: Listenable.merge([syncService.progress, syncService.showProgressUI]),
+              builder: (context, _) {
+                final progress = syncService.progress.value;
+                if (progress == null || !syncService.showProgressUI.value) {
                   return const SizedBox.shrink();
                 }
                 return Positioned(
