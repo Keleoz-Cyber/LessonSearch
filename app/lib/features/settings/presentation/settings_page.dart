@@ -3,10 +3,8 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:intl/intl.dart';
 
 import '../../../core/announcement/announcement_config.dart';
-import '../../../core/database/app_database.dart';
 import '../../../core/logger/logger_service.dart';
 import '../../../core/sync/sync_service.dart';
 import '../../../shared/providers.dart';
@@ -20,7 +18,6 @@ class SettingsPage extends ConsumerWidget {
     final themeMode = ref.watch(themeModeProvider);
     final isLoggedIn = ref.watch(isLoggedInProvider);
     final userEmail = ref.watch(userEmailProvider);
-    final autoSync = ref.watch(autoSyncProvider);
     final syncState = ref.watch(syncStateProvider);
 
     return Scaffold(
@@ -70,16 +67,6 @@ class SettingsPage extends ConsumerWidget {
             onTap: syncState == SyncState.syncing
                 ? null
                 : () => _syncNow(context, ref),
-          ),
-          SwitchListTile(
-            secondary: const Icon(Icons.cloud_sync),
-            title: const Text('自动同步'),
-            subtitle: const Text('网络可用时自动同步数据'),
-            value: autoSync,
-            onChanged: (val) {
-              ref.read(autoSyncProvider.notifier).setAutoSync(val);
-              Toast.show(context, val ? '已开启自动同步' : '已关闭自动同步');
-            },
           ),
 
           const Divider(),
@@ -147,7 +134,7 @@ class SettingsPage extends ConsumerWidget {
             title: const Text('网络诊断'),
             subtitle: const Text('测试与服务器的连通性'),
             trailing: const Icon(Icons.chevron_right),
-            onTap: () => context.push('/debug'),
+            onTap: () => context.push('/debug/sync'),
           ),
 
           const Divider(),

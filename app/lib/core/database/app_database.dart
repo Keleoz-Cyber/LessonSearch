@@ -72,14 +72,16 @@ class AppDatabase extends _$AppDatabase {
   Future<Map<String, int>> getStatistics() async {
     final taskCount = await select(attendanceTasks).get();
     final recordCount = await select(attendanceRecords).get();
-    final syncedCount = await select(syncQueue).get();
+    final pendingSyncQuery = select(syncQueue)
+      ..where((s) => s.syncStatus.equals('pending') | (s.syncStatus.equals('failed') & s.retryCount.isSmallerThanValue(5)));
+    final pendingSyncCount = await pendingSyncQuery.get();
     final completedTasks = taskCount.where((t) => t.status == 'completed').length;
 
     return {
       'total_tasks': taskCount.length,
       'completed_tasks': completedTasks,
       'total_records': recordCount.length,
-      'pending_sync': syncedCount.length,
+      'pending_sync': pendingSyncCount.length,
     };
   }
 }
