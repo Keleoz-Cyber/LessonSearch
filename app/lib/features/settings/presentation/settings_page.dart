@@ -87,7 +87,8 @@ class SettingsPage extends ConsumerWidget {
                   _StatTile(
                     icon: Icons.task_alt,
                     title: '查课任务',
-                    value: '${stats['completed_tasks']}/${stats['total_tasks']}',
+                    subtitle: '${stats['completed_tasks']} 个已完成 · 共 ${stats['total_tasks']} 个',
+                    value: '',
                   ),
                   _StatTile(
                     icon: Icons.people_outline,
@@ -529,13 +530,15 @@ class SettingsPage extends ConsumerWidget {
 class _StatTile extends StatelessWidget {
   final IconData icon;
   final String title;
-  final String value;
+  final String? subtitle;
+  final String? value;
   final Color? color;
 
   const _StatTile({
     required this.icon,
     required this.title,
-    required this.value,
+    this.subtitle,
+    this.value,
     this.color,
   });
 
@@ -544,14 +547,17 @@ class _StatTile extends StatelessWidget {
     return ListTile(
       leading: Icon(icon, color: color),
       title: Text(title),
-      trailing: Text(
-        value,
-        style: TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.bold,
-          color: color ?? Theme.of(context).colorScheme.primary,
-        ),
-      ),
+      subtitle: subtitle != null ? Text(subtitle!) : null,
+      trailing: value != null && value!.isNotEmpty
+          ? Text(
+              value!,
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: color ?? Theme.of(context).colorScheme.primary,
+              ),
+            )
+          : null,
     );
   }
 }
