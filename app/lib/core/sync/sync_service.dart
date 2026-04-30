@@ -34,6 +34,9 @@ class SyncService {
 
   final ValueNotifier<SyncState> state = ValueNotifier(SyncState.idle);
   
+  // 同步进度：current=当前处理到第几个, total=总共需要同步几个
+  final ValueNotifier<({int current, int total})?> progress = ValueNotifier(null);
+  
   // 使用 StreamController 确保每次同步完成都发送事件（即使结果相同）
   final _syncCompleteController = StreamController<SyncCompleteEvent>.broadcast();
   Stream<SyncCompleteEvent> get onSyncComplete => _syncCompleteController.stream;
@@ -67,10 +70,14 @@ class SyncService {
       }
 
       state.value = SyncState.syncing;
+      progress.value = (current: 0, total: items.length);
       var successCount = 0;
       var failCount = 0;
 
-      for (final item in items) {
+      for (var i = 0; i < items.length; i++) {
+        final item = items[i];
+        progress.value = (current: i + 1, total: items.length);
+        
         try {
           await _processItem(
             item.entityType,
@@ -138,6 +145,10 @@ class SyncService {
       return result;
     } finally {
       _isSyncing = false;
+      // 延迟清除进度，让用户看到 100%
+      Future.delayed(const Duration(milliseconds: 500), () {
+        progress.value = null;
+      });
     }
   }
 
@@ -235,6 +246,7 @@ class SyncService {
   void dispose() {
     stop();
     state.dispose();
+    progress.dispose();
     _syncCompleteController.close();
   }
 }

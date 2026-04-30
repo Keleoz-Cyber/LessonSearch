@@ -163,6 +163,7 @@ class _AppState extends ConsumerState<App> {
   @override
   Widget build(BuildContext context) {
     final themeMode = ref.watch(themeModeProvider);
+    final syncService = ref.watch(syncServiceProvider);
 
     return MaterialApp.router(
       title: '查课',
@@ -183,6 +184,74 @@ class _AppState extends ConsumerState<App> {
         return Stack(
           children: [
             child!,
+            // 同步进度条（顶部）
+            ValueListenableBuilder(
+              valueListenable: syncService.progress,
+              builder: (context, progress, _) {
+                if (progress == null) return const SizedBox.shrink();
+                return Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: SafeArea(
+                    child: Container(
+                      color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.95),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation(
+                                    Theme.of(context).colorScheme.primary,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                '正在同步数据...',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                  color: Theme.of(context).colorScheme.primary,
+                                ),
+                              ),
+                              const Spacer(),
+                              Text(
+                                '${progress.current}/${progress.total}',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                  color: Theme.of(context).colorScheme.primary,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(4),
+                            child: LinearProgressIndicator(
+                              value: progress.current / progress.total,
+                              minHeight: 4,
+                              backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
+                              valueColor: AlwaysStoppedAnimation(
+                                Theme.of(context).colorScheme.primary,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
             // 同步成功动画覆盖层
             if (_showSyncSuccess)
               Positioned.fill(
