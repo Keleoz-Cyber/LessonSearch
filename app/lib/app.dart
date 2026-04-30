@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import 'core/router/app_router.dart';
 import 'core/logger/logger_service.dart';
+import 'core/sync/sync_success_animation.dart';
 import 'shared/providers.dart';
 
 class App extends ConsumerStatefulWidget {
@@ -14,12 +15,32 @@ class App extends ConsumerStatefulWidget {
 }
 
 class _AppState extends ConsumerState<App> {
+  bool _showSyncSuccess = false;
+  int _syncSuccessCount = 0;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _listenAuthState();
       _checkPendingSyncOnStartup();
+      _listenSyncResult();
+    });
+  }
+
+  /// 监听同步结果，成功时显示动画
+  void _listenSyncResult() {
+    final syncService = ref.read(syncServiceProvider);
+    syncService.lastResult.addListener(() {
+      final result = syncService.lastResult.value;
+      if (result != null && result.success > 0 && result.failed == 0) {
+        if (mounted) {
+          setState(() {
+            _showSyncSuccess = true;
+            _syncSuccessCount = result.success;
+          });
+        }
+      }
     });
   }
 
@@ -124,6 +145,25 @@ class _AppState extends ConsumerState<App> {
       ),
       themeMode: themeMode,
       routerConfig: appRouter,
+      builder: (context, child) {
+        return Stack(
+          children: [
+            child!,
+            // 同步成功动画覆盖层
+            if (_showSyncSuccess)
+              Positioned.fill(
+                child: SyncSuccessOverlay(
+                  successCount: _syncSuccessCount,
+                  onDismiss: () {
+                    setState(() {
+                      _showSyncSuccess = false;
+                    });
+                  },
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 }

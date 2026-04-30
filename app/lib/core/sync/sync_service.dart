@@ -19,6 +19,7 @@ class SyncService {
   static const _interval = Duration(seconds: 10);
 
   final ValueNotifier<SyncState> state = ValueNotifier(SyncState.idle);
+  final ValueNotifier<({int success, int failed, int skipped})?> lastResult = ValueNotifier(null);
 
   SyncService(this._local, this._remote);
 
@@ -107,8 +108,10 @@ class SyncService {
       }
 
       state.value = failCount > 0 ? SyncState.error : SyncState.idle;
+      final result = (success: successCount, failed: failCount, skipped: 0);
+      lastResult.value = result;
       LoggerService.sync('完成: 成功=$successCount 失败=$failCount');
-      return (success: successCount, failed: failCount, skipped: 0);
+      return result;
     } finally {
       _isSyncing = false;
     }
