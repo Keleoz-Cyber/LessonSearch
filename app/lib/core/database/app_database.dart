@@ -76,10 +76,12 @@ class AppDatabase extends _$AppDatabase {
       ..where((s) => s.syncStatus.equals('pending') | (s.syncStatus.equals('failed') & s.retryCount.isSmallerThanValue(5)));
     final pendingSyncCount = await pendingSyncQuery.get();
     final completedTasks = taskCount.where((t) => t.status == 'completed').length;
+    final abandonedTasks = taskCount.where((t) => t.status == 'abandoned').length;
 
     return {
       'total_tasks': taskCount.length,
       'completed_tasks': completedTasks,
+      'abandoned_tasks': abandonedTasks,
       'total_records': recordCount.length,
       'pending_sync': pendingSyncCount.length,
     };
