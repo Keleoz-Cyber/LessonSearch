@@ -64,14 +64,6 @@ class _SyncTabState extends ConsumerState<SyncTab> {
     }
   }
 
-  /// 测试同步完成动画
-  void _testAnimation() {
-    final sync = ref.read(syncServiceProvider);
-    // 手动触发同步完成事件
-    sync.emitTestEvent(success: 3, failed: 0);
-    Toast.show(context, '已触发同步完成事件（3条成功）');
-  }
-
   Future<void> _retryFailed() async {
     try {
       final local = ref.read(attendanceLocalDSProvider);
@@ -145,11 +137,6 @@ class _SyncTabState extends ConsumerState<SyncTab> {
                         child: CircularProgressIndicator(strokeWidth: 2))
                     : const Icon(Icons.sync, size: 18),
                 label: const Text('立即同步'),
-              ),
-              OutlinedButton.icon(
-                onPressed: _testAnimation,
-                icon: const Icon(Icons.animation, size: 18),
-                label: const Text('测试动画'),
               ),
               if (_failed.isNotEmpty)
                 OutlinedButton.icon(

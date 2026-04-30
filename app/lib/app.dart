@@ -17,6 +17,7 @@ class App extends ConsumerStatefulWidget {
 
 class _AppState extends ConsumerState<App> {
   StreamSubscription? _syncSubscription;
+  bool _isStartupSync = false; // 标记是否是启动同步
 
   @override
   void initState() {
@@ -34,11 +35,12 @@ class _AppState extends ConsumerState<App> {
     super.dispose();
   }
 
-  /// 监听同步完成，显示提示
+  /// 监听同步完成，仅在启动同步时显示提示（避免后台定时同步频繁弹窗）
   void _listenSyncComplete() {
     final syncService = ref.read(syncServiceProvider);
     _syncSubscription = syncService.onSyncComplete.listen((event) {
-      if (event.success > 0 && event.failed == 0 && syncService.showProgressUI.value) {
+      if (_isStartupSync && event.success > 0 && event.failed == 0) {
+        _isStartupSync = false; // 重置标志位
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -120,6 +122,9 @@ class _AppState extends ConsumerState<App> {
         
         LoggerService.sync('启动检查: 共 $totalNeedSync 条记录需要同步，开始自动同步');
         
+        // 标记为启动同步，完成后显示提示
+        _isStartupSync = true;
+        
         // 自动同步
         debugPrint('Starting startup sync...');
         final result = await syncService.syncNow();
@@ -182,12 +187,11 @@ class _AppState extends ConsumerState<App> {
         return Stack(
           children: [
             child!,
-            // 同步进度条（顶部）- 仅在 showProgressUI 为 true 时显示
-            AnimatedBuilder(
-              animation: Listenable.merge([syncService.progress, syncService.showProgressUI]),
-              builder: (context, _) {
-                final progress = syncService.progress.value;
-                if (progress == null || !syncService.showProgressUI.value) {
+            // 同步进度条（顶部）
+            ValueListenableBuilder(
+              valueListenable: syncService.progress,
+              builder: (context, progress, _) {
+                if (progress == null) {
                   return const SizedBox.shrink();
                 }
                 return Positioned(

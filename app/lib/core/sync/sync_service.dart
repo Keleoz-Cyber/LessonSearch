@@ -37,9 +37,6 @@ class SyncService {
   
   // 同步进度：current=当前处理到第几个, total=总共需要同步几个
   final ValueNotifier<({int current, int total})?> progress = ValueNotifier(null);
-
-  // 是否显示同步进度条和动画（记名过程中设为 false 避免干扰）
-  final ValueNotifier<bool> showProgressUI = ValueNotifier(true);
   
   // 使用 StreamController 确保每次同步完成都发送事件（即使结果相同）
   final _syncCompleteController = StreamController<SyncCompleteEvent>.broadcast();
@@ -254,15 +251,6 @@ class SyncService {
           await _remote.updateRecord(id, status);
         }
     }
-  }
-
-  /// 测试用：手动触发同步完成事件
-  void emitTestEvent({required int success, required int failed, int skipped = 0}) {
-    _syncCompleteController.add(SyncCompleteEvent(
-      success: success,
-      failed: failed,
-      skipped: skipped,
-    ));
   }
 
   void dispose() {
