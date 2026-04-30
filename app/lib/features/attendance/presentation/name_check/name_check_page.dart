@@ -35,6 +35,8 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
   @override
   void dispose() {
     _pageController.dispose();
+    // 恢复同步进度条显示
+    ref.read(syncServiceProvider).showProgressUI = true;
     super.dispose();
   }
 
@@ -42,6 +44,8 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
   void initState() {
     super.initState();
     Future.microtask(() {
+      // 记名过程中隐藏同步进度条，避免干扰操作
+      ref.read(syncServiceProvider).showProgressUI = false;
       final authService = ref.read(authServiceProvider);
       if (widget.resumeTaskId != null) {
         ref.read(nameCheckProvider.notifier).resumeTask(widget.resumeTaskId!);
