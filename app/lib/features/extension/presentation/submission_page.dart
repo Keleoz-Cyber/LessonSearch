@@ -398,54 +398,53 @@ class _SubmitTaskTab extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 未同步记录警告
+          // 未同步记录提示
           pendingCount.when(
             data: (count) {
               if (count == 0) return const SizedBox.shrink();
               return Padding(
                 padding: const EdgeInsets.only(bottom: 16),
                 child: Card(
-                  color: Colors.orange.withValues(alpha: 0.1),
+                  color: syncState == SyncState.syncing
+                      ? Colors.blue.withValues(alpha: 0.1)
+                      : Colors.orange.withValues(alpha: 0.1),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
-                    side: BorderSide(color: Colors.orange.withValues(alpha: 0.3)),
+                    side: BorderSide(
+                      color: syncState == SyncState.syncing
+                          ? Colors.blue.withValues(alpha: 0.3)
+                          : Colors.orange.withValues(alpha: 0.3),
+                    ),
                   ),
-                  child: InkWell(
-                    onTap: syncState == SyncState.syncing
-                        ? null
-                        : () => ref.read(syncServiceProvider).syncNow(),
-                    borderRadius: BorderRadius.circular(12),
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Row(
-                        children: [
-                          Icon(
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Row(
+                      children: [
+                        Icon(
+                          syncState == SyncState.syncing
+                              ? Icons.sync
+                              : Icons.warning_amber,
+                          color: syncState == SyncState.syncing
+                              ? Colors.blue
+                              : Colors.orange,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
                             syncState == SyncState.syncing
-                                ? Icons.sync
-                                : Icons.warning_amber,
-                            color: Colors.orange,
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              syncState == SyncState.syncing
-                                  ? '正在同步 $count 条记录...'
-                                  : '有 $count 条记录未同步，建议先同步再提交',
-                              style: TextStyle(
-                                color: Colors.orange.shade800,
-                                fontWeight: FontWeight.w500,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                              maxLines: 2,
+                                ? '正在自动同步 $count 条记录，请稍候再提交'
+                                : '有 $count 条记录待同步，系统将在后台自动处理',
+                            style: TextStyle(
+                              color: syncState == SyncState.syncing
+                                  ? Colors.blue.shade800
+                                  : Colors.orange.shade800,
+                              fontWeight: FontWeight.w500,
                             ),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 2,
                           ),
-                          if (syncState != SyncState.syncing)
-                            TextButton(
-                              onPressed: () => ref.read(syncServiceProvider).syncNow(),
-                              child: const Text('立即同步'),
-                            ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ),
                 ),

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../shared/providers.dart';
 import '../../../../shared/widgets/loading_overlay.dart';
+import '../../../../core/sync/sync_service.dart';
 import '../../../attendance/application/name_check_notifier.dart';
 import '../../../attendance/domain/models.dart';
 
@@ -332,6 +333,19 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
 
     void mark(AttendanceStatus status, {String? remark}) {
       if (_focusedIndex == null || _focusedIndex! >= students.length) return;
+
+      // 检查是否正在同步中
+      final syncService = ref.read(syncServiceProvider);
+      if (syncService.state.value == SyncState.syncing) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('数据正在自动同步中，请稍候再标记'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+        return;
+      }
+
       ref.read(feedbackServiceProvider).feedback();
       ref
           .read(nameCheckProvider.notifier)
@@ -347,6 +361,19 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
 
     void markPresent() {
       if (_focusedIndex == null || _focusedIndex! >= students.length) return;
+
+      // 检查是否正在同步中
+      final syncService = ref.read(syncServiceProvider);
+      if (syncService.state.value == SyncState.syncing) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('数据正在自动同步中，请稍候再标记'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+        return;
+      }
+
       ref.read(feedbackServiceProvider).feedback();
       ref
           .read(nameCheckProvider.notifier)

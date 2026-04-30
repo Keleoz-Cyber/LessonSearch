@@ -10,6 +10,7 @@ import '../data/records_repository.dart';
 import '../../attendance/domain/models.dart';
 import '../../attendance/domain/text_template.dart';
 import '../../../core/logger/logger_service.dart';
+import '../../../core/sync/sync_service.dart';
 
 class RecordDetailPage extends ConsumerStatefulWidget {
   final String taskId;
@@ -62,11 +63,24 @@ class _RecordDetailPageState extends ConsumerState<RecordDetailPage> {
     AttendanceStatus newStatus, {
     String? remark,
   }) async {
+    // 检查是否正在同步中
+    final syncService = ref.read(syncServiceProvider);
+    if (syncService.state.value == SyncState.syncing) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('数据正在自动同步中，请稍候再编辑'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+      return;
+    }
+
     final repo = ref.read(recordsRepositoryProvider);
     await repo.updateRecord(recordId, newStatus, remark: remark);
 
     // 立即同步到服务端，确保编辑生效
-    final syncService = ref.read(syncServiceProvider);
     syncService.syncNow().then((result) {
       if (result.failed == 0) {
         LoggerService.sync('记录编辑已同步: record=$recordId');

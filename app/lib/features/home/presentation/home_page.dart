@@ -253,70 +253,70 @@ class _HomePageState extends ConsumerState<HomePage> {
         return Padding(
           padding: const EdgeInsets.only(bottom: 16),
           child: Card(
-            color: Colors.orange.withValues(alpha: 0.1),
+            color: syncState == SyncState.syncing
+                ? Colors.blue.withValues(alpha: 0.1)
+                : Colors.orange.withValues(alpha: 0.1),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
-              side: BorderSide(color: Colors.orange.withValues(alpha: 0.3)),
+              side: BorderSide(
+                color: syncState == SyncState.syncing
+                    ? Colors.blue.withValues(alpha: 0.3)
+                    : Colors.orange.withValues(alpha: 0.3),
+              ),
             ),
-            child: InkWell(
-              onTap: () {
-                if (syncState != SyncState.syncing) {
-                  ref.read(syncServiceProvider).syncNow();
-                }
-              },
-              borderRadius: BorderRadius.circular(12),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.orange.withValues(alpha: 0.2),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        syncState == SyncState.syncing
-                            ? Icons.sync
-                            : Icons.warning_amber,
-                        color: Colors.orange,
-                      ),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: syncState == SyncState.syncing
+                          ? Colors.blue.withValues(alpha: 0.2)
+                          : Colors.orange.withValues(alpha: 0.2),
+                      shape: BoxShape.circle,
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            syncState == SyncState.syncing
-                                ? '正在同步 $count 条记录...'
-                                : '有 $count 条记录未同步',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 15,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                            maxLines: 1,
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            syncState == SyncState.syncing
-                                ? '请保持网络连接，同步完成后可正常使用'
-                                : '点击此处立即同步，避免数据丢失',
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: Colors.grey[600],
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                            maxLines: 2,
-                          ),
-                        ],
-                      ),
+                    child: Icon(
+                      syncState == SyncState.syncing
+                          ? Icons.sync
+                          : Icons.warning_amber,
+                      color: syncState == SyncState.syncing
+                          ? Colors.blue
+                          : Colors.orange,
                     ),
-                    if (syncState != SyncState.syncing)
-                      const Icon(Icons.chevron_right, color: Colors.orange),
-                  ],
-                ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          syncState == SyncState.syncing
+                              ? '正在自动同步 $count 条记录...'
+                              : '有 $count 条记录未同步',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          syncState == SyncState.syncing
+                              ? '同步期间请避免编辑记录或提交审核，以防数据冲突'
+                              : '系统将在后台自动同步，请避免重复编辑同一条记录',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.grey[600],
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 2,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
