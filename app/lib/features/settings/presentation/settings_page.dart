@@ -98,6 +98,17 @@ class SettingsPage extends ConsumerWidget {
 
           const Divider(),
 
+          const _SectionHeader(title: '数据'),
+          ListTile(
+            leading: const Icon(Icons.cleaning_services_outlined),
+            title: const Text('清理缓存'),
+            subtitle: const Text('清除日志和临时数据'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => _showClearCacheDialog(context),
+          ),
+
+          const Divider(),
+
           const _SectionHeader(title: '关于'),
           ListTile(
             leading: const Icon(Icons.favorite_outline),
@@ -187,6 +198,37 @@ class SettingsPage extends ConsumerWidget {
       ref.invalidate(userEmailProvider);
       ref.invalidate(apiClientProvider);
       Toast.show(context, '已退出登录');
+    }
+  }
+
+  Future<void> _showClearCacheDialog(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('清理缓存'),
+        content: const Text(
+          '确定要清理缓存吗？\n\n'
+          '这将清除：\n'
+          '• 调试日志记录\n'
+          '• 临时缓存数据\n\n'
+          '不会影响您的查课记录和登录状态。',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('清理'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && context.mounted) {
+      await LoggerService.clear();
+      Toast.show(context, '缓存已清理');
     }
   }
 
