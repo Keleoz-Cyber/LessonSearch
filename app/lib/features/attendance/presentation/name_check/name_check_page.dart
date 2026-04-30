@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../shared/providers.dart';
 import '../../../../shared/widgets/loading_overlay.dart';
-import '../../../../core/sync/sync_service.dart';
 import '../../../attendance/application/name_check_notifier.dart';
 import '../../../attendance/domain/models.dart';
 
@@ -35,8 +34,6 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
   @override
   void dispose() {
     _pageController.dispose();
-    // 恢复同步进度条显示
-    ref.read(syncServiceProvider).showProgressUI.value = true;
     super.dispose();
   }
 
@@ -44,8 +41,6 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
   void initState() {
     super.initState();
     Future.microtask(() {
-      // 记名过程中隐藏同步进度条，避免干扰操作
-      ref.read(syncServiceProvider).showProgressUI.value = false;
       final authService = ref.read(authServiceProvider);
       if (widget.resumeTaskId != null) {
         ref.read(nameCheckProvider.notifier).resumeTask(widget.resumeTaskId!);
@@ -337,19 +332,6 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
 
     void mark(AttendanceStatus status, {String? remark}) {
       if (_focusedIndex == null || _focusedIndex! >= students.length) return;
-
-      // 检查是否正在同步中
-      final syncService = ref.read(syncServiceProvider);
-      if (syncService.state.value == SyncState.syncing) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('数据正在自动同步中，请稍候再标记'),
-            duration: Duration(seconds: 2),
-          ),
-        );
-        return;
-      }
-
       ref.read(feedbackServiceProvider).feedback();
       ref
           .read(nameCheckProvider.notifier)
@@ -365,19 +347,6 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
 
     void markPresent() {
       if (_focusedIndex == null || _focusedIndex! >= students.length) return;
-
-      // 检查是否正在同步中
-      final syncService = ref.read(syncServiceProvider);
-      if (syncService.state.value == SyncState.syncing) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('数据正在自动同步中，请稍候再标记'),
-            duration: Duration(seconds: 2),
-          ),
-        );
-        return;
-      }
-
       ref.read(feedbackServiceProvider).feedback();
       ref
           .read(nameCheckProvider.notifier)
@@ -523,15 +492,10 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
     if (!mounted) return;
     switch (result) {
       case 'save':
-        // 立即恢复同步进度条显示，避免页面退出动画期间看不到
-        ref.read(syncServiceProvider).showProgressUI.value = true;
         context.pop();
       case 'abandon':
         await ref.read(nameCheckProvider.notifier).abandonTask();
-        if (mounted) {
-          ref.read(syncServiceProvider).showProgressUI.value = true;
-          context.pop();
-        }
+        if (mounted) context.pop();
       default:
         break;
     }
@@ -565,11 +529,7 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
     );
     if (confirm == true) {
       await ref.read(nameCheckProvider.notifier).finishNameCheck();
-      if (mounted) {
-        // 立即恢复同步进度条显示
-        ref.read(syncServiceProvider).showProgressUI.value = true;
-        context.push('/confirmation');
-      }
+      if (mounted) context.push('/confirmation');
     }
   }
 }

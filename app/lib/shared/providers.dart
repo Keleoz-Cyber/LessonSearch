@@ -158,7 +158,6 @@ final nameCheckProvider =
       return NameCheckNotifier(
         ref.watch(attendanceRepositoryProvider),
         ref.watch(studentRepositoryProvider),
-        syncService: ref.watch(syncServiceProvider),
       );
     });
 
