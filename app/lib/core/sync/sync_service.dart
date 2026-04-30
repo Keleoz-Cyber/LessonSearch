@@ -223,6 +223,15 @@ class SyncService {
     }
   }
 
+  /// 测试用：手动触发同步完成事件
+  void emitTestEvent({required int success, required int failed, int skipped = 0}) {
+    _syncCompleteController.add(SyncCompleteEvent(
+      success: success,
+      failed: failed,
+      skipped: skipped,
+    ));
+  }
+
   void dispose() {
     stop();
     state.dispose();
