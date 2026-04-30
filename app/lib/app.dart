@@ -167,55 +167,52 @@ class _AppState extends ConsumerState<App> {
                   left: 0,
                   right: 0,
                   child: SafeArea(
+                    bottom: false,
                     child: Container(
                       color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.95),
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                      child: Row(
                         children: [
-                          Row(
-                            children: [
-                              SizedBox(
-                                width: 16,
-                                height: 16,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation(
-                                    Theme.of(context).colorScheme.primary,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                '正在同步数据...',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
-                                  color: Theme.of(context).colorScheme.primary,
-                                ),
-                              ),
-                              const Spacer(),
-                              Text(
-                                '${progress.current}/${progress.total}',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.bold,
-                                  color: Theme.of(context).colorScheme.primary,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 6),
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(4),
-                            child: LinearProgressIndicator(
-                              value: progress.current / progress.total,
-                              minHeight: 4,
-                              backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
+                          SizedBox(
+                            width: 12,
+                            height: 12,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
                               valueColor: AlwaysStoppedAnimation(
                                 Theme.of(context).colorScheme.primary,
                               ),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            '同步中',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(2),
+                              child: LinearProgressIndicator(
+                                value: progress.current / progress.total,
+                                minHeight: 3,
+                                backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
+                                valueColor: AlwaysStoppedAnimation(
+                                  Theme.of(context).colorScheme.primary,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            '${progress.current}/${progress.total}',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: Theme.of(context).colorScheme.primary,
                             ),
                           ),
                         ],
