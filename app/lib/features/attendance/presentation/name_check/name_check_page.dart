@@ -523,10 +523,15 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
     if (!mounted) return;
     switch (result) {
       case 'save':
+        // 立即恢复同步进度条显示，避免页面退出动画期间看不到
+        ref.read(syncServiceProvider).showProgressUI.value = true;
         context.pop();
       case 'abandon':
         await ref.read(nameCheckProvider.notifier).abandonTask();
-        if (mounted) context.pop();
+        if (mounted) {
+          ref.read(syncServiceProvider).showProgressUI.value = true;
+          context.pop();
+        }
       default:
         break;
     }
@@ -560,7 +565,11 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
     );
     if (confirm == true) {
       await ref.read(nameCheckProvider.notifier).finishNameCheck();
-      if (mounted) context.push('/confirmation');
+      if (mounted) {
+        // 立即恢复同步进度条显示
+        ref.read(syncServiceProvider).showProgressUI.value = true;
+        context.push('/confirmation');
+      }
     }
   }
 }
