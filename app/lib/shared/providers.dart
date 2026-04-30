@@ -153,6 +153,23 @@ final themeModeProvider = StateNotifierProvider<ThemeModeNotifier, ThemeMode>((
   return ThemeModeNotifier(ref.watch(sharedPreferencesProvider));
 });
 
+/// 自动同步开关
+final autoSyncProvider = StateNotifierProvider<AutoSyncNotifier, bool>((ref) {
+  return AutoSyncNotifier(ref.watch(sharedPreferencesProvider));
+});
+
+class AutoSyncNotifier extends StateNotifier<bool> {
+  final SharedPreferences _prefs;
+  static const _key = 'auto_sync_enabled';
+
+  AutoSyncNotifier(this._prefs) : super(_prefs.getBool(_key) ?? true);
+
+  void setAutoSync(bool enabled) {
+    state = enabled;
+    _prefs.setBool(_key, enabled);
+  }
+}
+
 class ThemeModeNotifier extends StateNotifier<ThemeMode> {
   final SharedPreferences _prefs;
   static const _key = 'theme_mode';

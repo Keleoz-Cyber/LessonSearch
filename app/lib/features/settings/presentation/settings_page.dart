@@ -3,9 +3,12 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:intl/intl.dart';
 
 import '../../../core/announcement/announcement_config.dart';
+import '../../../core/database/app_database.dart';
 import '../../../core/logger/logger_service.dart';
+import '../../../core/sync/sync_service.dart';
 import '../../../shared/providers.dart';
 import '../../../shared/widgets/toast.dart';
 
@@ -17,6 +20,8 @@ class SettingsPage extends ConsumerWidget {
     final themeMode = ref.watch(themeModeProvider);
     final isLoggedIn = ref.watch(isLoggedInProvider);
     final userEmail = ref.watch(userEmailProvider);
+    final autoSync = ref.watch(autoSyncProvider);
+    final syncState = ref.watch(syncStateProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('设置')),
@@ -33,16 +38,84 @@ class SettingsPage extends ConsumerWidget {
 
           const Divider(),
 
-          const _SectionHeader(title: '应用信息'),
-          const ListTile(
-            leading: Icon(Icons.info_outline),
-            title: Text('查课 App'),
-            subtitle: Text('课堂考勤查课工具'),
+          const _SectionHeader(title: '同步'),
+          ListTile(
+            leading: Icon(
+              syncState == SyncState.syncing
+                  ? Icons.sync
+                  : syncState == SyncState.error
+                      ? Icons.sync_problem
+                      : Icons.sync_outlined,
+              color: syncState == SyncState.error
+                  ? Colors.orange
+                  : syncState == SyncState.syncing
+                      ? Theme.of(context).colorScheme.primary
+                      : null,
+            ),
+            title: const Text('手动同步'),
+            subtitle: Text(
+              syncState == SyncState.syncing
+                  ? '正在同步中...'
+                  : syncState == SyncState.error
+                      ? '上次同步失败，点击重试'
+                      : '点击立即同步数据',
+            ),
+            trailing: syncState == SyncState.syncing
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.chevron_right),
+            onTap: syncState == SyncState.syncing
+                ? null
+                : () => _syncNow(context, ref),
           ),
-          const ListTile(
-            leading: Icon(Icons.tag),
-            title: Text('版本号'),
-            subtitle: Text('0.5.6'),
+          SwitchListTile(
+            secondary: const Icon(Icons.cloud_sync),
+            title: const Text('自动同步'),
+            subtitle: const Text('网络可用时自动同步数据'),
+            value: autoSync,
+            onChanged: (val) {
+              ref.read(autoSyncProvider.notifier).setAutoSync(val);
+              Toast.show(context, val ? '已开启自动同步' : '已关闭自动同步');
+            },
+          ),
+
+          const Divider(),
+
+          const _SectionHeader(title: '统计'),
+          FutureBuilder(
+            future: ref.read(databaseProvider).getStatistics(),
+            builder: (context, snapshot) {
+              final stats = snapshot.data ??
+                  {
+                    'total_tasks': 0,
+                    'completed_tasks': 0,
+                    'total_records': 0,
+                    'pending_sync': 0,
+                  };
+              return Column(
+                children: [
+                  _StatTile(
+                    icon: Icons.task_alt,
+                    title: '查课任务',
+                    value: '${stats['completed_tasks']}/${stats['total_tasks']}',
+                  ),
+                  _StatTile(
+                    icon: Icons.people_outline,
+                    title: '考勤记录',
+                    value: '${stats['total_records']}',
+                  ),
+                  _StatTile(
+                    icon: Icons.sync_alt,
+                    title: '待同步',
+                    value: '${stats['pending_sync']}',
+                    color: stats['pending_sync']! > 0 ? Colors.orange : null,
+                  ),
+                ],
+              );
+            },
           ),
 
           const Divider(),
@@ -65,9 +138,16 @@ class SettingsPage extends ConsumerWidget {
           ListTile(
             leading: const Icon(Icons.system_update),
             title: const Text('检查更新'),
-            subtitle: const Text('检查是否有新版本'),
+            subtitle: const Text('当前版本: 0.5.6'),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => _checkUpdate(context, ref),
+          ),
+          ListTile(
+            leading: const Icon(Icons.network_check),
+            title: const Text('网络诊断'),
+            subtitle: const Text('测试与服务器的连通性'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push('/debug'),
           ),
 
           const Divider(),
@@ -118,6 +198,18 @@ class SettingsPage extends ConsumerWidget {
               context,
               MaterialPageRoute(builder: (_) => const AboutPage()),
             ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.privacy_tip_outlined),
+            title: const Text('隐私政策'),
+            trailing: const Icon(Icons.open_in_new, size: 18),
+            onTap: () => _openPrivacyPolicy(context),
+          ),
+          ListTile(
+            leading: const Icon(Icons.description_outlined),
+            title: const Text('用户协议'),
+            trailing: const Icon(Icons.open_in_new, size: 18),
+            onTap: () => _openUserAgreement(context),
           ),
         ],
       ),
@@ -229,6 +321,42 @@ class SettingsPage extends ConsumerWidget {
     if (confirmed == true && context.mounted) {
       await LoggerService.clear();
       Toast.show(context, '缓存已清理');
+    }
+  }
+
+  Future<void> _syncNow(BuildContext context, WidgetRef ref) async {
+    try {
+      Toast.show(context, '开始同步...');
+      await ref.read(syncServiceProvider).syncNow();
+      if (context.mounted) {
+        Toast.show(context, '同步完成');
+      }
+    } catch (e) {
+      if (context.mounted) {
+        Toast.show(context, '同步失败: $e');
+      }
+    }
+  }
+
+  void _openPrivacyPolicy(BuildContext context) async {
+    final uri = Uri.parse('https://keleoz.cn/privacy');
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else {
+      if (context.mounted) {
+        Toast.show(context, '无法打开链接');
+      }
+    }
+  }
+
+  void _openUserAgreement(BuildContext context) async {
+    final uri = Uri.parse('https://keleoz.cn/terms');
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else {
+      if (context.mounted) {
+        Toast.show(context, '无法打开链接');
+      }
     }
   }
 
@@ -408,6 +536,36 @@ class SettingsPage extends ConsumerWidget {
         Toast.show(context, '检查更新失败: $e');
       }
     }
+  }
+}
+
+class _StatTile extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String value;
+  final Color? color;
+
+  const _StatTile({
+    required this.icon,
+    required this.title,
+    required this.value,
+    this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      leading: Icon(icon, color: color),
+      title: Text(title),
+      trailing: Text(
+        value,
+        style: TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.bold,
+          color: color ?? Theme.of(context).colorScheme.primary,
+        ),
+      ),
+    );
   }
 }
 

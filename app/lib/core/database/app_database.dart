@@ -67,6 +67,21 @@ class AppDatabase extends _$AppDatabase {
     count += unfinishedList.length;
     return count;
   }
+
+  /// 获取数据统计
+  Future<Map<String, int>> getStatistics() async {
+    final taskCount = await select(attendanceTasks).get();
+    final recordCount = await select(attendanceRecords).get();
+    final syncedCount = await select(syncQueue).get();
+    final completedTasks = taskCount.where((t) => t.status == 'completed').length;
+
+    return {
+      'total_tasks': taskCount.length,
+      'completed_tasks': completedTasks,
+      'total_records': recordCount.length,
+      'pending_sync': syncedCount.length,
+    };
+  }
 }
 
 LazyDatabase _openConnection() {
