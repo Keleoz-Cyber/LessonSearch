@@ -44,7 +44,7 @@ async def create_submission(
     ).all()
     
     for task in tasks:
-        if task.user_id != current_user.id:
+        if task.user_id is not None and task.user_id != current_user.id:
             raise HTTPException(
                 status_code=403,
                 detail=f"任务 {task.id} 不属于当前用户"
