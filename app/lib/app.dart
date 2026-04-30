@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -17,6 +19,7 @@ class App extends ConsumerStatefulWidget {
 class _AppState extends ConsumerState<App> {
   bool _showSyncSuccess = false;
   int _syncSuccessCount = 0;
+  StreamSubscription? _syncSubscription;
 
   @override
   void initState() {
@@ -28,16 +31,21 @@ class _AppState extends ConsumerState<App> {
     });
   }
 
+  @override
+  void dispose() {
+    _syncSubscription?.cancel();
+    super.dispose();
+  }
+
   /// 监听同步结果，成功时显示动画
   void _listenSyncResult() {
     final syncService = ref.read(syncServiceProvider);
-    syncService.lastResult.addListener(() {
-      final result = syncService.lastResult.value;
-      if (result != null && result.success > 0 && result.failed == 0) {
+    _syncSubscription = syncService.onSyncComplete.listen((event) {
+      if (event.success > 0 && event.failed == 0) {
         if (mounted) {
           setState(() {
             _showSyncSuccess = true;
-            _syncSuccessCount = result.success;
+            _syncSuccessCount = event.success;
           });
         }
       }

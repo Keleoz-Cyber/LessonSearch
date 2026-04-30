@@ -8,6 +8,20 @@ import '../logger/logger_service.dart';
 import '../../features/attendance/data/remote/attendance_remote_ds.dart';
 import '../../features/attendance/domain/models.dart';
 
+/// 同步完成事件
+class SyncCompleteEvent {
+  final int success;
+  final int failed;
+  final int skipped;
+  final DateTime timestamp;
+
+  SyncCompleteEvent({
+    required this.success,
+    required this.failed,
+    required this.skipped,
+  }) : timestamp = DateTime.now();
+}
+
 /// 消费 SyncQueue，将本地变更发送到服务端。
 class SyncService {
   final AttendanceLocalDataSource _local;
@@ -19,7 +33,10 @@ class SyncService {
   static const _interval = Duration(seconds: 10);
 
   final ValueNotifier<SyncState> state = ValueNotifier(SyncState.idle);
-  final ValueNotifier<({int success, int failed, int skipped})?> lastResult = ValueNotifier(null);
+  
+  // 使用 StreamController 确保每次同步完成都发送事件（即使结果相同）
+  final _syncCompleteController = StreamController<SyncCompleteEvent>.broadcast();
+  Stream<SyncCompleteEvent> get onSyncComplete => _syncCompleteController.stream;
 
   SyncService(this._local, this._remote);
 
@@ -109,7 +126,14 @@ class SyncService {
 
       state.value = failCount > 0 ? SyncState.error : SyncState.idle;
       final result = (success: successCount, failed: failCount, skipped: 0);
-      lastResult.value = result;
+      
+      // 发送同步完成事件（使用 Stream 确保每次都会触发，即使结果相同）
+      _syncCompleteController.add(SyncCompleteEvent(
+        success: successCount,
+        failed: failCount,
+        skipped: 0,
+      ));
+      
       LoggerService.sync('完成: 成功=$successCount 失败=$failCount');
       return result;
     } finally {
@@ -202,6 +226,7 @@ class SyncService {
   void dispose() {
     stop();
     state.dispose();
+    _syncCompleteController.close();
   }
 }
 
