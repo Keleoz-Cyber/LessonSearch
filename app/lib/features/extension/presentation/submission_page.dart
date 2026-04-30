@@ -26,8 +26,12 @@ final myDutyProvider = FutureProvider<Map<String, dynamic>>((ref) async {
     final res = await api.dio.get('/duties/my');
     final data = res.data as Map<String, dynamic>;
     return {'has_duty': true, ...data};
-  } catch (e) {
-    return {'has_duty': false};
+  } on DioException catch (e) {
+    // 404 表示没有职务，其他错误（网络/超时等）抛出
+    if (e.response?.statusCode == 404) {
+      return {'has_duty': false};
+    }
+    rethrow;
   }
 });
 
@@ -241,6 +245,11 @@ class _SubmissionPageState extends ConsumerState<SubmissionPage>
                   const Icon(Icons.error_outline, size: 48, color: Colors.grey),
                   const SizedBox(height: 16),
                   Text('加载职务状态失败: $e'),
+                  const SizedBox(height: 16),
+                  FilledButton(
+                    onPressed: () => ref.invalidate(myDutyProvider),
+                    child: const Text('重试'),
+                  ),
                 ],
               ),
             ),
