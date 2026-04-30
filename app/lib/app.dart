@@ -78,27 +78,49 @@ class _AppState extends ConsumerState<App> {
       final syncService = ref.read(syncServiceProvider);
       final localDS = ref.read(attendanceLocalDSProvider);
       
-      // 检查是否有待同步的记录
+      // 检查待同步和已失败的记录
       final pendingItems = await localDS.getPendingSyncItems();
+      final failedItems = await localDS.getFailedSyncItems();
+      final totalNeedSync = pendingItems.length + failedItems.length;
       
-      if (pendingItems.isNotEmpty) {
-        // 显示提示
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('检测到 ${pendingItems.length} 条记录未同步，正在自动同步...'),
-              duration: const Duration(seconds: 3),
-              action: SnackBarAction(
-                label: '查看',
-                onPressed: () {
-                  context.push('/debug');
-                },
+      if (totalNeedSync > 0) {
+        // 如果有失败记录，先重置为待同步状态
+        if (failedItems.isNotEmpty) {
+          await localDS.retryAllFailed();
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('检测到 ${failedItems.length} 条记录同步失败，已重置并重新同步...'),
+                duration: const Duration(seconds: 3),
+                action: SnackBarAction(
+                  label: '查看',
+                  onPressed: () {
+                    context.push('/debug');
+                  },
+                ),
               ),
-            ),
-          );
+            );
+          }
+          LoggerService.sync('启动检查: 发现 ${failedItems.length} 条失败记录，已重置');
+        } else {
+          // 只有待同步记录
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('检测到 ${pendingItems.length} 条记录未同步，正在自动同步...'),
+                duration: const Duration(seconds: 3),
+                action: SnackBarAction(
+                  label: '查看',
+                  onPressed: () {
+                    context.push('/debug');
+                  },
+                ),
+              ),
+            );
+          }
         }
         
-        LoggerService.sync('启动检查: 发现 ${pendingItems.length} 条待同步记录，开始自动同步');
+        LoggerService.sync('启动检查: 共 $totalNeedSync 条记录需要同步，开始自动同步');
         
         // 自动同步
         debugPrint('Starting startup sync...');
