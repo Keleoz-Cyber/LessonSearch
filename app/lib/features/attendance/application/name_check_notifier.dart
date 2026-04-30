@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../domain/models.dart';
 import '../data/attendance_repository.dart';
 import '../../student/data/student_repository.dart';
+import '../../../core/sync/sync_service.dart';
+import '../../../core/logger/logger_service.dart';
 
 /// 记名流程状态
 class NameCheckState {
@@ -117,9 +119,11 @@ class StudentWithStatus {
 class NameCheckNotifier extends StateNotifier<NameCheckState> {
   final AttendanceRepository _attendanceRepo;
   final StudentRepository _studentRepo;
+  final SyncService? _syncService;
 
-  NameCheckNotifier(this._attendanceRepo, this._studentRepo)
-    : super(const NameCheckState());
+  NameCheckNotifier(this._attendanceRepo, this._studentRepo, {SyncService? syncService})
+    : _syncService = syncService,
+      super(const NameCheckState());
 
   /// 恢复未完成的记名任务
   Future<void> resumeTask(String taskId) async {
@@ -319,6 +323,19 @@ class NameCheckNotifier extends StateNotifier<NameCheckState> {
           finalMap[classId] = finalStudents;
           state = state.copyWith(studentsByClass: finalMap);
         }
+      }
+
+      // 立即同步到服务端，确保数据一致
+      if (_syncService != null) {
+        _syncService!.syncNow().then((result) {
+          if (result.failed == 0) {
+            LoggerService.sync('状态变更已同步: task=${task.id}, student=${student.student.id}');
+          } else {
+            LoggerService.sync('状态变更同步失败: task=${task.id}, student=${student.student.id}, failed=${result.failed}', isError: true);
+          }
+        }).catchError((e) {
+          LoggerService.sync('状态变更同步异常: $e', isError: true);
+        });
       }
     } catch (e) {
       // 保存失败时回滚

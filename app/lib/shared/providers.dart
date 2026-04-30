@@ -119,6 +119,29 @@ final syncStateProvider = Provider<SyncState>((ref) {
   return service.state.value;
 });
 
+/// 待同步记录数量（实时）
+final pendingSyncCountProvider = StreamProvider<int>((ref) async* {
+  final db = ref.watch(databaseProvider);
+  
+  // 获取所有记录，然后在 Dart 中过滤
+  Future<int> countPending() async {
+    final all = await db.select(db.syncQueue).get();
+    return all.where((s) {
+      if (s.syncStatus == 'pending') return true;
+      if (s.syncStatus == 'failed' && s.retryCount < 5) return true;
+      return false;
+    }).length;
+  }
+  
+  // 初始查询
+  yield await countPending();
+  
+  // 定时刷新（每2秒检查一次）
+  await for (final _ in Stream.periodic(const Duration(seconds: 2))) {
+    yield await countPending();
+  }
+});
+
 /// 点名流程状态管理
 final rollCallProvider = StateNotifierProvider<RollCallNotifier, RollCallState>(
   (ref) {
@@ -135,6 +158,7 @@ final nameCheckProvider =
       return NameCheckNotifier(
         ref.watch(attendanceRepositoryProvider),
         ref.watch(studentRepositoryProvider),
+        syncService: ref.watch(syncServiceProvider),
       );
     });
 

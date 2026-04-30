@@ -33,7 +33,7 @@ class SyncService {
     _timer = null;
   }
 
-  Future<void> syncNow() => processQueueWithStats();
+  Future<({int success, int failed, int skipped})> syncNow() => processQueueWithStats();
 
   /// 返回同步结果统计
   Future<({int success, int failed, int skipped})>

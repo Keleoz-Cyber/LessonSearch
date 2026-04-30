@@ -3,16 +3,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
-import 'package:dio/dio.dart';
 
 import '../../../core/logger/logger_service.dart';
-import '../../../core/router/app_router.dart';
+import '../../../core/sync/sync_service.dart';
 import '../../../shared/providers.dart';
 import '../../../shared/widgets/loading_overlay.dart';
 import '../../../shared/widgets/toast.dart';
 import '../../../shared/widgets/status_badge.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../data/submission_service.dart';
+import '../../attendance/domain/models.dart';
 
 final currentWeekProvider = FutureProvider<Map<String, dynamic>>((ref) async {
   final api = ref.watch(apiClientProvider);
@@ -154,11 +154,77 @@ class _SubmissionPageState extends ConsumerState<SubmissionPage>
     setState(() => _loading = true);
 
     // 提交前强制同步，确保本地编辑已同步到服务端
+    // 同步失败则阻止提交，避免数据不一致
     try {
-      await ref.read(syncServiceProvider).syncNow();
+      final result = await ref.read(syncServiceProvider).syncNow();
+      if (result.failed > 0) {
+        setState(() => _loading = false);
+        Toast.show(context, '同步失败 ${result.failed} 项，请检查网络后重试');
+        return;
+      }
+      LoggerService.sync('提交前同步完成: 成功=${result.success} 失败=${result.failed}');
     } catch (e) {
+      setState(() => _loading = false);
       LoggerService.sync('同步失败: $e', isError: true);
+      Toast.show(context, '同步失败，请检查网络后重试');
+      return;
     }
+
+    // 获取所有选中任务的记录数据，用于确认对话框显示
+    final tasksConfirmData = <Map<String, dynamic>>[];
+    try {
+      final repo = ref.read(attendanceRepositoryProvider);
+      final studentRepo = ref.read(studentRepositoryProvider);
+
+      for (final taskId in _selectedTaskIds) {
+        final task = await repo.getTask(taskId);
+        if (task == null) continue;
+
+        final records = await repo.getRecordsByTask(taskId);
+        final classNames = await studentRepo.getClassNames(task.classIds);
+
+        final total = records.length;
+        final present = records.where((r) => r.status == AttendanceStatus.present).length;
+        final absent = records.where((r) => r.status == AttendanceStatus.absent).length;
+        final late = records.where((r) => r.status == AttendanceStatus.late_).length;
+        final leave = records.where((r) => r.status == AttendanceStatus.leave).length;
+        final other = records.where((r) => r.status == AttendanceStatus.other).length;
+
+        tasksConfirmData.add({
+          'task_id': taskId,
+          'class_names': classNames,
+          'total': total,
+          'present': present,
+          'absent': absent,
+          'late': late,
+          'leave': leave,
+          'other': other,
+        });
+      }
+    } catch (e) {
+      setState(() => _loading = false);
+      LoggerService.sync('获取确认数据失败: $e', isError: true);
+      Toast.show(context, '获取任务数据失败，请重试');
+      return;
+    }
+
+    setState(() => _loading = false);
+
+    // 显示确认对话框
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => _SubmissionConfirmDialog(
+        tasksData: tasksConfirmData,
+      ),
+    );
+
+    if (confirmed != true) {
+      return;
+    }
+
+    // 用户确认后执行提交
+    setState(() => _loading = true);
 
     int successCount = 0;
     int failCount = 0;
@@ -324,12 +390,70 @@ class _SubmitTaskTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final adminsAsync = ref.watch(adminsProvider);
     final tasksAsync = ref.watch(weekNameCheckTasksProvider(weekNumber));
+    final pendingCount = ref.watch(pendingSyncCountProvider);
+    final syncState = ref.watch(syncStateProvider);
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // 未同步记录警告
+          pendingCount.when(
+            data: (count) {
+              if (count == 0) return const SizedBox.shrink();
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: Card(
+                  color: Colors.orange.withValues(alpha: 0.1),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: BorderSide(color: Colors.orange.withValues(alpha: 0.3)),
+                  ),
+                  child: InkWell(
+                    onTap: syncState == SyncState.syncing
+                        ? null
+                        : () => ref.read(syncServiceProvider).syncNow(),
+                    borderRadius: BorderRadius.circular(12),
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Row(
+                        children: [
+                          Icon(
+                            syncState == SyncState.syncing
+                                ? Icons.sync
+                                : Icons.warning_amber,
+                            color: Colors.orange,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              syncState == SyncState.syncing
+                                  ? '正在同步 $count 条记录...'
+                                  : '有 $count 条记录未同步，建议先同步再提交',
+                              style: TextStyle(
+                                color: Colors.orange.shade800,
+                                fontWeight: FontWeight.w500,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 2,
+                            ),
+                          ),
+                          if (syncState != SyncState.syncing)
+                            TextButton(
+                              onPressed: () => ref.read(syncServiceProvider).syncNow(),
+                              child: const Text('立即同步'),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+            loading: () => const SizedBox.shrink(),
+            error: (_, __) => const SizedBox.shrink(),
+          ),
           Card(
             child: Padding(
               padding: const EdgeInsets.all(16),
@@ -883,5 +1007,135 @@ class _SubmissionCard extends ConsumerWidget {
         Toast.show(context, '撤回失败: $e');
       }
     }
+  }
+}
+
+/// 提交确认对话框：显示每个任务的统计信息，让用户确认后再提交
+class _SubmissionConfirmDialog extends StatelessWidget {
+  final List<Map<String, dynamic>> tasksData;
+
+  const _SubmissionConfirmDialog({required this.tasksData});
+
+  @override
+  Widget build(BuildContext context) {
+    final hasAbnormal = tasksData.any((t) {
+      final absent = t['absent'] as int? ?? 0;
+      final late = t['late'] as int? ?? 0;
+      final leave = t['leave'] as int? ?? 0;
+      final other = t['other'] as int? ?? 0;
+      return absent + late + leave + other > 0;
+    });
+
+    return AlertDialog(
+      icon: const Icon(Icons.fact_check, size: 48, color: Colors.orange),
+      title: const Text('确认提交名单'),
+      content: SizedBox(
+        width: double.maxFinite,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                '请仔细检查以下名单，确认无误后再提交：',
+                style: TextStyle(fontSize: 14),
+              ),
+              const SizedBox(height: 16),
+              ...tasksData.map((task) => _buildTaskCard(context, task)),
+              if (hasAbnormal) ...[
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.warning_amber, color: Colors.orange, size: 20),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          '注意：部分任务存在异常记录，请确认状态是否正确',
+                          style: TextStyle(color: Colors.orange, fontSize: 13),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: const Text('取消'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(context, true),
+          style: FilledButton.styleFrom(backgroundColor: Colors.green),
+          child: const Text('确认提交'),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTaskCard(BuildContext context, Map<String, dynamic> task) {
+    final classNames = (task['class_names'] as List?)?.join('、') ?? '未知班级';
+    final total = task['total'] as int? ?? 0;
+    final present = task['present'] as int? ?? 0;
+    final absent = task['absent'] as int? ?? 0;
+    final late = task['late'] as int? ?? 0;
+    final leave = task['leave'] as int? ?? 0;
+    final other = task['other'] as int? ?? 0;
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              classNames,
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _buildStatChip('共$total人', Colors.grey),
+                _buildStatChip('到$present', Colors.green),
+                if (absent > 0) _buildStatChip('缺$absent', Colors.red),
+                if (late > 0) _buildStatChip('迟$late', Colors.amber.shade700),
+                if (leave > 0) _buildStatChip('假$leave', Colors.blue),
+                if (other > 0) _buildStatChip('他$other', Colors.purple),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatChip(String label, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w500),
+      ),
+    );
   }
 }

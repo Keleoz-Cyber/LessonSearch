@@ -9,6 +9,7 @@ import '../../../shared/widgets/toast.dart';
 import '../data/records_repository.dart';
 import '../../attendance/domain/models.dart';
 import '../../attendance/domain/text_template.dart';
+import '../../../core/logger/logger_service.dart';
 
 class RecordDetailPage extends ConsumerStatefulWidget {
   final String taskId;
@@ -63,6 +64,18 @@ class _RecordDetailPageState extends ConsumerState<RecordDetailPage> {
   }) async {
     final repo = ref.read(recordsRepositoryProvider);
     await repo.updateRecord(recordId, newStatus, remark: remark);
+
+    // 立即同步到服务端，确保编辑生效
+    final syncService = ref.read(syncServiceProvider);
+    syncService.syncNow().then((result) {
+      if (result.failed == 0) {
+        LoggerService.sync('记录编辑已同步: record=$recordId');
+      } else {
+        LoggerService.sync('记录编辑同步失败: record=$recordId, failed=${result.failed}', isError: true);
+      }
+    }).catchError((e) {
+      LoggerService.sync('记录编辑同步异常: $e', isError: true);
+    });
 
     // 直接更新列表项，不重新加载整个列表（保持滚动位置）
     setState(() {

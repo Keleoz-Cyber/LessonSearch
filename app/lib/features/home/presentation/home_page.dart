@@ -116,6 +116,7 @@ class _HomePageState extends ConsumerState<HomePage> {
   @override
   Widget build(BuildContext context) {
     final syncState = ref.watch(syncStateProvider);
+    final pendingCount = ref.watch(pendingSyncCountProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -125,24 +126,65 @@ class _HomePageState extends ConsumerState<HomePage> {
         ),
         centerTitle: true,
         actions: [
-          if (syncState == SyncState.syncing)
-            const Padding(
-              padding: EdgeInsets.only(right: 12),
-              child: SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              ),
-            )
-          else if (syncState == SyncState.error)
-            Padding(
-              padding: EdgeInsets.only(right: 12),
-              child: IconButton(
-                icon: const Icon(Icons.sync_problem, color: Colors.red),
-                tooltip: '同步异常，点击重试',
-                onPressed: () => ref.read(syncServiceProvider).syncNow(),
-              ),
-            ),
+          // 同步状态指示器（带数量徽章）
+          pendingCount.when(
+            data: (count) {
+              if (count == 0 && syncState != SyncState.syncing) {
+                return const SizedBox.shrink();
+              }
+              return Stack(
+                alignment: Alignment.center,
+                children: [
+                  if (syncState == SyncState.syncing)
+                    const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  else if (syncState == SyncState.error)
+                    IconButton(
+                      icon: const Icon(Icons.sync_problem, color: Colors.red),
+                      tooltip: '同步异常，点击重试',
+                      onPressed: () => ref.read(syncServiceProvider).syncNow(),
+                    )
+                  else
+                    IconButton(
+                      icon: const Icon(Icons.sync),
+                      tooltip: '同步记录',
+                      onPressed: () => ref.read(syncServiceProvider).syncNow(),
+                    ),
+                  // 数量徽章
+                  if (count > 0 && syncState != SyncState.syncing)
+                    Positioned(
+                      right: 4,
+                      top: 4,
+                      child: Container(
+                        padding: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          color: Colors.red,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        constraints: const BoxConstraints(
+                          minWidth: 16,
+                          minHeight: 16,
+                        ),
+                        child: Text(
+                          count > 99 ? '99+' : '$count',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
+            loading: () => const SizedBox.shrink(),
+            error: (_, __) => const SizedBox.shrink(),
+          ),
           IconButton(
             icon: const Icon(Icons.settings_outlined),
             tooltip: '设置',
@@ -158,6 +200,8 @@ class _HomePageState extends ConsumerState<HomePage> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                // 未同步记录警告卡片
+                _buildSyncWarningCard(),
                 EntryCard(
                   icon: Icons.record_voice_over,
                   title: '点名',
@@ -194,6 +238,92 @@ class _HomePageState extends ConsumerState<HomePage> {
           ),
         ),
       ),
+    );
+  }
+
+  /// 未同步记录警告卡片
+  Widget _buildSyncWarningCard() {
+    final pendingCount = ref.watch(pendingSyncCountProvider);
+    final syncState = ref.watch(syncStateProvider);
+
+    return pendingCount.when(
+      data: (count) {
+        if (count == 0) return const SizedBox.shrink();
+
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: Card(
+            color: Colors.orange.withValues(alpha: 0.1),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: BorderSide(color: Colors.orange.withValues(alpha: 0.3)),
+            ),
+            child: InkWell(
+              onTap: () {
+                if (syncState != SyncState.syncing) {
+                  ref.read(syncServiceProvider).syncNow();
+                }
+              },
+              borderRadius: BorderRadius.circular(12),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.withValues(alpha: 0.2),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        syncState == SyncState.syncing
+                            ? Icons.sync
+                            : Icons.warning_amber,
+                        color: Colors.orange,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            syncState == SyncState.syncing
+                                ? '正在同步 $count 条记录...'
+                                : '有 $count 条记录未同步',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            syncState == SyncState.syncing
+                                ? '请保持网络连接，同步完成后可正常使用'
+                                : '点击此处立即同步，避免数据丢失',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.grey[600],
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 2,
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (syncState != SyncState.syncing)
+                      const Icon(Icons.chevron_right, color: Colors.orange),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+      loading: () => const SizedBox.shrink(),
+      error: (_, __) => const SizedBox.shrink(),
     );
   }
 }
