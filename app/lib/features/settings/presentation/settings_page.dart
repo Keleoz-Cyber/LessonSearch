@@ -80,6 +80,7 @@ class SettingsPage extends ConsumerWidget {
                     'total_tasks': 0,
                     'completed_tasks': 0,
                     'abandoned_tasks': 0,
+                    'in_progress_tasks': 0,
                     'total_records': 0,
                     'pending_sync': 0,
                   };
@@ -89,7 +90,7 @@ class SettingsPage extends ConsumerWidget {
                     icon: Icons.task_alt,
                     title: '查课任务',
                     subtitle:
-                        '${stats['completed_tasks']} 个完成 · ${stats['abandoned_tasks']} 个放弃 · 共 ${stats['total_tasks']} 个',
+                        '${stats['completed_tasks']} 个完成 · ${stats['in_progress_tasks']} 个进行中 · ${stats['abandoned_tasks']} 个放弃',
                     value: '',
                   ),
                   _StatTile(
