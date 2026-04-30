@@ -9,6 +9,7 @@ import '../../../core/logger/logger_service.dart';
 import '../../../core/sync/sync_service.dart';
 import '../../../shared/providers.dart';
 import '../../../shared/widgets/toast.dart';
+import 'markdown_document_page.dart';
 
 class SettingsPage extends ConsumerWidget {
   const SettingsPage({super.key});
@@ -329,26 +330,28 @@ class SettingsPage extends ConsumerWidget {
     }
   }
 
-  void _openPrivacyPolicy(BuildContext context) async {
-    final uri = Uri.parse('https://keleoz.cn/privacy');
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    } else {
-      if (context.mounted) {
-        Toast.show(context, '无法打开链接');
-      }
-    }
+  void _openPrivacyPolicy(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const MarkdownDocumentPage(
+          title: '隐私政策',
+          assetPath: 'assets/privacy_policy.md',
+        ),
+      ),
+    );
   }
 
-  void _openUserAgreement(BuildContext context) async {
-    final uri = Uri.parse('https://keleoz.cn/terms');
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    } else {
-      if (context.mounted) {
-        Toast.show(context, '无法打开链接');
-      }
-    }
+  void _openUserAgreement(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const MarkdownDocumentPage(
+          title: '用户协议',
+          assetPath: 'assets/user_agreement.md',
+        ),
+      ),
+    );
   }
 
   String _themeModeLabel(ThemeMode mode) {
@@ -826,6 +829,46 @@ class _AboutPageState extends ConsumerState<AboutPage> {
                     subtitle: Text('服务端'),
                   ),
                 ],
+              ),
+
+              const SizedBox(height: 24),
+
+              Builder(
+                builder: (context) => _InfoSection(
+                  title: '法律信息',
+                  children: [
+                    ListTile(
+                      dense: true,
+                      leading: const Icon(Icons.privacy_tip_outlined, size: 20),
+                      title: const Text('隐私政策'),
+                      trailing: const Icon(Icons.chevron_right, size: 20),
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const MarkdownDocumentPage(
+                            title: '隐私政策',
+                            assetPath: 'assets/privacy_policy.md',
+                          ),
+                        ),
+                      ),
+                    ),
+                    ListTile(
+                      dense: true,
+                      leading: const Icon(Icons.description_outlined, size: 20),
+                      title: const Text('用户协议'),
+                      trailing: const Icon(Icons.chevron_right, size: 20),
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const MarkdownDocumentPage(
+                            title: '用户协议',
+                            assetPath: 'assets/user_agreement.md',
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
 
               const SizedBox(height: 32),
