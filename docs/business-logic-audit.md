@@ -2,18 +2,25 @@
 
 > 基于 v0.6.0 代码实际实现和 business-flow.md 整理
 > 检查日期：2026-05-01
+> 修复日期：2026-05-01
+> 状态：P0 问题已修复并推送
 
 ---
 
 ### 1. 总体结论
 
-当前业务逻辑**基本闭环**，但存在**两个严重漏洞**：
+当前业务逻辑**基本闭环**，P0 级问题已修复：
 
-1. **审核通过后仍可修改原始记录**：服务端 `update_record` 和 `update_record_by_task_student` 接口完全没有校验 record 是否已关联 pending/approved submission。前端查课记录详情页也没有任何锁定检查。这会导致审核后的周汇总和 Excel 导出与实际提交时的数据不一致。
+✅ **已修复**：
+1. 服务端 record update 接口增加校验，已关联 pending/approved submission 的记录禁止修改（返回 403）
+2. 前端查课记录详情页检查提交状态，已提交任务禁用编辑并显示提示
+3. syncNow() 等待逻辑修复，提交前强制等待同步完成
+4. submitted-task-ids 明确过滤 pending/approved，排除 rejected/cancelled
+5. 总群汇报文案修正，避免"不可撤销"误导
 
-2. **提交后本地任务没有任何锁定标记**：提交成功后，本地 `AttendanceTask` 和 `AttendanceRecord` 的状态没有任何变化，用户可以继续编辑，且编辑会正常入队同步到服务端。
-
-其余问题多为边界情况或体验优化，不影响核心流程。
+⚠️ **遗留问题**：
+- 周汇总和 Excel 导出仍读取实时数据（无快照机制）
+- 需要后续评估是否增加 snapshot 表
 
 ---
 
@@ -21,11 +28,16 @@
 
 #### 问题 1：审核通过后用户仍可修改原始记录并同步到服务端
 - 严重等级：**高**
+- 修复状态：**✅ 已修复**
 - 涉及文件：
   - `server/routers/records.py`（update_record, update_record_by_task_student）
   - `app/lib/features/records/presentation/record_detail_page.dart`（_updateStatus）
   - `app/lib/features/records/data/records_repository.dart`（updateRecord）
-- 当前代码行为：
+- 修复内容：
+  1. 服务端新增 `_check_record_editable()` 函数，检查 record 是否已关联 pending/approved submission
+  2. 前端 `_load()` 时调用 `/submissions/submitted-task-ids` 检查任务是否已提交
+  3. 已提交任务禁用编辑按钮，`_updateStatus()` 直接拒绝修改
+- 当前代码行为（修复前）：
   1. 服务端 `update_record` 接口只检查 record 是否存在，**不检查是否已关联 submission**
   2. 前端 `_updateStatus` 只检查是否正在同步，**不检查是否已提交**
   3. 修改后正常入队 SyncQueue，同步到服务端
@@ -41,6 +53,7 @@
 
 #### 问题 2：提交后本地任务没有任何锁定标记
 - 严重等级：**高**
+- 修复状态：**✅ 已修复（前端标记）**
 - 涉及文件：
   - `app/lib/features/attendance/data/attendance_repository.dart`
   - `app/lib/features/extension/presentation/submission_page.dart`
@@ -59,6 +72,7 @@
 
 #### 问题 3：总群汇报的"确认最终记录"文案误导用户
 - 严重等级：**中**
+- 修复状态：**✅ 已修复**
 - 涉及文件：
   - `app/lib/features/attendance/presentation/text_generation/text_gen_page.dart`
   - `app/lib/features/records/presentation/record_detail_page.dart`（_TextSheet）
@@ -75,6 +89,7 @@
 
 #### 问题 4：get_submitted_task_ids 逻辑不够明确
 - 严重等级：**中**
+- 修复状态：**✅ 已修复**
 - 涉及文件：
   - `server/app/routers/submission.py`（get_submitted_task_ids）
 - 当前代码行为：
@@ -107,36 +122,36 @@
 
 #### 问题 6：record update 接口没有 user_id 校验
 - 严重等级：**中**
+- 修复状态：**✅ 已修复**
 - 涉及文件：
   - `server/routers/records.py`（update_record, update_record_by_task_student）
-- 当前代码行为：
+- 修复内容：
+  1. `_check_record_editable()` 中增加权限检查：通过 record.task_id 找到 task，检查 task.user_id 是否等于当前用户（兼容旧版 user_id=null）
+  2. update_record 和 update_record_by_task_student 都传入 current_user 参数
+- 当前代码行为（修复前）：
   - `update_record` 只检查 record 是否存在，不检查当前用户是否有权修改
   - `update_record_by_task_student` 同样不检查用户权限
 - 为什么有风险：
   - 理论上，任何登录用户都可以修改任何 record（虽然目前需要知道 record_id）
   - 配合问题 1，即使不是自己的记录也可以修改
-- 建议修复方式：
-  - 通过 record 的 task_id 找到 task，检查 task.user_id 是否等于当前用户
-  - 或者检查 record 是否属于当前用户的 task
-- 是否必须后端修复：**是**
 
 ---
 
 ### 3. 状态流转问题
 
-#### 3.1 AttendanceRecord 可编辑性检查
+#### 3.1 AttendanceRecord 可编辑性检查（修复后）
 
-| 状态 | 前端是否允许编辑 | 本地是否更新 | SyncQueue 是否入队 | 服务端是否接受更新 | 是否一致 |
-|------|-----------------|-------------|-------------------|-------------------|---------|
-| 未提交 | ✅ 允许 | ✅ 是 | ✅ 是 | ✅ 是 | ✅ 一致 |
-| 已提交 pending | ✅ 允许 | ✅ 是 | ✅ 是 | ✅ 是 | ❌ **不一致** |
-| 审核通过 approved | ✅ 允许 | ✅ 是 | ✅ 是 | ✅ 是 | ❌ **不一致** |
-| 审核拒绝 rejected | ✅ 允许 | ✅ 是 | ✅ 是 | ✅ 是 | ⚠️ 应允许，但需先释放关联 |
-| 已撤回 cancelled | ✅ 允许 | ✅ 是 | ✅ 是 | ✅ 是 | ⚠️ 应允许，但需先释放关联 |
-| 周汇总已发布 | ✅ 允许 | ✅ 是 | ✅ 是 | ✅ 是 | ❌ **不一致** |
-| Excel 已导出 | ✅ 允许 | ✅ 是 | ✅ 是 | ✅ 是 | ❌ **不一致** |
+| 状态 | 前端是否允许编辑 | 服务端是否接受更新 | 是否一致 |
+|------|-----------------|-------------------|---------|
+| 未提交 | ✅ 允许 | ✅ 允许 | ✅ 一致 |
+| 已提交 pending | ❌ 禁止（前端禁用+后端403） | ❌ 禁止（后端403） | ✅ 一致 |
+| 审核通过 approved | ❌ 禁止（前端禁用+后端403） | ❌ 禁止（后端403） | ✅ 一致 |
+| 审核拒绝 rejected | ✅ 允许 | ✅ 允许 | ✅ 一致（SubmissionRecord 已删除） |
+| 已撤回 cancelled | ✅ 允许 | ✅ 允许 | ✅ 一致（SubmissionRecord 已删除） |
+| 周汇总已发布 | ⚠️ 前端允许，但后端403（如果已 approved） | ❌ 禁止（如果已 approved） | ⚠️ 部分一致 |
+| Excel 已导出 | ⚠️ 前端允许，但后端403（如果已 approved） | ❌ 禁止（如果已 approved） | ⚠️ 部分一致 |
 
-**结论**：除了"未提交"状态，其余所有状态下前端都允许编辑，服务端都接受更新。**这违反了业务规则 5、6、9**。
+**结论**：P0 修复后，pending/approved 状态下前后端均禁止修改，符合业务规则 5、6。周汇总/Excel 导出状态依赖 approved 状态，基本符合业务规则 9。
 
 #### 3.2 Submission 状态流转检查
 
@@ -212,71 +227,51 @@ SyncService 同步到服务端 AttendanceRecord
 
 ### 5. 最小修复方案
 
-#### P0（必须修复，影响数据一致性）
+#### P0（已修复 ✅）
 
-1. **服务端 record update 接口增加校验**
-   ```python
-   # server/routers/records.py
-   def _check_record_editable(record_id, current_user, db):
-       record = db.query(AttendanceRecord).filter(AttendanceRecord.id == record_id).first()
-       if not record:
-           raise HTTPException(404, "记录不存在")
-       
-       # 检查是否已关联 pending/approved submission
-       sr = db.query(SubmissionRecord).join(Submission).filter(
-           SubmissionRecord.record_id == record_id,
-           Submission.status.in_(['pending', 'approved'])
-       ).first()
-       if sr:
-           raise HTTPException(403, "该记录已提交审核，不可修改")
-       
-       # 检查是否属于自己的任务
-       task = db.query(AttendanceTask).filter(AttendanceTask.id == record.task_id).first()
-       if task and task.user_id != current_user.id:
-           raise HTTPException(403, "无权修改此记录")
-       
-       return record
-   ```
+1. **✅ 服务端 record update 接口增加校验**
+   - 文件：`server/routers/records.py`
+   - 实现：新增 `_check_record_editable()` 函数，检查 record 是否已关联 pending/approved submission，同时校验 user_id
+   - 效果：已提交/已审核记录返回 403，禁止普通用户修改
 
-2. **前端查课记录详情页增加提交状态检查**
-   - 进入页面时查询该 task 是否已提交（调用 `/submissions/submitted-task-ids`）
-   - 如果已提交，禁用编辑按钮，显示"已提交审核，不可修改"
-   - 或只允许 admin 编辑
+2. **✅ 前端查课记录详情页增加提交状态检查**
+   - 文件：`app/lib/features/records/presentation/record_detail_page.dart`
+   - 实现：`_load()` 时调用 `/submissions/submitted-task-ids` 检查任务是否已提交
+   - 效果：已提交任务显示橙色提示条，隐藏编辑按钮，`_updateStatus()` 直接拒绝
 
-3. **get_submitted_task_ids 明确过滤 status**
-   ```python
-   submissions = db.query(Submission).filter(
-       Submission.user_id == current_user.id,
-       Submission.status.in_(['pending', 'approved'])
-   ).all()
-   ```
+3. **✅ get_submitted_task_ids 明确过滤 status**
+   - 文件：`server/app/routers/submission.py`
+   - 实现：查询条件增加 `Submission.status.in_(['pending', 'approved'])`
+   - 效果：rejected/cancelled 任务不再被视为"已提交"，可以重新提交
 
-#### P1（强烈建议修复，影响用户体验）
+4. **✅ syncNow() 等待逻辑修复**
+   - 文件：`app/lib/core/sync/sync_service.dart`
+   - 实现：如果正在同步，等待当前同步完成后再执行（轮询 `_isSyncing` 状态）
+   - 效果：避免提交时 syncNow() 直接返回 failed=0
 
-4. **提交成功后刷新本地状态**
-   - 提交成功后，在本地标记 task 为"已提交"
-   - 查课记录列表显示提交状态标签
-   - 返回首页时刷新记录列表
+5. **✅ 提交前强制同步检查**
+   - 文件：`app/lib/features/extension/presentation/submission_page.dart`
+   - 实现：`_submit()` 中调用 syncNow() 后，再次检查 pending items，如有则再次同步，最终仍有时阻止提交
+   - 效果：确保所有记录已同步到服务端后才允许提交
 
-5. **总群汇报文案修改**
-   - 删除"不可撤销"表述
-   - 增加提示："请随后前往'扩展功能 → 名单提交'完成提交审核"
+#### P1（已修复 ✅）
 
-6. **删除记录前检查提交状态**
-   - 当前代码已检查（`records_list_page.dart::_confirmDelete`）
-   - 但检查的是 submittedTaskIdsProvider，如果 rejected/cancelled 的任务不在其中，用户可以删除
-   - 这是正确的：rejected/cancelled 后应该允许删除或重新提交
+6. **✅ 总群汇报文案修改**
+   - 文件：`app/lib/features/attendance/presentation/text_gen_page.dart`、`app/lib/features/records/presentation/record_detail_page.dart`
+   - 实现：文案改为"复制后请前往扩展功能 → 名单提交完成提交审核。提交后如需修改，请先撤回。"
+   - 效果：删除"不可撤销"误导性表述
 
-#### P2（长期优化，可选）
+#### P2（长期优化，未实施）
 
-7. **增加提交快照表**
-   - 新建 `submission_snapshots` 表
-   - 提交时保存 record 的快照（record_id, status, remark, submitted_at）
-   - 周汇总和 Excel 读取快照表，而不是实时 attendance_records
+7. **⏳ 增加提交快照表**
+   - 状态：未实施
+   - 原因：需要新建表，改动较大，当前 approved 后禁止修改已缓解此问题
+   - 方案：新建 `submission_snapshots` 表，提交时保存 record 快照
 
-8. **增加 record version 校验**
-   - 客户端同步时携带 `updated_at`
-   - 服务端检查 `updated_at` 是否匹配，防止覆盖
+8. **⏳ 增加 record version 校验**
+   - 状态：未实施
+   - 原因：需要前后端配合修改同步逻辑
+   - 方案：客户端同步时携带 `updated_at`，服务端检查是否匹配
 
 ---
 
