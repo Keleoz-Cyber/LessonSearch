@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from typing import Optional
 
 from app.core.database import get_db
-from app.models import AttendanceTask, TaskClass, AttendanceRecord, User, Class
+from app.models import AttendanceTask, TaskClass, AttendanceRecord, User, Class, Submission, SubmissionRecord
 from app.schemas import TaskCreate, TaskUpdate, TaskOut
 from routers.auth import get_current_user, _verify_token
 
@@ -135,6 +135,25 @@ def update_task(
         raise HTTPException(status_code=403, detail="无权修改此任务")
 
     if body.status is not None:
+        # 放弃任务时，检查是否已关联 pending/approved 的 submission
+        if body.status == "abandoned":
+            record_ids = db.query(AttendanceRecord.id).filter(
+                AttendanceRecord.task_id == task_id
+            ).all()
+            record_ids = [r.id for r in record_ids]
+            
+            if record_ids:
+                existing = db.query(SubmissionRecord).join(Submission).filter(
+                    SubmissionRecord.record_id.in_(record_ids),
+                    Submission.status.in_(["pending", "approved"])
+                ).first()
+                
+                if existing:
+                    raise HTTPException(
+                        status_code=403,
+                        detail="任务已提交审核，不能删除/放弃；如需修改请先撤回"
+                    )
+        
         task.status = body.status
     if body.phase is not None:
         task.phase = body.phase
