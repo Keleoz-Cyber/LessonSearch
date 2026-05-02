@@ -188,6 +188,26 @@ class _SubmissionPageState extends ConsumerState<SubmissionPage>
       }
       
       LoggerService.sync('提交前同步完成: 所有记录已同步到服务端');
+
+      // 再次校验：选中的任务是否仍然存在、completed、且未删除
+      final repo = ref.read(attendanceRepositoryProvider);
+      final invalidTasks = <String>[];
+      for (final taskId in _selectedTaskIds) {
+        final task = await repo.getTask(taskId);
+        if (task == null || task.status != TaskStatus.completed) {
+          invalidTasks.add(taskId);
+        }
+      }
+      if (invalidTasks.isNotEmpty) {
+        setState(() => _loading = false);
+        Toast.show(context, '${invalidTasks.length} 个任务已被删除或状态异常，请重新选择');
+        // 刷新任务列表，移除无效选中
+        setState(() {
+          _selectedTaskIds.removeWhere((id) => invalidTasks.contains(id));
+        });
+        ref.invalidate(weekNameCheckTasksProvider(weekNumber));
+        return;
+      }
     } catch (e) {
       setState(() => _loading = false);
       LoggerService.sync('同步失败: $e', isError: true);

@@ -134,6 +134,12 @@ class _RecordsListPageState extends ConsumerState<RecordsListPage> {
     if (confirm == true) {
       final repo = ref.read(recordsRepositoryProvider);
       await repo.deleteTask(summary.id);
+
+      // 删除后刷新名单提交页的 provider，避免已删除任务仍显示
+      ref.invalidate(weekNameCheckTasksProvider);
+      ref.invalidate(submittedTaskIdsProvider);
+      ref.invalidate(mySubmissionsProvider);
+
       _load();
     }
   }

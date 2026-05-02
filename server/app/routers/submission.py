@@ -43,11 +43,27 @@ async def create_submission(
         AttendanceTask.id.in_(body.task_ids)
     ).all()
     
+    # 校验：所有 task 必须存在
+    found_task_ids = {t.id for t in tasks}
+    missing_task_ids = set(body.task_ids) - found_task_ids
+    if missing_task_ids:
+        raise HTTPException(
+            status_code=400,
+            detail=f"任务不存在或已被删除: {', '.join(missing_task_ids)}"
+        )
+    
     for task in tasks:
+        # 校验：任务必须属于当前用户
         if task.user_id is not None and task.user_id != current_user.id:
             raise HTTPException(
                 status_code=403,
                 detail=f"任务 {task.id} 不属于当前用户"
+            )
+        # 校验：任务状态必须是 completed
+        if task.status != "completed":
+            raise HTTPException(
+                status_code=400,
+                detail=f"任务 {task.id} 状态为 {task.status}，只有已完成的任务才能提交"
             )
     
     records = db.query(AttendanceRecord).filter(
