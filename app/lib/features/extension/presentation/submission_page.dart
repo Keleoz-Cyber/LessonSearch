@@ -573,18 +573,11 @@ class _SubmitTaskTab extends ConsumerWidget {
               ),
             ),
           const SizedBox(height: 16),
-          FilledButton(
-            onPressed: loading ? null : onSubmit,
-            style: FilledButton.styleFrom(
-              minimumSize: const Size.fromHeight(48),
-            ),
-            child: loading
-                ? const SizedBox(
-                    width: 24,
-                    height: 24,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Text('提交审核'),
+          _SubmitButton(
+            loading: loading,
+            pendingCount: pendingCount,
+            syncState: syncState,
+            onSubmit: onSubmit,
           ),
           const SizedBox(height: 24),
           Text('说明', style: Theme.of(context).textTheme.titleSmall),
@@ -599,6 +592,85 @@ class _SubmitTaskTab extends ConsumerWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _SubmitButton extends StatelessWidget {
+  final bool loading;
+  final AsyncValue<int> pendingCount;
+  final SyncState syncState;
+  final VoidCallback onSubmit;
+
+  const _SubmitButton({
+    required this.loading,
+    required this.pendingCount,
+    required this.syncState,
+    required this.onSubmit,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    // 如果正在提交中（弹出确认对话框后），显示 loading
+    if (loading) {
+      return FilledButton(
+        onPressed: null,
+        style: FilledButton.styleFrom(
+          minimumSize: const Size.fromHeight(48),
+        ),
+        child: const SizedBox(
+          width: 24,
+          height: 24,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+      );
+    }
+
+    // 监听同步状态和待同步数量
+    final isSyncing = syncState == SyncState.syncing;
+    final count = pendingCount.valueOrNull ?? 0;
+    final hasPending = count > 0;
+
+    // 如果正在同步或有待同步记录，禁用按钮并显示提示
+    if (isSyncing || hasPending) {
+      return FilledButton(
+        onPressed: null,
+        style: FilledButton.styleFrom(
+          minimumSize: const Size.fromHeight(48),
+          backgroundColor: Colors.orange,
+          foregroundColor: Colors.white,
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            if (isSyncing) ...[
+              const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              ),
+              const SizedBox(width: 8),
+            ],
+            Text(
+              isSyncing
+                  ? '正在同步 $count 条记录...'
+                  : '有 $count 条记录待同步，请等待',
+            ),
+          ],
+        ),
+      );
+    }
+
+    // 正常状态：可以提交
+    return FilledButton(
+      onPressed: onSubmit,
+      style: FilledButton.styleFrom(
+        minimumSize: const Size.fromHeight(48),
+      ),
+      child: const Text('提交审核'),
     );
   }
 }
