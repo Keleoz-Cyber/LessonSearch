@@ -156,13 +156,38 @@ class _SubmissionPageState extends ConsumerState<SubmissionPage>
     // 提交前强制同步，确保本地编辑已同步到服务端
     // 同步失败则阻止提交，避免数据不一致
     try {
-      final result = await ref.read(syncServiceProvider).syncNow();
+      final syncService = ref.read(syncServiceProvider);
+      
+      // 先等待当前同步完成
+      var result = await syncService.syncNow();
       if (result.failed > 0) {
         setState(() => _loading = false);
         Toast.show(context, '同步失败 ${result.failed} 项，请检查网络后重试');
         return;
       }
-      LoggerService.sync('提交前同步完成: 成功=${result.success} 失败=${result.failed}');
+      
+      // 再次检查是否还有未同步项（同步过程中可能有新修改）
+      final localDS = ref.read(attendanceLocalDSProvider);
+      final pendingItems = await localDS.getPendingSyncItems();
+      if (pendingItems.isNotEmpty) {
+        // 还有未同步项，再次同步
+        result = await syncService.syncNow();
+        if (result.failed > 0) {
+          setState(() => _loading = false);
+          Toast.show(context, '同步失败 ${result.failed} 项，请检查网络后重试');
+          return;
+        }
+      }
+      
+      // 最终检查：如果仍有未同步项，阻止提交
+      final finalPending = await localDS.getPendingSyncItems();
+      if (finalPending.isNotEmpty) {
+        setState(() => _loading = false);
+        Toast.show(context, '仍有 ${finalPending.length} 条记录未同步，请稍候再试');
+        return;
+      }
+      
+      LoggerService.sync('提交前同步完成: 所有记录已同步到服务端');
     } catch (e) {
       setState(() => _loading = false);
       LoggerService.sync('同步失败: $e', isError: true);

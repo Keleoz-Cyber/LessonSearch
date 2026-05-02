@@ -138,11 +138,12 @@ class _TextGenPageState extends ConsumerState<TextGenPage>
       final result = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
-          icon: const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 48),
-          title: const Text('重要警告'),
+          icon: const Icon(Icons.info_outline, color: Colors.blue, size: 48),
+          title: const Text('复制汇报文本'),
           content: const Text(
-            '确认该记录为最终记录吗？\n\n'
-            '确认后将复制文本并跳转微信，此操作不可撤销。',
+            '确认复制最终汇报文本？\n\n'
+            '复制后请前往"扩展功能 → 名单提交"完成提交审核。\n'
+            '提交后如需修改，请先撤回。',
             style: TextStyle(fontSize: 15),
           ),
           actions: [
@@ -152,8 +153,8 @@ class _TextGenPageState extends ConsumerState<TextGenPage>
             ),
             FilledButton(
               onPressed: () => Navigator.pop(ctx, true),
-              style: FilledButton.styleFrom(backgroundColor: Colors.orange),
-              child: const Text('确认最终记录'),
+              style: FilledButton.styleFrom(backgroundColor: Colors.blue),
+              child: const Text('确认复制'),
             ),
           ],
         ),

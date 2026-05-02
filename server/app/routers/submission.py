@@ -99,9 +99,10 @@ async def get_submitted_task_ids(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """获取已提交的任务ID列表"""
+    """获取已提交的任务ID列表（只包含 pending/approved 状态的提交）"""
     submissions = db.query(Submission).filter(
-        Submission.user_id == current_user.id
+        Submission.user_id == current_user.id,
+        Submission.status.in_(["pending", "approved"])
     ).all()
     
     submitted_task_ids = set()

@@ -1,11 +1,39 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from typing import Optional
 
 from app.core.database import get_db
-from app.models import AttendanceTask, AttendanceRecord
+from app.models import AttendanceTask, AttendanceRecord, Submission, SubmissionRecord, User
 from app.schemas import RecordCreate, RecordUpdate, RecordOut
+from routers.auth import get_current_user
 
 router = APIRouter(prefix="/tasks/{task_id}/records", tags=["考勤记录"])
+
+
+def _check_record_editable(record_id: int, current_user: User, db: Session) -> AttendanceRecord:
+    """检查记录是否可编辑（未关联 pending/approved 的 submission）"""
+    record = db.query(AttendanceRecord).filter(AttendanceRecord.id == record_id).first()
+    if not record:
+        raise HTTPException(status_code=404, detail="记录不存在")
+    
+    # 检查是否已关联 pending/approved 的 submission
+    sr = db.query(SubmissionRecord).join(Submission).filter(
+        SubmissionRecord.record_id == record_id,
+        Submission.status.in_(["pending", "approved"])
+    ).first()
+    
+    if sr:
+        raise HTTPException(
+            status_code=403, 
+            detail="该记录已提交审核，不可修改。如需修改，请先撤回提交。"
+        )
+    
+    # 检查是否属于自己的任务（或旧版无 user_id 的任务）
+    task = db.query(AttendanceTask).filter(AttendanceTask.id == record.task_id).first()
+    if task and task.user_id is not None and task.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="无权修改此记录")
+    
+    return record
 
 
 @router.post("", response_model=list[RecordOut], status_code=201)
@@ -61,6 +89,7 @@ def update_record_by_task_student(
     student_id: int,
     body: RecordUpdate,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     record = db.query(AttendanceRecord).filter(
         AttendanceRecord.task_id == task_id,
@@ -68,6 +97,9 @@ def update_record_by_task_student(
     ).first()
     if not record:
         raise HTTPException(status_code=404, detail="记录不存在")
+    
+    # 检查是否可编辑
+    _check_record_editable(record.id, current_user, db)
 
     record.status = body.status
     if body.remark is not None:
@@ -78,10 +110,14 @@ def update_record_by_task_student(
 
 
 @record_router.put("/{record_id}", response_model=RecordOut)
-def update_record(record_id: int, body: RecordUpdate, db: Session = Depends(get_db)):
-    record = db.query(AttendanceRecord).filter(AttendanceRecord.id == record_id).first()
-    if not record:
-        raise HTTPException(status_code=404, detail="记录不存在")
+def update_record(
+    record_id: int, 
+    body: RecordUpdate, 
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    # 检查是否可编辑
+    record = _check_record_editable(record_id, current_user, db)
 
     record.status = body.status
     if body.remark is not None:

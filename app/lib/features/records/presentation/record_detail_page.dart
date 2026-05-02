@@ -27,6 +27,7 @@ class _RecordDetailPageState extends ConsumerState<RecordDetailPage> {
   TaskType? _taskType;
   bool _loading = true;
   bool _editing = false;
+  bool _isSubmitted = false; // 是否已提交审核
 
   bool get _isRollCall => _taskType == TaskType.rollCall;
 
@@ -48,12 +49,27 @@ class _RecordDetailPageState extends ConsumerState<RecordDetailPage> {
         ? await repo.getFullRollCallEntries(widget.taskId)
         : await repo.getRecordEntries(widget.taskId);
 
+    // 检查该任务是否已提交审核（pending/approved）
+    bool isSubmitted = false;
+    if (task != null && !isRollCall) {
+      try {
+        final api = ref.read(apiClientProvider);
+        final res = await api.dio.get('/submissions/submitted-task-ids');
+        final ids = (res.data['task_ids'] as List).map((e) => e.toString()).toSet();
+        isSubmitted = ids.contains(task.id);
+      } catch (e) {
+        // 网络错误时默认为未提交，允许编辑
+        LoggerService.sync('检查提交状态失败: $e', isError: true);
+      }
+    }
+
     setState(() {
       _entries = entries;
       _taskType = task?.type;
       _taskDate = task != null
           ? task.createdAt.toString().substring(0, 16)
           : DateTime.now().toString().substring(0, 16);
+      _isSubmitted = isSubmitted;
       _loading = false;
     });
   }
@@ -63,6 +79,19 @@ class _RecordDetailPageState extends ConsumerState<RecordDetailPage> {
     AttendanceStatus newStatus, {
     String? remark,
   }) async {
+    // 检查是否已提交审核
+    if (_isSubmitted) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('该记录已提交审核，不可修改。如需修改，请先撤回提交或联系管理员。'),
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+      return;
+    }
+
     // 检查是否正在同步中
     final syncService = ref.read(syncServiceProvider);
     if (syncService.state.value == SyncState.syncing) {
@@ -275,11 +304,12 @@ class _RecordDetailPageState extends ConsumerState<RecordDetailPage> {
       appBar: AppBar(
         title: const Text('记名详情'),
         actions: [
-          TextButton.icon(
-            icon: Icon(_editing ? Icons.check : Icons.edit),
-            label: Text(_editing ? '完成' : '编辑'),
-            onPressed: () => setState(() => _editing = !_editing),
-          ),
+          if (!_isSubmitted)
+            TextButton.icon(
+              icon: Icon(_editing ? Icons.check : Icons.edit),
+              label: Text(_editing ? '完成' : '编辑'),
+              onPressed: () => setState(() => _editing = !_editing),
+            ),
           IconButton(
             icon: const Icon(Icons.text_snippet),
             tooltip: '生成文本',
@@ -287,44 +317,71 @@ class _RecordDetailPageState extends ConsumerState<RecordDetailPage> {
           ),
         ],
       ),
-      body: abnormal.isEmpty
-          ? Center(
-              child: Text(
-                _editing ? '没有记录' : '全部到齐，没有异常记录',
-                style: TextStyle(color: Colors.grey[500]),
-              ),
-            )
-          : ListView(
+      body: Column(
+        children: [
+          if (_isSubmitted)
+            Container(
+              width: double.infinity,
               padding: const EdgeInsets.all(12),
-              children: byClass.entries.map((entry) {
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8, bottom: 8),
-                      child: Text(
-                        entry.key,
-                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+              color: Colors.orange.withOpacity(0.1),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline, color: Colors.orange.shade700, size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      '该记录已提交审核，不可修改。如需修改，请先撤回提交或联系管理员。',
+                      style: TextStyle(
+                        color: Colors.orange.shade800,
+                        fontSize: 13,
                       ),
                     ),
-                    ...entry.value.map((record) {
-                      return _RecordRow(
-                        entry: record,
-                        editing: _editing,
-                        onStatusChanged: (status, {remark}) => _updateStatus(
-                          record.recordId,
-                          status,
-                          remark: remark,
-                        ),
-                      );
-                    }),
-                    const Divider(),
-                  ],
-                );
-              }).toList(),
+                  ),
+                ],
+              ),
             ),
+          Expanded(
+            child: abnormal.isEmpty
+                ? Center(
+                    child: Text(
+                      _editing ? '没有记录' : '全部到齐，没有异常记录',
+                      style: TextStyle(color: Colors.grey[500]),
+                    ),
+                  )
+                : ListView(
+                    padding: const EdgeInsets.all(12),
+                    children: byClass.entries.map((entry) {
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.only(top: 8, bottom: 8),
+                            child: Text(
+                              entry.key,
+                              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          ...entry.value.map((record) {
+                            return _RecordRow(
+                              entry: record,
+                              editing: _editing && !_isSubmitted,
+                              onStatusChanged: (status, {remark}) => _updateStatus(
+                                record.recordId,
+                                status,
+                                remark: remark,
+                              ),
+                            );
+                          }),
+                          const Divider(),
+                        ],
+                      );
+                    }).toList(),
+                  ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -591,11 +648,12 @@ class _TextSheet extends StatelessWidget {
               final confirm = await showDialog<bool>(
                 context: context,
                 builder: (ctx) => AlertDialog(
-                  icon: const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 48),
-                  title: const Text('重要警告'),
+                  icon: const Icon(Icons.info_outline, color: Colors.blue, size: 48),
+                  title: const Text('复制汇报文本'),
                   content: const Text(
-                    '确认该记录为最终记录吗？\n\n'
-                    '确认后将复制文本并跳转微信，此操作不可撤销。',
+                    '确认复制最终汇报文本？\n\n'
+                    '复制后请前往"扩展功能 → 名单提交"完成提交审核。\n'
+                    '提交后如需修改，请先撤回。',
                     style: TextStyle(fontSize: 15),
                   ),
                   actions: [
@@ -605,8 +663,8 @@ class _TextSheet extends StatelessWidget {
                     ),
                     FilledButton(
                       onPressed: () => Navigator.pop(ctx, true),
-                      style: FilledButton.styleFrom(backgroundColor: Colors.orange),
-                      child: const Text('确认最终记录'),
+                      style: FilledButton.styleFrom(backgroundColor: Colors.blue),
+                      child: const Text('确认复制'),
                     ),
                   ],
                 ),

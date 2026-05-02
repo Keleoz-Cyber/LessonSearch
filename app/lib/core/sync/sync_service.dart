@@ -57,10 +57,15 @@ class SyncService {
 
   Future<({int success, int failed, int skipped})> syncNow() async {
     if (_isSyncing) {
-      // 如果正在同步，设置标志位，让当前同步完成后自动再同步一次
+      // 如果正在同步，设置标志位，等待当前同步完成后再执行一次
       _needSyncAgain = true;
-      LoggerService.sync('已有同步在进行，标记为需要再次同步');
-      return (success: 0, failed: 0, skipped: 0);
+      LoggerService.sync('已有同步在进行，等待完成后再同步');
+      // 等待当前同步完成
+      while (_isSyncing) {
+        await Future.delayed(const Duration(milliseconds: 100));
+      }
+      // 等待完成后，再次检查是否还有未同步项
+      return syncNow();
     }
     return processQueueWithStats();
   }
