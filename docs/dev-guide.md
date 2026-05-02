@@ -887,6 +887,6 @@ journalctl -u lesson-search.service -f
 | 文档 | 说明 |
 |------|------|
 | AGENT.md | AI Agent协作指南（接手必读） |
-| CLAUDE.md | 项目规范与约束 |
+| AGENT.md | AI Agent 协作指南（接手必读） |
 | docs/tasks.md | 开发任务表 |
 | docs/invitation-codes.md | 邀请码管理指南 |
