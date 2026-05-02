@@ -90,10 +90,128 @@ class SyncService {
       var successCount = 0;
       var failCount = 0;
 
-      for (var i = 0; i < items.length; i++) {
+      var i = 0;
+      while (i < items.length) {
         final item = items[i];
         progress.value = (current: i + 1, total: items.length);
-        
+
+        // 尝试批量处理连续的 record update（至少 2 条才批量）
+        if (item.entityType == 'record' && item.action == 'update') {
+          final batchItems = <SyncQueueData>[];
+          final batchPayloads = <Map<String, dynamic>>[];
+          var j = i;
+          
+          // 收集连续的 record update（最多 50 条一批）
+          while (j < items.length &&
+                 items[j].entityType == 'record' &&
+                 items[j].action == 'update' &&
+                 batchItems.length < 50) {
+            final batchItem = items[j];
+            final payload = _parsePayload(batchItem.payload);
+            final taskId = payload['task_id'] as String?;
+            final studentId = payload['student_id'] as int?;
+            final status = payload['status'] as String?;
+            
+            if (taskId != null && studentId != null && status != null) {
+              batchItems.add(batchItem);
+              batchPayloads.add({
+                'task_id': taskId,
+                'student_id': studentId,
+                'status': status,
+              });
+            }
+            j++;
+          }
+
+          // 只有收集到 2 条以上才走批量，否则逐条处理
+          if (batchItems.length >= 2) {
+            try {
+              final result = await _remote.batchUpdateRecords(batchPayloads);
+              final successList = (result['success'] as List<dynamic>?) ?? [];
+              final failedList = (result['failed'] as List<dynamic>?) ?? [];
+              
+              // 成功的标记为已同步
+              for (final s in successList) {
+                final taskId = s['task_id'] as String;
+                final studentId = s['student_id'] as int;
+                final matchedItem = batchItems.firstWhere(
+                  (item) {
+                    final p = _parsePayload(item.payload);
+                    return p['task_id'] == taskId && p['student_id'] == studentId;
+                  },
+                );
+                await _local.markSynced(matchedItem.id);
+                successCount++;
+              }
+              
+              // 失败的根据原因处理
+              for (final f in failedList) {
+                final taskId = f['task_id'] as String;
+                final studentId = f['student_id'] as int;
+                final reason = f['reason'] as String;
+                final matchedItem = batchItems.firstWhere(
+                  (item) {
+                    final p = _parsePayload(item.payload);
+                    return p['task_id'] == taskId && p['student_id'] == studentId;
+                  },
+                );
+                
+                if (reason.contains('记录不存在') ||
+                    reason.contains('已提交审核')) {
+                  // 跳过并标记为已同步
+                  await _local.markSynced(matchedItem.id);
+                  successCount++;
+                  LoggerService.sync(
+                    'SKIP (batch): record/update #${matchedItem.entityId} - $reason',
+                  );
+                } else {
+                  final newRetry = matchedItem.retryCount + 1;
+                  await _local.markSyncFailed(matchedItem.id, retryCount: newRetry);
+                  failCount++;
+                  if (newRetry >= _maxRetries) {
+                    LoggerService.sync(
+                      'GIVE UP (batch): record/update #${matchedItem.entityId} - $reason',
+                      isError: true,
+                    );
+                  } else {
+                    LoggerService.sync(
+                      'RETRY $newRetry/$_maxRetries (batch): record/update #${matchedItem.entityId} - $reason',
+                      isError: true,
+                    );
+                  }
+                }
+              }
+              
+              LoggerService.sync(
+                'BATCH OK: ${successList.length} 成功, ${failedList.length} 失败',
+              );
+              i = j; // 跳过已批量处理的 items
+              continue; // 继续处理下一个 batch
+            } catch (e) {
+              final isNetwork =
+                  e.toString().contains('SocketException') ||
+                  e.toString().contains('Connection refused') ||
+                  e.toString().contains('timed out');
+              
+              if (isNetwork) {
+                // 网络错误，全部标记为失败并重试
+                for (final batchItem in batchItems) {
+                  final newRetry = batchItem.retryCount + 1;
+                  await _local.markSyncFailed(batchItem.id, retryCount: newRetry);
+                  failCount++;
+                }
+                LoggerService.sync('网络不可用，批量同步中断');
+                break; // 中断同步循环
+              } else {
+                // 其他错误，回退到逐条处理当前 batch 的第一个 item
+                LoggerService.sync('批量同步失败，回退到逐条处理: $e');
+                // i 不变，下面会处理 items[i]
+              }
+            }
+          }
+        }
+
+        // 逐条处理（非 record update 或批量失败回退）
         try {
           await _processItem(
             item.entityType,
@@ -145,6 +263,8 @@ class SyncService {
             }
           }
         }
+        
+        i++;
       }
 
       state.value = failCount > 0 ? SyncState.error : SyncState.idle;
@@ -165,6 +285,17 @@ class SyncService {
       Future.delayed(const Duration(milliseconds: 500), () {
         progress.value = null;
       });
+    }
+  }
+
+  Map<String, dynamic> _parsePayload(String? payloadJson) {
+    try {
+      return payloadJson != null
+          ? jsonDecode(payloadJson) as Map<String, dynamic>
+          : <String, dynamic>{};
+    } catch (e) {
+      LoggerService.sync('JSON 解析失败: $payloadJson - $e', isError: true);
+      return <String, dynamic>{};
     }
   }
 

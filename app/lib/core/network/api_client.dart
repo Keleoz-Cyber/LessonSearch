@@ -218,6 +218,13 @@ class ApiClient {
     return res.data as Map<String, dynamic>;
   }
 
+  Future<Map<String, dynamic>> batchUpdateRecords(
+    List<Map<String, dynamic>> items,
+  ) async {
+    final res = await dio.post('/records/batch-update', data: items);
+    return res.data as Map<String, dynamic>;
+  }
+
   // === 通用请求 ===
 
   Future<Map<String, dynamic>> put(

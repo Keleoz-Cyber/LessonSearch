@@ -4,7 +4,7 @@ from typing import Optional
 
 from app.core.database import get_db
 from app.models import AttendanceTask, AttendanceRecord, Submission, SubmissionRecord, User
-from app.schemas import RecordCreate, RecordUpdate, RecordOut
+from app.schemas import RecordCreate, RecordUpdate, RecordOut, RecordBatchUpdateItem, RecordBatchUpdateResult
 from routers.auth import get_current_user
 
 router = APIRouter(prefix="/tasks/{task_id}/records", tags=["考勤记录"])
@@ -125,3 +125,80 @@ def update_record(
     db.commit()
     db.refresh(record)
     return record
+
+
+@record_router.post("/batch-update", response_model=RecordBatchUpdateResult)
+def batch_update_records(
+    body: list[RecordBatchUpdateItem],
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """批量更新考勤记录状态。
+    
+    每个 item 包含 task_id + student_id + status，按顺序处理。
+    已关联 pending/approved submission 的记录会被跳过并返回失败。
+    """
+    success = []
+    failed = []
+    
+    for item in body:
+        try:
+            record = db.query(AttendanceRecord).filter(
+                AttendanceRecord.task_id == item.task_id,
+                AttendanceRecord.student_id == item.student_id,
+            ).first()
+            
+            if not record:
+                failed.append({
+                    "task_id": item.task_id,
+                    "student_id": item.student_id,
+                    "reason": "记录不存在"
+                })
+                continue
+            
+            # 检查是否可编辑（保留现有校验逻辑）
+            sr = db.query(SubmissionRecord).join(Submission).filter(
+                SubmissionRecord.record_id == record.id,
+                Submission.status.in_(["pending", "approved"])
+            ).first()
+            
+            if sr:
+                failed.append({
+                    "task_id": item.task_id,
+                    "student_id": item.student_id,
+                    "reason": "该记录已提交审核，不可修改。如需修改，请先撤回提交。"
+                })
+                continue
+            
+            # 检查是否属于自己的任务
+            task = db.query(AttendanceTask).filter(
+                AttendanceTask.id == item.task_id
+            ).first()
+            if task and task.user_id is not None and task.user_id != current_user.id:
+                failed.append({
+                    "task_id": item.task_id,
+                    "student_id": item.student_id,
+                    "reason": "无权修改此记录"
+                })
+                continue
+            
+            # 执行更新
+            record.status = item.status
+            if item.remark is not None:
+                record.remark = item.remark
+            
+            success.append({
+                "task_id": item.task_id,
+                "student_id": item.student_id,
+                "record_id": record.id
+            })
+            
+        except Exception as e:
+            failed.append({
+                "task_id": item.task_id,
+                "student_id": item.student_id,
+                "reason": str(e)
+            })
+    
+    db.commit()
+    return {"success": success, "failed": failed}

@@ -79,4 +79,10 @@ class AttendanceRemoteDataSource {
       'status': status.value,
     });
   }
+
+  Future<Map<String, dynamic>> batchUpdateRecords(
+    List<Map<String, dynamic>> items,
+  ) async {
+    return await _api.batchUpdateRecords(items);
+  }
 }

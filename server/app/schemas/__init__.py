@@ -14,7 +14,13 @@ from app.schemas.student import (
     StudentDetail,
 )
 from app.schemas.task import TaskCreate, TaskUpdate, TaskOut
-from app.schemas.record import RecordCreate, RecordUpdate, RecordOut
+from app.schemas.record import (
+    RecordCreate,
+    RecordUpdate,
+    RecordOut,
+    RecordBatchUpdateItem,
+    RecordBatchUpdateResult,
+)
 
 __all__ = [
     "SendCodeRequest",
@@ -34,4 +40,6 @@ __all__ = [
     "RecordCreate",
     "RecordUpdate",
     "RecordOut",
+    "RecordBatchUpdateItem",
+    "RecordBatchUpdateResult",
 ]

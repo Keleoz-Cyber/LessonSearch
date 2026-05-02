@@ -14,6 +14,18 @@ class RecordUpdate(BaseModel):
     remark: str | None = None
 
 
+class RecordBatchUpdateItem(BaseModel):
+    task_id: str
+    student_id: int
+    status: str
+    remark: str | None = None
+
+
+class RecordBatchUpdateResult(BaseModel):
+    success: list[dict]
+    failed: list[dict]
+
+
 class RecordOut(BaseModel):
     id: int
     task_id: str
