@@ -135,11 +135,19 @@ class SyncService {
                 final taskId = s['task_id'] as String;
                 final studentId = s['student_id'] as int;
                 final matchedItem = batchItems.firstWhere(
-                  (item) {
-                    final p = _parsePayload(item.payload);
+                  (batchItem) {
+                    final p = _parsePayload(batchItem.payload);
                     return p['task_id'] == taskId && p['student_id'] == studentId;
                   },
+                  orElse: () => null,
                 );
+                if (matchedItem == null) {
+                  LoggerService.sync(
+                    '批量返回项找不到匹配: $taskId/$studentId',
+                    isError: true,
+                  );
+                  continue;
+                }
                 await _local.markSynced(matchedItem.id);
                 successCount++;
               }
@@ -150,11 +158,19 @@ class SyncService {
                 final studentId = f['student_id'] as int;
                 final reason = f['reason'] as String;
                 final matchedItem = batchItems.firstWhere(
-                  (item) {
-                    final p = _parsePayload(item.payload);
+                  (batchItem) {
+                    final p = _parsePayload(batchItem.payload);
                     return p['task_id'] == taskId && p['student_id'] == studentId;
                   },
+                  orElse: () => null,
                 );
+                if (matchedItem == null) {
+                  LoggerService.sync(
+                    '批量返回失败项找不到匹配: $taskId/$studentId',
+                    isError: true,
+                  );
+                  continue;
+                }
                 
                 if (reason.contains('记录不存在') ||
                     reason.contains('已提交审核')) {
@@ -185,6 +201,7 @@ class SyncService {
               LoggerService.sync(
                 'BATCH OK: ${successList.length} 成功, ${failedList.length} 失败',
               );
+              progress.value = (current: j, total: items.length);
               i = j; // 跳过已批量处理的 items
               continue; // 继续处理下一个 batch
             } catch (e) {

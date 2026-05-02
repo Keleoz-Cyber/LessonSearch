@@ -1,6 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from typing import Optional
 
 from app.core.database import get_db
 from app.models import AttendanceTask, AttendanceRecord, Submission, SubmissionRecord, User
