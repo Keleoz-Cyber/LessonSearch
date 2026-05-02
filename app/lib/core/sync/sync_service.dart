@@ -29,7 +29,6 @@ class SyncService {
 
   Timer? _timer;
   bool _isSyncing = false;
-  bool _needSyncAgain = false; // 标志位：当前同步完成后需要再同步一次
   static const _maxRetries = 5;
   static const _interval = Duration(seconds: 10);
 
@@ -57,15 +56,18 @@ class SyncService {
 
   Future<({int success, int failed, int skipped})> syncNow() async {
     if (_isSyncing) {
-      // 如果正在同步，设置标志位，等待当前同步完成后再执行一次
-      _needSyncAgain = true;
+      // 如果正在同步，等待当前同步完成
       LoggerService.sync('已有同步在进行，等待完成后再同步');
-      // 等待当前同步完成
       while (_isSyncing) {
         await Future.delayed(const Duration(milliseconds: 100));
       }
-      // 等待完成后，再次检查是否还有未同步项
-      return syncNow();
+      // 等待完成后，检查是否还有未同步项（可能已被自动同步处理完）
+      final items = await _local.getPendingSyncItems();
+      if (items.isEmpty) {
+        return (success: 0, failed: 0, skipped: 0);
+      }
+      // 还有未同步项，继续同步（不递归调用 syncNow）
+      return processQueueWithStats();
     }
     return processQueueWithStats();
   }
@@ -163,16 +165,6 @@ class SyncService {
       Future.delayed(const Duration(milliseconds: 500), () {
         progress.value = null;
       });
-      
-      // 检查是否需要再次同步（因为在同步期间可能有新的 syncNow 调用）
-      if (_needSyncAgain) {
-        _needSyncAgain = false;
-        LoggerService.sync('检测到需要再次同步，启动新一轮同步');
-        // 延迟一点再启动，避免立即递归
-        Future.delayed(const Duration(milliseconds: 100), () {
-          syncNow();
-        });
-      }
     }
   }
 
