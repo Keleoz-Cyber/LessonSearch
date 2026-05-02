@@ -48,8 +48,8 @@ class _HomePageState extends ConsumerState<HomePage> {
         context.go('/login');
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('登录状态已失效，请重新登录'),
-            duration: Duration(seconds: 2),
+            content: Text('登录状态已过期，需要重新认证。本地数据已保留，登录后可继续同步。'),
+            duration: Duration(seconds: 3),
           ),
         );
       }
@@ -64,20 +64,22 @@ class _HomePageState extends ConsumerState<HomePage> {
     } on DioException catch (e) {
       if (e.response?.statusCode == 401) {
         if (mounted) {
-          await auth.clearAuth();
+          // 只清除 token，保留 userId 等用户信息
+          // 避免清空本地数据库，让用户重新登录后继续同步
+          await auth.clearTokenOnly();
           ref.invalidate(authServiceProvider);
           ref.invalidate(isLoggedInProvider);
           context.go('/login');
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('登录已过期，请重新登录'),
-              duration: Duration(seconds: 3),
+              content: Text('登录状态已过期，需要重新认证。本地数据已保留，登录后可继续同步。'),
+              duration: Duration(seconds: 4),
             ),
           );
         }
       }
     } catch (_) {
-      // 忽略其他网络错误
+      // 忽略其他网络错误（网络不通时不应该登出）
     }
   }
 

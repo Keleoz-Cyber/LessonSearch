@@ -194,19 +194,38 @@ class SyncService {
               i = j; // 跳过已批量处理的 items
               continue; // 继续处理下一个 batch
             } catch (e) {
+              final errorStr = e.toString();
               final isNetwork =
-                  e.toString().contains('SocketException') ||
-                  e.toString().contains('Connection refused') ||
-                  e.toString().contains('timed out');
+                  errorStr.contains('SocketException') ||
+                  errorStr.contains('Connection refused') ||
+                  errorStr.contains('timed out') ||
+                  errorStr.contains('Network is unreachable');
+              final is401 =
+                  errorStr.contains('401') ||
+                  errorStr.contains('未登录') ||
+                  errorStr.contains('Unauthorized');
               
-              if (isNetwork) {
+              if (is401) {
+                // 认证过期，整批标记为失败（需要重新登录）
+                for (final batchItem in batchItems) {
+                  await _local.markSyncFailed(batchItem.id, retryCount: 999);
+                  failCount++;
+                }
+                LoggerService.sync(
+                  'AUTH_EXPIRED (batch): 批量同步中断 — 登录状态已过期，请重新登录后继续同步',
+                  isError: true,
+                );
+                break; // 中断同步循环
+              } else if (isNetwork) {
                 // 网络错误，全部标记为失败并重试
                 for (final batchItem in batchItems) {
                   final newRetry = batchItem.retryCount + 1;
                   await _local.markSyncFailed(batchItem.id, retryCount: newRetry);
                   failCount++;
                 }
-                LoggerService.sync('网络不可用，批量同步中断');
+                LoggerService.sync(
+                  'NETWORK_ERROR (batch): 批量同步中断 — 网络不可用，请检查网络后重试',
+                );
                 break; // 中断同步循环
               } else {
                 // 其他错误，回退到逐条处理当前 batch 的第一个 item
@@ -232,16 +251,32 @@ class SyncService {
           );
         } catch (e) {
           final newRetry = item.retryCount + 1;
+          final errorStr = e.toString();
           final is404 =
-              e.toString().contains('404') ||
-              e.toString().contains('任务不存在') ||
-              e.toString().contains('记录不存在');
+              errorStr.contains('404') ||
+              errorStr.contains('任务不存在') ||
+              errorStr.contains('记录不存在');
           final isNetwork =
-              e.toString().contains('SocketException') ||
-              e.toString().contains('Connection refused') ||
-              e.toString().contains('timed out');
+              errorStr.contains('SocketException') ||
+              errorStr.contains('Connection refused') ||
+              errorStr.contains('timed out') ||
+              errorStr.contains('Network is unreachable');
+          final is401 =
+              errorStr.contains('401') ||
+              errorStr.contains('未登录') ||
+              errorStr.contains('Unauthorized');
 
-          if (is404) {
+          if (is401) {
+            // 认证过期，标记为失败但不重试（需要重新登录）
+            await _local.markSyncFailed(item.id, retryCount: 999);
+            failCount++;
+            LoggerService.sync(
+              'AUTH_EXPIRED: ${item.entityType}/${item.action} #${item.entityId} — 登录状态已过期，请重新登录后继续同步',
+              isError: true,
+            );
+            // 不再继续同步其他项，等待用户重新登录
+            break;
+          } else if (is404) {
             // 服务端不存在，跳过并标记为已同步
             await _local.markSynced(item.id);
             LoggerService.sync(
@@ -251,7 +286,9 @@ class SyncService {
           } else if (isNetwork) {
             await _local.markSyncFailed(item.id, retryCount: newRetry);
             failCount++;
-            LoggerService.sync('网络不可用，稍后重试');
+            LoggerService.sync(
+              'NETWORK_ERROR: ${item.entityType}/${item.action} #${item.entityId} — 网络不可用，请检查网络后重试',
+            );
             break;
           } else {
             await _local.markSyncFailed(item.id, retryCount: newRetry);

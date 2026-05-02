@@ -219,6 +219,7 @@ class SettingsPage extends ConsumerWidget {
   Future<void> _showLogoutDialog(BuildContext context, WidgetRef ref) async {
     final db = ref.read(databaseProvider);
     final unsyncedCount = await db.getUnsyncedCount();
+    final hasUnsynced = unsyncedCount > 0;
 
     final confirmed = await showDialog<bool>(
       context: context,
@@ -228,37 +229,56 @@ class SettingsPage extends ConsumerWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('确定要退出登录吗？'),
-            const SizedBox(height: 12),
-            if (unsyncedCount > 0)
+            if (hasUnsynced) ...[
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.orange.withValues(alpha: 0.1),
+                  color: Colors.red.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
                 ),
-                child: Row(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(
-                      Icons.warning_amber,
-                      color: Colors.orange,
-                      size: 20,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        '有 $unsyncedCount 条数据未同步到服务器，退出后本地数据将被清空。',
-                        style: const TextStyle(
-                          color: Colors.orange,
-                          fontSize: 13,
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.error_outline,
+                          color: Colors.red,
+                          size: 20,
                         ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            '无法退出登录',
+                            style: TextStyle(
+                              color: Colors.red.shade800,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      '有 $unsyncedCount 条数据未同步到服务器。退出登录会清空本地所有数据，导致未同步记录永久丢失。',
+                      style: TextStyle(
+                        color: Colors.red.shade800,
+                        fontSize: 13,
+                        height: 1.4,
                       ),
                     ),
                   ],
                 ),
-              )
-            else
+              ),
+              const SizedBox(height: 16),
+              const Text('请先完成同步后再退出登录。'),
+            ] else ...[
+              const Text('确定要退出登录吗？'),
+              const SizedBox(height: 12),
               const Text('退出后本地数据将被清空。'),
+            ],
           ],
         ),
         actions: [
@@ -266,13 +286,27 @@ class SettingsPage extends ConsumerWidget {
             onPressed: () => Navigator.pop(ctx, false),
             child: const Text('取消'),
           ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('退出'),
-          ),
+          if (hasUnsynced)
+            FilledButton.icon(
+              onPressed: () async {
+                Navigator.pop(ctx, false);
+                // 立即同步
+                await _syncNow(context, ref);
+              },
+              icon: const Icon(Icons.sync, size: 18),
+              label: const Text('立即同步'),
+            )
+          else
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('退出'),
+            ),
         ],
       ),
     );
+
+    // 有未同步数据时，不允许退出
+    if (hasUnsynced) return;
 
     if (confirmed == true && context.mounted) {
       await db.clearUserData();

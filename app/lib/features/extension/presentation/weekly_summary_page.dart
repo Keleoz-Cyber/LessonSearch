@@ -7,6 +7,7 @@ import 'package:dio/dio.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../../../core/sync/sync_service.dart';
 import '../../../shared/providers.dart';
 import '../../../shared/widgets/loading_overlay.dart';
 import '../../../shared/widgets/toast.dart';
@@ -885,6 +886,51 @@ class _CurrentWeekTab extends ConsumerWidget {
     WidgetRef ref,
     int weekNumber,
   ) async {
+    // 导出前检查是否有未同步数据
+    final pendingCountAsync = ref.read(pendingSyncCountProvider);
+    final pendingCount = pendingCountAsync.valueOrNull ?? 0;
+    final syncState = ref.read(syncStateProvider);
+
+    if (pendingCount > 0 || syncState == SyncState.syncing) {
+      final shouldSync = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('无法导出'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                syncState == SyncState.syncing
+                    ? '正在同步数据中，请等待同步完成后再导出。'
+                    : '有 $pendingCount 条数据未同步到服务器，导出前请先完成同步，确保数据完整。',
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('取消'),
+            ),
+            FilledButton.icon(
+              onPressed: () => Navigator.pop(ctx, true),
+              icon: const Icon(Icons.sync, size: 18),
+              label: const Text('立即同步'),
+            ),
+          ],
+        ),
+      );
+
+      if (shouldSync == true) {
+        await ref.read(syncServiceProvider).syncNow();
+        // 同步后再试一次
+        if (context.mounted) {
+          _showExportDialog(context, ref, weekNumber);
+        }
+      }
+      return;
+    }
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(

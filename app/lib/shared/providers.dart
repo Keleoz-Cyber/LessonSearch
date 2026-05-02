@@ -59,18 +59,25 @@ final soundEnabledProvider = Provider<bool>((ref) {
   return ref.watch(feedbackServiceProvider).soundEnabled;
 });
 
+/// 认证过期事件（401 时触发，供 UI 监听）
+final authExpiredProvider = StateProvider<bool>((ref) => false);
+
 /// 全局 API 客户端
 final apiClientProvider = Provider<ApiClient>((ref) {
   final authService = ref.watch(authServiceProvider);
   return ApiClient(
     token: authService.token,
     onAuthExpired: () {
-      authService.clearAuth();
+      // 只清除 token，保留 userId 等用户信息
+      // 避免清空本地数据库，让用户重新登录后继续同步
+      authService.clearTokenOnly();
+      ref.read(authExpiredProvider.notifier).state = true;
       ref.invalidate(authServiceProvider);
       ref.invalidate(isLoggedInProvider);
     },
     onTokenRefreshed: (newToken) {
       authService.updateToken(newToken);
+      ref.read(authExpiredProvider.notifier).state = false;
     },
   );
 });
