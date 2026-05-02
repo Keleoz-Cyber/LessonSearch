@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 
 import '../../features/attendance/data/local/attendance_local_ds.dart';
+import '../database/app_database.dart' as db;
 import '../logger/logger_service.dart';
 import '../../features/attendance/data/remote/attendance_remote_ds.dart';
 import '../../features/attendance/domain/models.dart';
@@ -97,7 +98,7 @@ class SyncService {
 
         // 尝试批量处理连续的 record update（至少 2 条才批量）
         if (item.entityType == 'record' && item.action == 'update') {
-          final batchItems = <SyncQueueData>[];
+          final batchItems = <db.SyncQueueData>[];
           final batchPayloads = <Map<String, dynamic>>[];
           var j = i;
           
@@ -134,13 +135,7 @@ class SyncService {
               for (final s in successList) {
                 final taskId = s['task_id'] as String;
                 final studentId = s['student_id'] as int;
-                final matchedItem = batchItems.firstWhere(
-                  (batchItem) {
-                    final p = _parsePayload(batchItem.payload);
-                    return p['task_id'] == taskId && p['student_id'] == studentId;
-                  },
-                  orElse: () => null,
-                );
+                final matchedItem = _findBatchItem(batchItems, taskId, studentId);
                 if (matchedItem == null) {
                   LoggerService.sync(
                     '批量返回项找不到匹配: $taskId/$studentId',
@@ -157,13 +152,7 @@ class SyncService {
                 final taskId = f['task_id'] as String;
                 final studentId = f['student_id'] as int;
                 final reason = f['reason'] as String;
-                final matchedItem = batchItems.firstWhere(
-                  (batchItem) {
-                    final p = _parsePayload(batchItem.payload);
-                    return p['task_id'] == taskId && p['student_id'] == studentId;
-                  },
-                  orElse: () => null,
-                );
+                final matchedItem = _findBatchItem(batchItems, taskId, studentId);
                 if (matchedItem == null) {
                   LoggerService.sync(
                     '批量返回失败项找不到匹配: $taskId/$studentId',
@@ -314,6 +303,21 @@ class SyncService {
       LoggerService.sync('JSON 解析失败: $payloadJson - $e', isError: true);
       return <String, dynamic>{};
     }
+  }
+
+  /// 在 batchItems 中查找匹配 task_id + student_id 的 SyncQueueData
+  db.SyncQueueData? _findBatchItem(
+    List<db.SyncQueueData> batchItems,
+    String taskId,
+    int studentId,
+  ) {
+    for (final batchItem in batchItems) {
+      final p = _parsePayload(batchItem.payload);
+      if (p['task_id'] == taskId && p['student_id'] == studentId) {
+        return batchItem;
+      }
+    }
+    return null;
   }
 
   Future<void> _processItem(
