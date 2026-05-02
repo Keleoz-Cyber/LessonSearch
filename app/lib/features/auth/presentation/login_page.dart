@@ -106,7 +106,14 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       ref.invalidate(apiClientProvider);
 
       if (mounted) {
-        // 登录成功后触发同步，拉取服务端最新数据
+        // 登录成功后，重置因 401 标记为 failed 的同步项，让它们能继续同步
+        final localDS = ref.read(attendanceLocalDSProvider);
+        final resetCount = await localDS.resetAuthFailedSyncItems();
+        if (resetCount > 0) {
+          LoggerService.sync('登录成功: 重置 $resetCount 条因认证过期失败的同步项');
+        }
+
+        // 触发同步，继续之前失败的同步
         ref.read(syncServiceProvider).syncNow();
 
         final realName = response['user']['real_name'];

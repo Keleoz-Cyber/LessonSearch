@@ -380,6 +380,21 @@ class AttendanceLocalDataSource {
     );
   }
 
+  /// 重置因 401（认证过期）标记为 failed(retryCount=999) 的同步项，恢复为 pending
+  /// 在重新登录成功后调用，让这些项能继续同步
+  Future<int> resetAuthFailedSyncItems() async {
+    final stmt = _db.update(_db.syncQueue)
+      ..where(
+        (s) => s.syncStatus.equals('failed') & s.retryCount.equals(999),
+      );
+    final companion = const SyncQueueCompanion(
+      syncStatus: Value('pending'),
+      retryCount: Value(0),
+    );
+    final affected = await stmt.write(companion);
+    return affected;
+  }
+
   Future<void> clearSyncQueue() async {
     await _db.delete(_db.syncQueue).go();
   }

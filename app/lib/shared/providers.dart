@@ -127,6 +127,7 @@ final syncStateProvider = Provider<SyncState>((ref) {
 });
 
 /// 待同步记录数量（实时）
+/// 包含：pending、failed(retry < 5)、auth_failed(retry == 999)
 final pendingSyncCountProvider = StreamProvider<int>((ref) async* {
   final db = ref.watch(databaseProvider);
   
@@ -135,7 +136,10 @@ final pendingSyncCountProvider = StreamProvider<int>((ref) async* {
     final all = await db.select(db.syncQueue).get();
     return all.where((s) {
       if (s.syncStatus == 'pending') return true;
-      if (s.syncStatus == 'failed' && s.retryCount < 5) return true;
+      if (s.syncStatus == 'failed') {
+        // 普通失败（可重试）或认证过期失败（需重新登录后重试）
+        if (s.retryCount < 5 || s.retryCount == 999) return true;
+      }
       return false;
     }).length;
   }
