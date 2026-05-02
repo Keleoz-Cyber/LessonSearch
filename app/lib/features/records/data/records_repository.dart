@@ -278,16 +278,26 @@ class RecordsRepository {
     return entries;
   }
 
-  /// 删除任务及其记录
+  /// 放弃任务：标记为 abandoned 并同步到服务端
   Future<void> deleteTask(String taskId) async {
-    await (_db.delete(
-      _db.attendanceRecords,
-    )..where((r) => r.taskId.equals(taskId))).go();
-    await (_db.delete(
-      _db.taskClasses,
-    )..where((tc) => tc.taskId.equals(taskId))).go();
-    await (_db.delete(
-      _db.attendanceTasks,
-    )..where((t) => t.id.equals(taskId))).go();
+    // 1. 更新任务状态为 abandoned
+    await (_db.update(_db.attendanceTasks)
+          ..where((t) => t.id.equals(taskId)))
+        .write(
+      AttendanceTasksCompanion(
+        status: const Value('abandoned'),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
+
+    // 2. 入队同步，通知服务端任务已放弃
+    await _localDS.enqueueSync(
+      entityType: 'task',
+      entityId: taskId,
+      action: 'update',
+      payload: {'status': 'abandoned'},
+    );
+
+    LoggerService.sync('任务已标记为 abandoned: $taskId');
   }
 }
