@@ -1,6 +1,6 @@
 # 考勤助手 开发文档
 
-> 版本：0.6.0（开发中）| 更新日期：2026-05-01 | 仓库：https://github.com/Keleoz-Cyber/LessonSearch
+> 版本：0.6.0（开发中）| 更新日期：2026-05-03 | 仓库：https://github.com/Keleoz-Cyber/LessonSearch
 
 ---
 
@@ -510,6 +510,20 @@ Swagger文档：https://api.keleoz.cn/docs
 | POST | /{id}/records | 批量创建记录 | `[{student_id, status, ...}]` |
 | GET | /{id}/records | 查询任务记录 | - |
 
+### 记录更新接口 (/api/records)
+
+| 方法 | 路径 | 说明 | 请求体 | 响应 |
+|------|------|------|--------|------|
+| PUT | /{id} | 按record_id更新 | `{status}` | RecordOut |
+| PUT | /by-task-student | 按task+student更新 | `{status}` | RecordOut |
+| POST | /batch-update | 批量更新记录 | `[{task_id, student_id, status}]` | `{success, failed}` |
+
+**batch-update 特性：**
+- 每个 item 包含 `task_id` + `student_id` + `status`
+- 按顺序处理，保留 pending/approved 校验和用户权限检查
+- 返回 `success` 列表（成功项）和 `failed` 列表（失败项+reason）
+- 全部在事务内处理，最后统一 commit
+
 ### 周次接口 (/api/week)
 
 | 方法 | 路径 | 说明 |
@@ -608,16 +622,44 @@ Swagger文档：https://api.keleoz.cn/docs
 - 计算公式：`week_number = (current_date - start_date).days // 7 + 1`
 - 提交、汇总、审核全部按周次维度
 
-### 数据隔离
+### 数据隔离与同步保护
 
 ```
 登出流程：
-1. 检查未同步数据数量
-2. 弹窗提示（同步并登出 / 直接登出）
-3. 清除token和用户信息
-4. 清空本地数据库（tasks, records, submissions, sync_queue）
-5. 返回登录页
+1. 检查未同步数据数量（含 pending + failed(retry<5) + auth_failed(retry=999)）
+2. 如果有未同步数据：
+   - 弹窗提示"无法退出登录"
+   - 禁用"退出"按钮
+   - 提供"立即同步"按钮
+3. 如果没有未同步数据：
+   - 弹窗确认"退出后本地数据将被清空"
+   - 用户确认后清除 token 和用户信息
+   - 清空本地数据库（tasks, records, submissions, sync_queue）
+4. 返回登录页
 ```
+
+**同步失败处理（v0.6.0+）：**
+
+| 失败原因 | 日志标记 | 处理方式 | 用户提示 |
+|---------|---------|---------|---------|
+| 网络错误 | `NETWORK_ERROR` | 标记 failed，稍后重试 | "网络不可用，请检查网络后重试" |
+| 认证过期 401 | `AUTH_EXPIRED` | 标记 retryCount=999 | "登录状态已过期，请重新登录后继续同步" |
+| 其他错误 | `RETRY`/`GIVE UP` | 正常重试 5 次后放弃 | 按原有逻辑 |
+
+**401 闭环处理：**
+1. Token 过期 → 同步返回 401
+2. 只清除 token，保留 userId 和本地数据
+3. `pendingSyncCountProvider` 统计到 retryCount=999 的项
+4. 关键操作（提交/导出/退出登录）被阻止
+5. 用户重新登录 → `resetAuthFailedSyncItems()` 恢复为 pending
+6. 自动触发 `syncNow()` 继续同步
+
+**批量同步（v0.6.0+）：**
+- SyncService 自动合并连续的 `record/update`（≥2条且≤50条）
+- 调用 `POST /records/batch-update` 一次性提交
+- 服务端返回 `success`/`failed` 列表
+- 成功后统一 markSynced，失败按 reason 处理
+- 网络错误时整批标记 failed 并中断同步
 
 ---
 

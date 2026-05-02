@@ -1,7 +1,7 @@
 # 考勤助手 App 业务流程文档
 
 > 基于代码实际实现整理
-> 整理日期：2026-05-01
+> 整理日期：2026-05-03
 > 版本：v0.6.0
 
 ---
@@ -238,7 +238,23 @@
 - **限制**：每次修改都会入队 SyncQueue
 - **合并**：如果同一记录有未同步的 create，update 会合并到 create 的 payload 中（`attendance_local_ds.dart::enqueueSync()`）
 
-### 4.7 重新生成汇报文本
+### 4.7 删除任务（v0.6.0+ 逻辑变更）
+
+- **入口**：查课记录页 → 任务卡片 → 删除按钮
+- **代码**：`records_repository.dart::deleteTask()`
+- **操作**：
+  1. **不再物理删除数据**（旧逻辑）
+  2. 更新任务状态为 `abandoned`（新逻辑）
+  3. 保留所有 records 和 task_classes 数据
+  4. **入队 SyncQueue**（action=update, entityType=task, payload={status: 'abandoned'}）
+  5. 异步同步到服务端
+- **刷新**：删除后 invalidate 以下 provider：
+  - `weekNameCheckTasksProvider`
+  - `submittedTaskIdsProvider`
+  - `mySubmissionsProvider`
+- **服务端保护**：`update_task` 在改为 abandoned 时检查是否已关联 pending/approved submission，已提交则返回 403
+
+### 4.8 重新生成汇报文本
 
 - **入口**：记名详情页 → 点击右上角"生成文本"图标
 - **代码**：`_generateText()`

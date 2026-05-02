@@ -1,7 +1,7 @@
 # AGENT.md — AI Agent 协作指南
 
 > 本文档面向接手此项目的 AI Agent。请在开始任何工作前完整阅读此文件。
-> 最后更新：2026-05-01 · 当前版本：v0.6.0（开发中）
+> 最后更新：2026-05-03 · 当前版本：v0.6.0（开发中）
 > 
 > 项目：考勤助手（查课 App）· 课堂考勤 Flutter 应用（Android 优先）
 > 仓库：https://github.com/Keleoz-Cyber/LessonSearch
@@ -279,13 +279,26 @@ scripts/
 - **失败重试**：同步失败记录自动重置并重试，最多5次
 - **提交前强制同步**：提交前自动同步，失败则阻止提交并提示
 - **同步完成提示**：启动同步完成后显示 SnackBar（2秒自动消失）
+- **批量同步（v0.6.0+）**：连续多条 record update 自动合并为一次批量请求（≤50条），大幅提升同步速度
+- **401 保护（v0.6.0+）**：Token 过期时只清除 token，保留本地数据和用户信息，重新登录后继续同步
+- **退出登录保护（v0.6.0+）**：有未同步数据时禁用退出按钮，强制先同步
+
+### 同步失败分类处理
+
+| 错误类型 | 处理方式 | retryCount | 自动恢复 |
+|---------|---------|-----------|---------|
+| 网络错误 | 标记 failed，等待网络恢复 | +1 | 是 |
+| 认证过期 401 | 标记 failed=999，中断同步 | 999 | 登录后自动重置 |
+| 其他错误 | 正常重试，5次后放弃 | +1 | 否 |
 
 ### 代码位置
 
-- `app/lib/core/sync/sync_service.dart` — 同步服务
+- `app/lib/core/sync/sync_service.dart` — 同步服务（含批量同步逻辑）
 - `app/lib/app.dart` — 启动同步检查
-- `app/lib/features/home/presentation/home_page.dart` — 未同步警告卡片
-- `app/lib/features/extension/presentation/submission_page.dart` — 提交前同步
+- `app/lib/features/home/presentation/home_page.dart` — 未同步警告卡片 + 401 处理
+- `app/lib/features/extension/presentation/submission_page.dart` — 提交前同步 + 同步中交互
+- `app/lib/features/settings/presentation/settings_page.dart` — 退出登录前检查
+- `app/lib/shared/providers.dart` — authExpiredProvider + pendingSyncCountProvider
 
 ---
 
