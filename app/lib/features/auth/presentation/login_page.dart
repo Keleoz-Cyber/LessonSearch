@@ -104,6 +104,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       ref.invalidate(isLoggedInProvider);
       ref.invalidate(userEmailProvider);
       ref.invalidate(apiClientProvider);
+      // 重置认证过期状态
+      ref.read(authExpiredProvider.notifier).state = false;
 
       if (mounted) {
         // 登录成功后，重置因 401 标记为 failed 的同步项，让它们能继续同步
