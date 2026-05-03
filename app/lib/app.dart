@@ -166,7 +166,6 @@ class _AppState extends ConsumerState<App> {
   @override
   Widget build(BuildContext context) {
     final themeMode = ref.watch(themeModeProvider);
-    final syncService = ref.watch(syncServiceProvider);
 
     return MaterialApp.router(
       title: '查课',

@@ -71,11 +71,13 @@ async def create_submission(
         AttendanceRecord.task_id.in_(body.task_ids)
     ).all()
     
-    existing_submission_ids = db.query(SubmissionRecord.record_id).filter(
-        SubmissionRecord.record_id.in_([r.id for r in records if r.id])
-    ).all()
+    # 重复提交检查：只拦截关联了 pending/approved submission 的记录
+    existing_submission = db.query(SubmissionRecord).join(Submission).filter(
+        SubmissionRecord.record_id.in_([r.id for r in records if r.id]),
+        Submission.status.in_(['pending', 'approved'])
+    ).first()
     
-    if existing_submission_ids:
+    if existing_submission:
         raise HTTPException(
             status_code=400,
             detail="部分记录已提交，无法重复提交"

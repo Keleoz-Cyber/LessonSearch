@@ -1,3 +1,5 @@
+import 'package:dio/dio.dart';
+
 import '../../../core/network/api_client.dart';
 
 class SubmissionService {
@@ -25,11 +27,19 @@ class SubmissionService {
     required int weekNumber,
     required List<String> taskIds,
   }) async {
-    final res = await _api.dio.post(
-      '/submissions/',
-      data: {'week_number': weekNumber, 'task_ids': taskIds},
-    );
-    return res.data as Map<String, dynamic>;
+    try {
+      final res = await _api.dio.post(
+        '/submissions/',
+        data: {'week_number': weekNumber, 'task_ids': taskIds},
+      );
+      return res.data as Map<String, dynamic>;
+    } on DioException catch (e) {
+      final detail = e.response?.data?['detail'];
+      if (detail != null) {
+        throw Exception('提交失败: $detail');
+      }
+      rethrow;
+    }
   }
 
   Future<void> cancelSubmission(int submissionId) async {

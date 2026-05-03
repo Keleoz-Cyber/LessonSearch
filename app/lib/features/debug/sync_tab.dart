@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/database/app_database.dart';
-import '../../../core/sync/sync_service.dart';
 import '../../../shared/providers.dart';
 import '../../../shared/widgets/toast.dart';
 

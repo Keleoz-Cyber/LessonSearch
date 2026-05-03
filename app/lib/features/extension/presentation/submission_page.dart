@@ -285,7 +285,9 @@ class _SubmissionPageState extends ConsumerState<SubmissionPage>
         successCount++;
       } catch (e) {
         failCount++;
-        errors.add('$taskId: $e');
+        final errorMsg = e.toString();
+        errors.add('$taskId: $errorMsg');
+        LoggerService.error('提交失败 [$taskId]: $errorMsg');
       }
     }
 
@@ -293,7 +295,12 @@ class _SubmissionPageState extends ConsumerState<SubmissionPage>
       if (failCount == 0) {
         Toast.show(context, '成功提交 $successCount 个任务');
       } else {
-        Toast.show(context, '提交完成: $successCount 成功, $failCount 失败');
+        // 显示第一个错误的详细信息
+        final firstError = errors.isNotEmpty ? errors.first : '';
+        final detail = firstError.contains(': ') 
+            ? firstError.split(': ').skip(1).join(': ') 
+            : firstError;
+        Toast.show(context, '提交完成: $successCount 成功, $failCount 失败\n$detail');
       }
       _selectedTaskIds = [];
       ref.invalidate(submittedTaskIdsProvider);
