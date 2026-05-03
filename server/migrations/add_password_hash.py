@@ -1,11 +1,12 @@
+# -*- coding: utf-8 -*-
 """
-数据库迁移脚本：为用户表添加 password_hash 字段
+Database migration: add password_hash column to users table
 
-运行方式：
+Usage:
     cd server
     python migrations/add_password_hash.py
 
-或手动在 MySQL 中执行：
+Or manually in MySQL:
     ALTER TABLE users ADD COLUMN password_hash VARCHAR(255) NULL;
 """
 
