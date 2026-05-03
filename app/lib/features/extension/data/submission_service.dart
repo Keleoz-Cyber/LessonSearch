@@ -99,4 +99,32 @@ class SubmissionService {
     );
     return res.data as List;
   }
+
+  Future<Map<String, dynamic>> adminSearchSubmissions({
+    int page = 1,
+    int pageSize = 20,
+    String? status,
+    int? weekNumber,
+    int? userId,
+    String? startDate,
+    String? endDate,
+    String? keyword,
+  }) async {
+    final params = <String, dynamic>{
+      'page': page,
+      'page_size': pageSize,
+    };
+    if (status != null) params['status'] = status;
+    if (weekNumber != null) params['week_number'] = weekNumber;
+    if (userId != null) params['user_id'] = userId;
+    if (startDate != null) params['start_date'] = startDate;
+    if (endDate != null) params['end_date'] = endDate;
+    if (keyword != null && keyword.isNotEmpty) params['keyword'] = keyword;
+
+    final res = await _api.dio.get(
+      '/submissions/admin-search',
+      queryParameters: params,
+    );
+    return res.data as Map<String, dynamic>;
+  }
 }

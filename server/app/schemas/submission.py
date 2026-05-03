@@ -107,3 +107,10 @@ class WeekSummaryDetailResponse(BaseModel):
     late_count: int
     absent_count: int
     total_count: int
+
+
+class SubmissionAdminSearchResponse(BaseModel):
+    total: int
+    page: int
+    page_size: int
+    items: List[SubmissionDetailResponse]

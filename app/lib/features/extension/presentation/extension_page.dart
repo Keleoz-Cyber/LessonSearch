@@ -40,6 +40,16 @@ class ExtensionPage extends ConsumerWidget {
                   onTap: () => context.push('/extension/weekly-summary'),
                 ),
                 const SizedBox(height: 16),
+                if (isAdmin) ...[
+                  FeatureCard(
+                    icon: Icons.search_outlined,
+                    title: '提交记录查询',
+                    subtitle: '查询所有历史提交记录',
+                    color: Colors.teal,
+                    onTap: () => context.push('/extension/submission-search'),
+                  ),
+                  const SizedBox(height: 16),
+                ],
                 FeatureCard(
                   icon: Icons.file_upload_outlined,
                   title: '任务导入',

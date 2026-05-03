@@ -25,7 +25,8 @@ from app.schemas.submission import (
     WeekSummaryResponse,
     ExportStatusResponse,
     SubmissionRecordsResponse,
-    RecordDetail
+    RecordDetail,
+    SubmissionAdminSearchResponse
 )
 from app.routers.week import get_current_week_config, calculate_week_number
 
@@ -284,6 +285,113 @@ async def get_reviewed_submissions(
         ))
     
     return result
+
+
+@router.get("/admin-search", response_model=SubmissionAdminSearchResponse)
+async def admin_search_submissions(
+    page: int = 1,
+    page_size: int = 20,
+    status: str = None,
+    week_number: int = None,
+    user_id: int = None,
+    start_date: str = None,
+    end_date: str = None,
+    keyword: str = None,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """管理员查询提交记录（支持分页和筛选）"""
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="需要管理员权限")
+    
+    query = db.query(Submission)
+    
+    # 状态筛选
+    if status:
+        query = query.filter(Submission.status == status)
+    
+    # 周次筛选
+    if week_number:
+        query = query.filter(Submission.week_number == week_number)
+    
+    # 提交人筛选
+    if user_id:
+        query = query.filter(Submission.user_id == user_id)
+    
+    # 日期范围筛选
+    if start_date:
+        try:
+            start_dt = datetime.strptime(start_date, "%Y-%m-%d")
+            query = query.filter(Submission.submitted_at >= start_dt)
+        except ValueError:
+            pass
+    
+    if end_date:
+        try:
+            end_dt = datetime.strptime(end_date, "%Y-%m-%d")
+            # 包含当天结束
+            end_dt = end_dt.replace(hour=23, minute=59, second=59)
+            query = query.filter(Submission.submitted_at <= end_dt)
+        except ValueError:
+            pass
+    
+    # 关键词搜索（班级名称、提交人姓名/邮箱）
+    if keyword:
+        keyword = keyword.strip()
+        # 先搜索用户
+        matched_users = db.query(User).filter(
+            (User.real_name.contains(keyword)) | 
+            (User.email.contains(keyword))
+        ).all()
+        matched_user_ids = [u.id for u in matched_users]
+        
+        query = query.filter(
+            (Submission.class_names.contains(keyword)) |
+            (Submission.user_id.in_(matched_user_ids) if matched_user_ids else False)
+        )
+    
+    # 统计总数
+    total = query.count()
+    
+    # 分页
+    offset = (page - 1) * page_size
+    submissions = query.order_by(Submission.submitted_at.desc()).offset(offset).limit(page_size).all()
+    
+    result = []
+    for sub in submissions:
+        user = db.query(User).filter(User.id == sub.user_id).first()
+        reviewer = None
+        if sub.reviewer_id:
+            reviewer = db.query(User).filter(User.id == sub.reviewer_id).first()
+        
+        submission_records = db.query(SubmissionRecord).filter(
+            SubmissionRecord.submission_id == sub.id
+        ).all()
+        record_count = len(submission_records)
+        
+        result.append(SubmissionDetailResponse(
+            id=sub.id,
+            user_id=sub.user_id,
+            user_name=user.real_name if user else None,
+            user_email=user.email if user else None,
+            week_number=sub.week_number,
+            status=sub.status,
+            reviewer_id=sub.reviewer_id,
+            reviewer_name=reviewer.real_name if reviewer else None,
+            review_time=sub.review_time,
+            review_note=sub.review_note,
+            submitted_at=sub.submitted_at,
+            task_count=1,
+            record_count=record_count,
+            class_names=sub.class_names or ""
+        ))
+    
+    return {
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "items": result
+    }
 
 
 @router.get("/week-summary/{week_number}", response_model=WeekSummaryResponse)
