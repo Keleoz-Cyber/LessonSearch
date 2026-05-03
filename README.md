@@ -150,15 +150,13 @@ Token 过期返回 401 时，**只清除 token，保留本地所有数据和用�
 
 ## 页面预览
 
-> 以下为功能截图占位，后续补充实际截图。
-
 | 首页 | 记名页面 | 名单提交 |
 |------|----------|----------|
-| ![首页](docs/screenshots/home.png) | ![记名](docs/screenshots/name_check.png) | ![提交](docs/screenshots/submission.png) |
+| ![首页](docs/screenshots/首页.png) | ![记名](docs/screenshots/记名.png) | ![提交](docs/screenshots/名单提交.png) |
 
 | 管理员审核 | 周汇总 | 同步问题详情 |
 |------------|--------|--------------|
-| ![审核](docs/screenshots/review.png) | ![汇总](docs/screenshots/summary.png) | ![同步](docs/screenshots/sync_issues.png) |
+| ![审核](docs/screenshots/管理员审核.png) | ![汇总](docs/screenshots/周汇总.png) | ![同步](docs/screenshots/同步问题详情.png) |
 
 ---
 
