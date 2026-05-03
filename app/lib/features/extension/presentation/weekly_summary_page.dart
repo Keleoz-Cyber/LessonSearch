@@ -1288,6 +1288,9 @@ class _PendingSubmissionCard extends ConsumerWidget {
   }
 
   Future<void> _approve(BuildContext context, WidgetRef ref) async {
+    final confirmed = await _showReviewConfirmDialog(context, ref, isApprove: true);
+    if (!confirmed) return;
+
     try {
       final service = ref.read(submissionServiceProvider);
       await service.approveSubmission(submission['id']);
@@ -1305,6 +1308,10 @@ class _PendingSubmissionCard extends ConsumerWidget {
   }
 
   Future<void> _showRejectDialog(BuildContext context, WidgetRef ref) async {
+    // 先显示摘要确认
+    final confirmed = await _showReviewConfirmDialog(context, ref, isApprove: false);
+    if (!confirmed) return;
+
     final controller = TextEditingController();
     final result = await showDialog<bool>(
       context: context,
@@ -1352,6 +1359,224 @@ class _PendingSubmissionCard extends ConsumerWidget {
         Toast.show(context, '操作失败: $e');
       }
     }
+  }
+
+  /// 审核前确认对话框，展示提交摘要信息
+  Future<bool> _showReviewConfirmDialog(
+    BuildContext context,
+    WidgetRef ref, {
+    required bool isApprove,
+  }) async {
+    final submissionId = submission['id'] as int;
+
+    // 显示加载中
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => const AlertDialog(
+        content: Row(
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(width: 20),
+            Text('正在加载提交详情...'),
+          ],
+        ),
+      ),
+    );
+
+    try {
+      final data = await ref
+          .read(submissionServiceProvider)
+          .getSubmissionRecords(submissionId);
+
+      if (context.mounted) Navigator.of(context, rootNavigator: true).pop();
+
+      // 检查是否已被撤销
+      final status = data['status'] as String?;
+      if (status == 'cancelled') {
+        if (context.mounted) Toast.show(context, '该提交已被撤销');
+        return false;
+      }
+
+      if (!context.mounted) return false;
+
+      final records = data['records'] as List? ?? [];
+      final lateCount = data['late_count'] as int? ?? 0;
+      final absentCount = data['absent_count'] as int? ?? 0;
+      final leaveCount = data['leave_count'] as int? ?? 0;
+      final otherCount = data['other_count'] as int? ?? 0;
+      final classNames = submission['class_names'] as String? ?? '';
+      final userName = submission['user_name'] ?? submission['user_email'] ?? '未知';
+      final submittedAt = DateTime.parse(submission['submitted_at'] as String);
+
+      // 分类记录
+      final absentRecords = records.where((r) => r['status'] == 'absent').toList();
+      final lateRecords = records.where((r) => r['status'] == 'late').toList();
+      final leaveRecords = records.where((r) => r['status'] == 'leave').toList();
+      final otherRecords = records.where((r) => r['status'] == 'other').toList();
+
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text(isApprove ? '确认通过' : '确认拒绝'),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // 基本信息
+                  _buildInfoRow('提交人', userName),
+                  _buildInfoRow('提交时间', DateFormat('yyyy-MM-dd HH:mm').format(submittedAt)),
+                  if (classNames.isNotEmpty)
+                    _buildInfoRow('班级', classNames),
+                  _buildInfoRow('记录数量', '${records.length} 条'),
+                  const Divider(height: 24),
+
+                  // 统计摘要
+                  const Text('异常统计', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      _buildMiniStat('迟到', lateCount, Colors.orange),
+                      _buildMiniStat('缺勤', absentCount, Colors.red),
+                      _buildMiniStat('请假', leaveCount, Colors.blue),
+                      _buildMiniStat('其他', otherCount, Colors.grey),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  // 异常名单摘要（只显示前5个）
+                  if (absentRecords.isNotEmpty) ...[
+                    _buildRecordListPreview('缺勤', absentRecords, Colors.red),
+                  ],
+                  if (lateRecords.isNotEmpty) ...[
+                    _buildRecordListPreview('迟到', lateRecords, Colors.orange),
+                  ],
+                  if (leaveRecords.isNotEmpty) ...[
+                    _buildRecordListPreview('请假', leaveRecords, Colors.blue),
+                  ],
+                  if (otherRecords.isNotEmpty) ...[
+                    _buildRecordListPreview('其他', otherRecords, Colors.grey),
+                  ],
+
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: isApprove
+                          ? Colors.green.withValues(alpha: 0.1)
+                          : Colors.red.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          isApprove ? Icons.check_circle_outline : Icons.warning_amber,
+                          color: isApprove ? Colors.green : Colors.red,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            isApprove
+                                ? '确认要通过这份提交吗？通过后数据将计入周汇总。'
+                                : '确认要拒绝这份提交吗？拒绝后成员可以修改后重新提交。',
+                            style: TextStyle(
+                              color: isApprove ? Colors.green.shade800 : Colors.red.shade800,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('取消'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              style: FilledButton.styleFrom(
+                backgroundColor: isApprove ? Colors.green : Colors.red,
+              ),
+              child: Text(isApprove ? '确认通过' : '确认拒绝'),
+            ),
+          ],
+        ),
+      );
+
+      return confirmed == true;
+    } catch (e) {
+      if (context.mounted) Navigator.of(context, rootNavigator: true).pop();
+      if (context.mounted) Toast.show(context, '加载详情失败: $e');
+      return false;
+    }
+  }
+
+  Widget _buildInfoRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 64,
+            child: Text(
+              label,
+              style: const TextStyle(color: Colors.grey, fontSize: 13),
+            ),
+          ),
+          Expanded(
+            child: Text(value, style: const TextStyle(fontSize: 13)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRecordListPreview(
+    String label,
+    List<dynamic> records,
+    Color color,
+  ) {
+    final previewCount = records.length > 5 ? 5 : records.length;
+    final hasMore = records.length > 5;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '$label名单 (${records.length}人):',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 13,
+            color: color,
+          ),
+        ),
+        const SizedBox(height: 4),
+        ...records.take(previewCount).map((r) => Padding(
+          padding: const EdgeInsets.symmetric(vertical: 1),
+          child: Text(
+            '  ${r['student_name']} (${r['student_no']}) ${r['class_name']}',
+            style: const TextStyle(fontSize: 12),
+          ),
+        )),
+        if (hasMore)
+          Text(
+            '  ...等${records.length - previewCount}人',
+            style: const TextStyle(fontSize: 12, color: Colors.grey),
+          ),
+        const SizedBox(height: 8),
+      ],
+    );
   }
 
   Widget _buildMiniStat(String label, int count, Color color) {

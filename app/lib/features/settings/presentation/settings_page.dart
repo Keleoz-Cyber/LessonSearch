@@ -69,6 +69,25 @@ class SettingsPage extends ConsumerWidget {
                 ? null
                 : () => _syncNow(context, ref),
           ),
+          Consumer(
+            builder: (context, ref, child) {
+              final pendingCountAsync = ref.watch(pendingSyncCountProvider);
+              return pendingCountAsync.when(
+                loading: () => const SizedBox.shrink(),
+                error: (_, __) => const SizedBox.shrink(),
+                data: (count) {
+                  if (count == 0) return const SizedBox.shrink();
+                  return ListTile(
+                    leading: const Icon(Icons.warning_amber, color: Colors.orange),
+                    title: const Text('查看同步问题详情'),
+                    subtitle: Text('$count 条数据未同步，点击查看详情'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => context.push('/settings/sync-issues'),
+                  );
+                },
+              );
+            },
+          ),
 
           const Divider(),
 

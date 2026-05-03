@@ -19,6 +19,7 @@ import '../../features/records/presentation/records_list_page.dart';
 import '../../features/records/presentation/record_detail_page.dart';
 import '../../features/settings/presentation/settings_page.dart';
 import '../../features/settings/presentation/faq_page.dart';
+import '../../features/settings/presentation/sync_issues_page.dart';
 import '../../features/debug/debug_page.dart';
 import '../../features/home/presentation/home_page.dart';
 import '../../shared/providers.dart';
@@ -190,6 +191,11 @@ final appRouter = GoRouter(
       path: '/settings/faq',
       name: 'faq',
       builder: (context, state) => const FaqPage(),
+    ),
+    GoRoute(
+      path: '/settings/sync-issues',
+      name: 'sync-issues',
+      builder: (context, state) => const SyncIssuesPage(),
     ),
 
     GoRoute(
