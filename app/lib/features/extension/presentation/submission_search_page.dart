@@ -394,62 +394,35 @@ class _SubmissionSearchPageState extends ConsumerState<SubmissionSearchPage> {
   }
 
   Future<void> _showDateRangePicker() async {
-    final startController = TextEditingController(text: _startDate ?? '');
-    final endController = TextEditingController(text: _endDate ?? '');
-
-    final result = await showDialog<Map<String, String?>?>(
+    // 选择开始日期
+    final start = await showDatePicker(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('选择日期范围'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: startController,
-              decoration: const InputDecoration(
-                hintText: '开始日期，如 2024-01-01',
-                labelText: '开始日期',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: endController,
-              decoration: const InputDecoration(
-                hintText: '结束日期，如 2024-12-31',
-                labelText: '结束日期',
-                border: OutlineInputBorder(),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('取消'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, {
-              'start': startController.text.trim().isEmpty
-                  ? null
-                  : startController.text.trim(),
-              'end': endController.text.trim().isEmpty
-                  ? null
-                  : endController.text.trim(),
-            }),
-            child: const Text('确定'),
-          ),
-        ],
-      ),
+      initialDate: _startDate != null
+          ? DateTime.parse(_startDate!)
+          : DateTime.now().subtract(const Duration(days: 30)),
+      firstDate: DateTime(2024),
+      lastDate: DateTime.now(),
+      helpText: '选择开始日期',
     );
+    if (start == null) return;
 
-    if (result != null) {
-      setState(() {
-        _startDate = result['start'];
-        _endDate = result['end'];
-      });
-      _loadData();
-    }
+    // 选择结束日期
+    final end = await showDatePicker(
+      context: context,
+      initialDate: _endDate != null
+          ? DateTime.parse(_endDate!)
+          : DateTime.now(),
+      firstDate: start,
+      lastDate: DateTime.now(),
+      helpText: '选择结束日期',
+    );
+    if (end == null) return;
+
+    setState(() {
+      _startDate = DateFormat('yyyy-MM-dd').format(start);
+      _endDate = DateFormat('yyyy-MM-dd').format(end);
+    });
+    _loadData();
   }
 
   void _showDetail(Map<String, dynamic> item) {
@@ -534,6 +507,13 @@ class _SubmissionSearchPageState extends ConsumerState<SubmissionSearchPage> {
             onPressed: () => Navigator.pop(ctx),
             child: const Text('关闭'),
           ),
+          FilledButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              _showStudentDetail(item);
+            },
+            child: const Text('查看学生明细'),
+          ),
         ],
       ),
     );
@@ -557,6 +537,142 @@ class _SubmissionSearchPageState extends ConsumerState<SubmissionSearchPage> {
           ),
         ],
       ),
+    );
+  }
+
+  /// 查看学生明细，复用已有 /submissions/{id}/records 接口
+  Future<void> _showStudentDetail(Map<String, dynamic> item) async {
+    final submissionId = item['id'] as int;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => const AlertDialog(
+        content: Row(
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(width: 20),
+            Text('正在加载学生明细...'),
+          ],
+        ),
+      ),
+    );
+
+    try {
+      final service = ref.read(_submissionServiceProvider);
+      final data = await service.getSubmissionRecords(submissionId);
+
+      if (mounted) Navigator.of(context, rootNavigator: true).pop();
+
+      if (!mounted) return;
+
+      final records = data['records'] as List? ?? [];
+      final lateCount = data['late_count'] as int? ?? 0;
+      final absentCount = data['absent_count'] as int? ?? 0;
+      final leaveCount = data['leave_count'] as int? ?? 0;
+      final otherCount = data['other_count'] as int? ?? 0;
+
+      final absentRecords = records.where((r) => r['status'] == 'absent').toList();
+      final lateRecords = records.where((r) => r['status'] == 'late').toList();
+      final leaveRecords = records.where((r) => r['status'] == 'leave').toList();
+      final otherRecords = records.where((r) => r['status'] == 'other').toList();
+
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text('学生明细 (${records.length}人)'),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: records.isEmpty
+                ? const Text('没有异常记录')
+                : SingleChildScrollView(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // 统计摘要
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            if (lateCount > 0)
+                              _buildMiniStat('迟到', lateCount, Colors.orange),
+                            if (absentCount > 0)
+                              _buildMiniStat('缺勤', absentCount, Colors.red),
+                            if (leaveCount > 0)
+                              _buildMiniStat('请假', leaveCount, Colors.blue),
+                            if (otherCount > 0)
+                              _buildMiniStat('其他', otherCount, Colors.grey),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        // 名单
+                        if (absentRecords.isNotEmpty) ...[
+                          _buildRecordGroup('缺勤', absentRecords, Colors.red),
+                        ],
+                        if (lateRecords.isNotEmpty) ...[
+                          _buildRecordGroup('迟到', lateRecords, Colors.orange),
+                        ],
+                        if (leaveRecords.isNotEmpty) ...[
+                          _buildRecordGroup('请假', leaveRecords, Colors.blue),
+                        ],
+                        if (otherRecords.isNotEmpty) ...[
+                          _buildRecordGroup('其他', otherRecords, Colors.grey),
+                        ],
+                      ],
+                    ),
+                  ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('关闭'),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      if (mounted) Navigator.of(context, rootNavigator: true).pop();
+      if (mounted) Toast.show(context, '加载学生明细失败: $e');
+    }
+  }
+
+  Widget _buildMiniStat(String label, int count, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        '$label: $count',
+        style: TextStyle(color: color, fontSize: 12),
+      ),
+    );
+  }
+
+  Widget _buildRecordGroup(String label, List<dynamic> records, Color color) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '$label (${records.length}人)',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 14,
+            color: color,
+          ),
+        ),
+        const SizedBox(height: 4),
+        ...records.map((r) => Padding(
+          padding: const EdgeInsets.symmetric(vertical: 1),
+          child: Text(
+            '  ${r['student_name']} (${r['student_no']}) ${r['class_name']}',
+            style: const TextStyle(fontSize: 12),
+          ),
+        )),
+        const SizedBox(height: 12),
+      ],
     );
   }
 }

@@ -304,6 +304,10 @@ async def admin_search_submissions(
     if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="需要管理员权限")
     
+    # 限制分页参数
+    page = max(1, page)
+    page_size = min(max(1, page_size), 100)
+    
     query = db.query(Submission)
     
     # 状态筛选
@@ -324,7 +328,7 @@ async def admin_search_submissions(
             start_dt = datetime.strptime(start_date, "%Y-%m-%d")
             query = query.filter(Submission.submitted_at >= start_dt)
         except ValueError:
-            pass
+            raise HTTPException(status_code=400, detail=f"开始日期格式错误: {start_date}，应为 YYYY-MM-DD")
     
     if end_date:
         try:
@@ -333,7 +337,7 @@ async def admin_search_submissions(
             end_dt = end_dt.replace(hour=23, minute=59, second=59)
             query = query.filter(Submission.submitted_at <= end_dt)
         except ValueError:
-            pass
+            raise HTTPException(status_code=400, detail=f"结束日期格式错误: {end_date}，应为 YYYY-MM-DD")
     
     # 关键词搜索（班级名称、提交人姓名/邮箱）
     if keyword:
@@ -369,6 +373,16 @@ async def admin_search_submissions(
         ).all()
         record_count = len(submission_records)
         
+        # 统计关联的 task 数量（去重）
+        task_ids = set()
+        if submission_records:
+            record_ids = [sr.record_id for sr in submission_records]
+            records = db.query(AttendanceRecord).filter(
+                AttendanceRecord.id.in_(record_ids)
+            ).all()
+            task_ids = {r.task_id for r in records if r.task_id}
+        task_count = len(task_ids)
+        
         result.append(SubmissionDetailResponse(
             id=sub.id,
             user_id=sub.user_id,
@@ -381,7 +395,7 @@ async def admin_search_submissions(
             review_time=sub.review_time,
             review_note=sub.review_note,
             submitted_at=sub.submitted_at,
-            task_count=1,
+            task_count=task_count,
             record_count=record_count,
             class_names=sub.class_names or ""
         ))
