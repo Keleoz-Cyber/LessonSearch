@@ -104,6 +104,10 @@
   - 服务端移除 passlib 依赖，改用原生 bcrypt API（bcrypt.hashpw / bcrypt.checkpw）
   - 解决 bcrypt 5.0+ 与 passlib 1.7.4 不兼容导致的 500 错误
   - _verify_password 增加异常保护，避免 hash 格式错误时崩溃
+- **全新应用图标**
+  - 重新设计应用图标，浅蓝色调，白色文档清单+蓝色圆点+绿色对勾徽章
+  - 符合 Material Design 规范，支持 Android 自适应图标和 iOS 全尺寸图标
+  - 提供图标生成脚本 `scripts/generate_app_icon.py`
 - **其他**
   - 邮件模板改为梦幻炫彩玻璃风格
   - 隐私政策与用户协议文档
