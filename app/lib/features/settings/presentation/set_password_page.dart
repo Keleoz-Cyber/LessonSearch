@@ -26,6 +26,15 @@ class _SetPasswordPageState extends ConsumerState<SetPasswordPage> {
     super.dispose();
   }
 
+  /// 统一解析后端返回的 detail 字段，兼容 String / List / Map / null
+  String _parseErrorDetail(dynamic detail) {
+    if (detail == null) return '';
+    if (detail is String) return detail;
+    if (detail is List && detail.isNotEmpty) return detail.first.toString();
+    if (detail is Map) return detail['msg']?.toString() ?? detail.toString();
+    return detail.toString();
+  }
+
   Future<void> _submit() async {
     final password = _passwordController.text;
     final confirm = _confirmController.text;
@@ -58,7 +67,7 @@ class _SetPasswordPageState extends ConsumerState<SetPasswordPage> {
         Navigator.pop(context);
       }
     } on DioException catch (e) {
-      final detail = e.response?.data['detail'] ?? '';
+      final detail = _parseErrorDetail(e.response?.data['detail']);
       if (mounted) {
         Toast.show(context, detail.isNotEmpty ? detail : '设置失败');
       }
