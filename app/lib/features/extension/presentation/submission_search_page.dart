@@ -267,7 +267,7 @@ class _SubmissionSearchPageState extends ConsumerState<SubmissionSearchPage> {
                 // 日期范围
                 _buildFilterChip(
                   label: (_startDate != null || _endDate != null)
-                      ? '${_startDate ?? ''} ~ ${_endDate ?? ''}'
+                      ? _formatDateRangeLabel()
                       : '全部日期',
                   onTap: () => _showDateRangePicker(),
                 ),
@@ -307,11 +307,16 @@ class _SubmissionSearchPageState extends ConsumerState<SubmissionSearchPage> {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 13,
-                color: Theme.of(context).colorScheme.onPrimaryContainer,
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 160),
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Theme.of(context).colorScheme.onPrimaryContainer,
+                ),
               ),
             ),
             const SizedBox(width: 4),
@@ -435,6 +440,24 @@ class _SubmissionSearchPageState extends ConsumerState<SubmissionSearchPage> {
       _endDate = DateFormat('yyyy-MM-dd').format(end);
     });
     _loadData();
+  }
+
+  /// 格式化日期范围标签：同一年显示 MM-DD ~ MM-DD，跨年显示完整日期
+  String _formatDateRangeLabel() {
+    if (_startDate == null && _endDate == null) return '全部日期';
+    if (_startDate != null && _endDate == null) return _startDate!;
+    if (_startDate == null && _endDate != null) return _endDate!;
+
+    final start = DateTime.parse(_startDate!);
+    final end = DateTime.parse(_endDate!);
+
+    if (start.year == end.year) {
+      // 同年：MM-DD ~ MM-DD
+      return '${DateFormat('MM-dd').format(start)} ~ ${DateFormat('MM-dd').format(end)}';
+    } else {
+      // 跨年：YYYY-MM-DD ~ YYYY-MM-DD
+      return '${DateFormat('yyyy-MM-dd').format(start)} ~ ${DateFormat('yyyy-MM-dd').format(end)}';
+    }
   }
 
   void _showDetail(Map<String, dynamic> item) {
