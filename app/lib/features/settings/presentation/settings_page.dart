@@ -141,6 +141,13 @@ class SettingsPage extends ConsumerWidget {
             trailing: const Icon(Icons.chevron_right),
             onTap: () => context.push('/debug/sync'),
           ),
+          ListTile(
+            leading: const Icon(Icons.help_outline),
+            title: const Text('常见问题与解决方案'),
+            subtitle: const Text('使用过程中遇到问题的解答'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push('/settings/faq'),
+          ),
 
           const Divider(),
 

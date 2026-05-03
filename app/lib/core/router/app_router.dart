@@ -18,6 +18,7 @@ import '../../features/ranking/presentation/ranking_page.dart';
 import '../../features/records/presentation/records_list_page.dart';
 import '../../features/records/presentation/record_detail_page.dart';
 import '../../features/settings/presentation/settings_page.dart';
+import '../../features/settings/presentation/faq_page.dart';
 import '../../features/debug/debug_page.dart';
 import '../../features/home/presentation/home_page.dart';
 import '../../shared/providers.dart';
@@ -183,6 +184,12 @@ final appRouter = GoRouter(
       path: '/settings',
       name: 'settings',
       builder: (context, state) => const SettingsPage(),
+    ),
+
+    GoRoute(
+      path: '/settings/faq',
+      name: 'faq',
+      builder: (context, state) => const FaqPage(),
     ),
 
     GoRoute(
