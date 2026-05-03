@@ -58,14 +58,35 @@ def create_task(
 
     existing = db.query(AttendanceTask).filter(AttendanceTask.id == body.id).first()
     if existing:
+        # 幂等更新：如果请求带了状态字段，更新已有任务
+        updated = False
+        if body.status is not None and existing.status != body.status:
+            existing.status = body.status
+            updated = True
+        if body.phase is not None and existing.phase != body.phase:
+            existing.phase = body.phase
+            updated = True
+        if body.current_class_index is not None and existing.current_class_index != body.current_class_index:
+            existing.current_class_index = body.current_class_index
+            updated = True
+        if body.current_student_index is not None and existing.current_student_index != body.current_student_index:
+            existing.current_student_index = body.current_student_index
+            updated = True
+        if updated:
+            db.commit()
+            db.refresh(existing)
         return _task_to_out(existing, db)
 
     task = AttendanceTask(
         id=body.id,
         user_id=user_id,
         type=body.type,
+        status=body.status or "in_progress",
+        phase=body.phase or "selecting",
         selected_grade_id=body.selected_grade_id,
         selected_major_id=body.selected_major_id,
+        current_class_index=body.current_class_index or 0,
+        current_student_index=body.current_student_index or 0,
     )
     db.add(task)
     db.flush()

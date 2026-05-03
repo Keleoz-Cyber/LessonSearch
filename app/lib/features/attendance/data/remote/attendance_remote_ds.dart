@@ -19,6 +19,10 @@ class AttendanceRemoteDataSource {
       'class_ids': task.classIds,
       'selected_grade_id': task.selectedGradeId,
       'selected_major_id': task.selectedMajorId,
+      'status': task.status.value,
+      'phase': task.phase.value,
+      'current_class_index': task.currentClassIndex,
+      'current_student_index': task.currentStudentIndex,
     });
   }
 

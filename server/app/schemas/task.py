@@ -9,6 +9,10 @@ class TaskCreate(BaseModel):
     class_ids: list[int]
     selected_grade_id: int | None = None
     selected_major_id: int | None = None
+    status: str | None = None
+    phase: str | None = None
+    current_class_index: int | None = None
+    current_student_index: int | None = None
 
 
 class TaskUpdate(BaseModel):

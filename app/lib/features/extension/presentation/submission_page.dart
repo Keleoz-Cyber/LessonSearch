@@ -208,6 +208,42 @@ class _SubmissionPageState extends ConsumerState<SubmissionPage>
         ref.invalidate(weekNameCheckTasksProvider(weekNumber));
         return;
       }
+
+      // 校验服务端任务状态：本地 completed 但服务端不是 completed 时，主动修复
+      final remoteDS = ref.read(attendanceRemoteDSProvider);
+      final fixFailedTasks = <String>[];
+      for (final taskId in _selectedTaskIds) {
+        final localTask = await repo.getTask(taskId);
+        if (localTask != null && localTask.status == TaskStatus.completed) {
+          try {
+            final remoteTask = await remoteDS.getTask(taskId);
+            final remoteStatus = remoteTask['status'] as String?;
+            if (remoteStatus != 'completed') {
+              LoggerService.sync(
+                '提交前修复任务状态: $taskId 服务端 $remoteStatus → completed',
+              );
+              await remoteDS.updateTask(
+                taskId,
+                status: TaskStatus.completed,
+              );
+            }
+          } catch (e) {
+            LoggerService.sync(
+              '提交前修复任务状态失败: $taskId - $e',
+              isError: true,
+            );
+            fixFailedTasks.add(taskId);
+          }
+        }
+      }
+      if (fixFailedTasks.isNotEmpty) {
+        setState(() => _loading = false);
+        Toast.show(
+          context,
+          '任务状态尚未同步完成，请先同步后再提交',
+        );
+        return;
+      }
     } catch (e) {
       setState(() => _loading = false);
       LoggerService.sync('同步失败: $e', isError: true);
