@@ -187,7 +187,7 @@ class SyncIssuesPage extends ConsumerWidget {
 
         // 立即重试按钮
         FilledButton.icon(
-          onPressed: () => _retrySync(context, ref),
+          onPressed: () => _retrySync(context, ref, groups),
           icon: const Icon(Icons.sync),
           label: const Text('立即重试同步'),
           style: FilledButton.styleFrom(
@@ -197,7 +197,7 @@ class SyncIssuesPage extends ConsumerWidget {
         const SizedBox(height: 8),
         Center(
           child: Text(
-            '点击后会立即尝试同步所有待同步和失败的数据',
+            _buildRetryHint(groups),
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
               color: Colors.grey,
             ),
@@ -346,13 +346,60 @@ class SyncIssuesPage extends ConsumerWidget {
     }
   }
 
-  Future<void> _retrySync(BuildContext context, WidgetRef ref) async {
+  String _buildRetryHint(List<SyncIssueGroup> groups) {
+    final hasAuthFailed = groups.any((g) => g.title == '登录状态已过期');
+    final hasGivenUp = groups.any((g) => g.title == '同步失败（已放弃）');
+    
+    if (hasAuthFailed && hasGivenUp) {
+      return '会先重置已放弃项，登录过期项需重新登录后同步';
+    } else if (hasAuthFailed) {
+      return '请先重新登录后再同步登录过期项';
+    } else if (hasGivenUp) {
+      return '会先重置已放弃项，然后重新尝试同步';
+    }
+    return '点击后会立即尝试同步所有待同步和失败的数据';
+  }
+
+  Future<void> _retrySync(
+    BuildContext context,
+    WidgetRef ref,
+    List<SyncIssueGroup> groups,
+  ) async {
+    final hasAuthFailed = groups.any((g) => g.title == '登录状态已过期');
+    final hasGivenUp = groups.any((g) => g.title == '同步失败（已放弃）');
+
     try {
-      Toast.show(context, '开始同步...');
-      final result = await ref.read(syncServiceProvider).syncNow();
+      // Step 1: 如果有登录过期项，提示用户
+      if (hasAuthFailed && context.mounted) {
+        Toast.show(
+          context,
+          '检测到登录过期项目，请先重新登录后再同步这些项目',
+        );
+      }
+
+      // Step 2: 重置已放弃项（retryCount>=5 且 <999）
+      if (hasGivenUp) {
+        final localDS = ref.read(attendanceLocalDSProvider);
+        final count = await localDS.resetGivenUpSyncItems();
+        if (count > 0 && context.mounted) {
+          Toast.show(context, '已重置 $count 项失败记录，准备重新同步');
+        }
+      }
+
+      // Step 3: 执行同步
       if (context.mounted) {
-        if (result.failed == 0) {
+        Toast.show(context, '开始同步...');
+      }
+      final result = await ref.read(syncServiceProvider).syncNow();
+
+      if (context.mounted) {
+        if (result.failed == 0 && !hasAuthFailed) {
           Toast.show(context, '同步完成，所有数据已同步');
+        } else if (result.failed == 0 && hasAuthFailed) {
+          Toast.show(
+            context,
+            '同步完成，登录过期项目仍需重新登录后同步',
+          );
         } else {
           Toast.show(context, '同步完成，${result.failed} 项失败');
         }

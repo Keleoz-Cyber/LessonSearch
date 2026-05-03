@@ -395,6 +395,23 @@ class AttendanceLocalDataSource {
     return affected;
   }
 
+  /// 重置已放弃（retryCount>=5 且 <999）的同步项，恢复为 pending
+  /// 在同步问题详情页点击"立即重试"时调用
+  Future<int> resetGivenUpSyncItems() async {
+    final stmt = _db.update(_db.syncQueue)
+      ..where(
+        (s) => s.syncStatus.equals('failed') &
+            s.retryCount.isBiggerOrEqualValue(5) &
+            s.retryCount.isSmallerThanValue(999),
+      );
+    final companion = const SyncQueueCompanion(
+      syncStatus: Value('pending'),
+      retryCount: Value(0),
+    );
+    final affected = await stmt.write(companion);
+    return affected;
+  }
+
   Future<void> clearSyncQueue() async {
     await _db.delete(_db.syncQueue).go();
   }
