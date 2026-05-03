@@ -379,6 +379,7 @@ nameCheckProvider
 | nickname | VARCHAR(50) | 昵称 |
 | role | VARCHAR(20) | 角色：member / admin |
 | real_name | VARCHAR(50) | 真实姓名（实名制） |
+| password_hash | VARCHAR(255) | 密码哈希（bcrypt，nullable） |
 | created_at | DATETIME | 创建时间 |
 | last_login_at | DATETIME | 最后登录 |
 
@@ -478,8 +479,16 @@ Swagger文档：https://api.keleoz.cn/docs
 | 方法 | 路径 | 说明 | 请求体 | 响应 |
 |------|------|------|--------|------|
 | POST | /send-code | 发送验证码 | `{email}` | `{message}` |
-| POST | /login | 登录 | `{email, code}` | `{token, user}` |
+| POST | /login | 验证码登录 | `{email, code}` | `{token, user}` |
+| POST | /password-login | 密码登录 | `{email, password}` | `{token, user}` |
+| POST | /set-password | 设置/修改密码 | `{password}` | `{message}` |
 | POST | /register | 注册 | `{email, code, invitation_code}` | `{token, user}` |
+
+**密码登录说明：**
+- 密码使用 bcrypt 安全哈希存储（`users.password_hash`）
+- 老用户 password_hash 为空时，密码登录返回 `"该账号尚未设置密码，请先使用验证码登录"`
+- 设置密码需先通过验证码登录获取 token，密码最小 6 位
+- `/auth/me` 返回 `has_password` 字段，供前端判断密码设置状态
 
 ### 用户接口 (/api/user)
 
