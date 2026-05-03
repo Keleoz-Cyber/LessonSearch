@@ -406,12 +406,24 @@ class _SubmissionSearchPageState extends ConsumerState<SubmissionSearchPage> {
     );
     if (start == null) return;
 
+    // 计算结束日期的 initialDate，保证在 [start, now] 范围内
+    DateTime endInitialDate;
+    if (_endDate != null) {
+      endInitialDate = DateTime.parse(_endDate!);
+      if (endInitialDate.isBefore(start)) {
+        endInitialDate = start;
+      }
+    } else {
+      endInitialDate = DateTime.now();
+    }
+    if (endInitialDate.isAfter(DateTime.now())) {
+      endInitialDate = DateTime.now();
+    }
+
     // 选择结束日期
     final end = await showDatePicker(
       context: context,
-      initialDate: _endDate != null
-          ? DateTime.parse(_endDate!)
-          : DateTime.now(),
+      initialDate: endInitialDate,
       firstDate: start,
       lastDate: DateTime.now(),
       helpText: '选择结束日期',
