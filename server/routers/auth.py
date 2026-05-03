@@ -5,7 +5,7 @@ from email.mime.text import MIMEText
 from fastapi import APIRouter, Depends, HTTPException, Header, Response
 from sqlalchemy.orm import Session
 import jwt
-from passlib.context import CryptContext
+import bcrypt
 
 from app.core.database import get_db
 from app.models import User, VerificationCode, InvitationCode
@@ -15,7 +15,6 @@ from app.schemas import (
     LoginResponse, UserOut,
 )
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 from app.core.config import (
     JWT_SECRET,
     JWT_EXPIRE_HOURS,
@@ -283,11 +282,21 @@ def register(body: RegisterRequest, db: Session = Depends(get_db)):
 
 
 def _hash_password(password: str) -> str:
-    return pwd_context.hash(password)
+    # bcrypt has a 72-byte limit; encode to UTF-8 and let bcrypt handle truncation safely
+    password_bytes = password.encode("utf-8")
+    salt = bcrypt.gensalt(rounds=12)
+    hashed = bcrypt.hashpw(password_bytes, salt)
+    return hashed.decode("utf-8")
 
 
 def _verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
+    try:
+        return bcrypt.checkpw(
+            plain_password.encode("utf-8"),
+            hashed_password.encode("utf-8"),
+        )
+    except Exception:
+        return False
 
 
 @router.post("/password-login", response_model=LoginResponse)
