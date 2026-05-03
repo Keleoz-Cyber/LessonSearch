@@ -101,11 +101,17 @@ class _RecordsListPageState extends ConsumerState<RecordsListPage> {
   }
 
   Future<void> _confirmDelete(TaskSummary summary) async {
+    // 已经是放弃状态，无需再次操作
+    if (summary.status == TaskStatus.abandoned) {
+      Toast.show(context, '该记录已放弃');
+      return;
+    }
+
     // 检查是否已提交
     try {
       final submittedIds = await ref.read(submittedTaskIdsProvider.future);
       if (submittedIds.contains(summary.id)) {
-        Toast.show(context, '该记录已提交审核，无法删除。如需删除，请先撤销提交。');
+        Toast.show(context, '该记录已提交审核，无法放弃。如需放弃，请先撤销提交。');
         return;
       }
     } catch (_) {
@@ -115,9 +121,35 @@ class _RecordsListPageState extends ConsumerState<RecordsListPage> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('删除记录'),
-        content: Text(
-          '确认删除 ${summary.classNames.join("、")} 的${summary.typeLabel}记录？',
+        title: const Text('放弃记录'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '确认放弃 ${summary.classNames.join("、")} 的${summary.typeLabel}记录？',
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.orange.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.info_outline, color: Colors.orange, size: 18),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      '放弃后该记录不会参与名单提交，但数据仍保留用于查看。',
+                      style: TextStyle(fontSize: 12, color: Colors.orange),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
         actions: [
           TextButton(
@@ -126,7 +158,7 @@ class _RecordsListPageState extends ConsumerState<RecordsListPage> {
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('删除', style: TextStyle(color: Colors.red)),
+            child: const Text('放弃', style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
@@ -135,7 +167,7 @@ class _RecordsListPageState extends ConsumerState<RecordsListPage> {
       final repo = ref.read(recordsRepositoryProvider);
       await repo.deleteTask(summary.id);
 
-      // 删除后刷新名单提交页的 provider，避免已删除任务仍显示
+      // 放弃后刷新名单提交页的 provider，避免已放弃任务仍显示
       ref.invalidate(weekNameCheckTasksProvider);
       ref.invalidate(submittedTaskIdsProvider);
       ref.invalidate(mySubmissionsProvider);
@@ -250,13 +282,15 @@ class _TaskCard extends StatelessWidget {
                     ),
                   ],
                   const Spacer(),
-                  IconButton(
-                    icon: const Icon(Icons.delete_outline, size: 20),
-                    onPressed: onDelete,
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                    color: Colors.grey,
-                  ),
+                  if (!isAbandoned)
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline, size: 20),
+                      onPressed: onDelete,
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                      color: Colors.grey,
+                      tooltip: '放弃',
+                    ),
                 ],
               ),
               const SizedBox(height: 8),

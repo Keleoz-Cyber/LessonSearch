@@ -10,10 +10,18 @@ router = APIRouter(prefix="/tasks/{task_id}/records", tags=["考勤记录"])
 
 
 def _check_record_editable(record_id: int, current_user: User, db: Session) -> AttendanceRecord:
-    """检查记录是否可编辑（未关联 pending/approved 的 submission）"""
+    """检查记录是否可编辑（未关联 pending/approved 的 submission，且任务未放弃）"""
     record = db.query(AttendanceRecord).filter(AttendanceRecord.id == record_id).first()
     if not record:
         raise HTTPException(status_code=404, detail="记录不存在")
+    
+    # 检查所属任务是否已放弃
+    task = db.query(AttendanceTask).filter(AttendanceTask.id == record.task_id).first()
+    if task and task.status == "abandoned":
+        raise HTTPException(
+            status_code=403,
+            detail="该任务已放弃，不可修改记录"
+        )
     
     # 检查是否已关联 pending/approved 的 submission
     sr = db.query(SubmissionRecord).join(Submission).filter(
@@ -28,7 +36,6 @@ def _check_record_editable(record_id: int, current_user: User, db: Session) -> A
         )
     
     # 检查是否属于自己的任务（或旧版无 user_id 的任务）
-    task = db.query(AttendanceTask).filter(AttendanceTask.id == record.task_id).first()
     if task and task.user_id is not None and task.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="无权修改此记录")
     
@@ -156,6 +163,19 @@ def batch_update_records(
                 continue
             
             # 检查是否可编辑（保留现有校验逻辑）
+            # 1. 检查任务是否已放弃
+            task = db.query(AttendanceTask).filter(
+                AttendanceTask.id == item.task_id
+            ).first()
+            if task and task.status == "abandoned":
+                failed.append({
+                    "task_id": item.task_id,
+                    "student_id": item.student_id,
+                    "reason": "该任务已放弃，不可修改记录"
+                })
+                continue
+            
+            # 2. 检查是否已关联 pending/approved 的 submission
             sr = db.query(SubmissionRecord).join(Submission).filter(
                 SubmissionRecord.record_id == record.id,
                 Submission.status.in_(["pending", "approved"])
@@ -169,10 +189,7 @@ def batch_update_records(
                 })
                 continue
             
-            # 检查是否属于自己的任务
-            task = db.query(AttendanceTask).filter(
-                AttendanceTask.id == item.task_id
-            ).first()
+            # 3. 检查是否属于自己的任务
             if task and task.user_id is not None and task.user_id != current_user.id:
                 failed.append({
                     "task_id": item.task_id,

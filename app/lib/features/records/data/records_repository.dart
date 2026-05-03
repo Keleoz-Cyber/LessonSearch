@@ -280,6 +280,15 @@ class RecordsRepository {
 
   /// 放弃任务：标记为 abandoned 并同步到服务端
   Future<void> deleteTask(String taskId) async {
+    // 检查是否已经是 abandoned
+    final task = await (_db.select(_db.attendanceTasks)
+          ..where((t) => t.id.equals(taskId)))
+        .getSingleOrNull();
+    if (task?.status == 'abandoned') {
+      LoggerService.sync('任务已经是 abandoned，无需重复操作: $taskId');
+      return;
+    }
+
     // 1. 更新任务状态为 abandoned
     await (_db.update(_db.attendanceTasks)
           ..where((t) => t.id.equals(taskId)))

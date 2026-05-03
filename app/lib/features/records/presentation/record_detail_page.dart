@@ -28,6 +28,7 @@ class _RecordDetailPageState extends ConsumerState<RecordDetailPage> {
   bool _loading = true;
   bool _editing = false;
   bool _isSubmitted = false; // 是否已提交审核
+  bool _isAbandoned = false; // 是否已放弃
 
   bool get _isRollCall => _taskType == TaskType.rollCall;
 
@@ -70,6 +71,7 @@ class _RecordDetailPageState extends ConsumerState<RecordDetailPage> {
           ? task.createdAt.toString().substring(0, 16)
           : DateTime.now().toString().substring(0, 16);
       _isSubmitted = isSubmitted;
+      _isAbandoned = task?.status == TaskStatus.abandoned;
       _loading = false;
     });
   }
@@ -79,7 +81,19 @@ class _RecordDetailPageState extends ConsumerState<RecordDetailPage> {
     AttendanceStatus newStatus, {
     String? remark,
   }) async {
-    // 检查是否已提交审核
+    // 检查是否已放弃或已提交审核
+    if (_isAbandoned) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('该记录已放弃，不可修改。'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+      return;
+    }
+
     if (_isSubmitted) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -304,7 +318,7 @@ class _RecordDetailPageState extends ConsumerState<RecordDetailPage> {
       appBar: AppBar(
         title: const Text('记名详情'),
         actions: [
-          if (!_isSubmitted)
+          if (!_isSubmitted && !_isAbandoned)
             TextButton.icon(
               icon: Icon(_editing ? Icons.check : Icons.edit),
               label: Text(_editing ? '完成' : '编辑'),
@@ -319,7 +333,28 @@ class _RecordDetailPageState extends ConsumerState<RecordDetailPage> {
       ),
       body: Column(
         children: [
-          if (_isSubmitted)
+          if (_isAbandoned)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              color: Colors.grey.withValues(alpha: 0.1),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline, color: Colors.grey.shade700, size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      '该记录已放弃，仅可查看，不可编辑或提交。',
+                      style: TextStyle(
+                        color: Colors.grey.shade800,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          if (_isSubmitted && !_isAbandoned)
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(12),
@@ -366,7 +401,7 @@ class _RecordDetailPageState extends ConsumerState<RecordDetailPage> {
                           ...entry.value.map((record) {
                             return _RecordRow(
                               entry: record,
-                              editing: _editing && !_isSubmitted,
+                              editing: _editing && !_isSubmitted && !_isAbandoned,
                               onStatusChanged: (status, {remark}) => _updateStatus(
                                 record.recordId,
                                 status,
