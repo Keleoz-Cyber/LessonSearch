@@ -26,13 +26,33 @@ class _SetPasswordPageState extends ConsumerState<SetPasswordPage> {
     super.dispose();
   }
 
-  /// 统一解析后端返回的 detail 字段，兼容 String / List / Map / null
-  String _parseErrorDetail(dynamic detail) {
-    if (detail == null) return '';
-    if (detail is String) return detail;
-    if (detail is List && detail.isNotEmpty) return detail.first.toString();
-    if (detail is Map) return detail['msg']?.toString() ?? detail.toString();
-    return detail.toString();
+  /// 安全解析 DioException 中的错误信息
+  /// 兼容 data 为 Map / String / List / null 等各种类型
+  String _parseDioError(DioException e) {
+    try {
+      final data = e.response?.data;
+      if (data == null) return '';
+      if (data is String) return data;
+      if (data is Map) {
+        // 优先取 detail，其次 message
+        final detail = data['detail'];
+        if (detail is String) return detail;
+        if (detail is List && detail.isNotEmpty) {
+          return detail.first.toString();
+        }
+        if (detail is Map) {
+          return detail['msg']?.toString() ?? detail.toString();
+        }
+        final msg = data['message'];
+        if (msg is String) return msg;
+        if (msg is List && msg.isNotEmpty) return msg.first.toString();
+        return data.toString();
+      }
+      if (data is List && data.isNotEmpty) return data.first.toString();
+      return data.toString();
+    } catch (_) {
+      return '';
+    }
   }
 
   Future<void> _submit() async {
@@ -71,14 +91,17 @@ class _SetPasswordPageState extends ConsumerState<SetPasswordPage> {
         }
       }
     } on DioException catch (e) {
-      final detail = _parseErrorDetail(e.response?.data['detail']);
       if (mounted) {
-        Toast.show(context, detail.isNotEmpty ? detail : '设置失败');
-        setState(() => _isLoading = false);
+        final msg = _parseDioError(e);
+        Toast.show(context, msg.isNotEmpty ? msg : '设置失败，请稍后重试');
       }
     } on Exception {
       if (mounted) {
         Toast.show(context, '网络错误，请稍后重试');
+      }
+    } finally {
+      // 确保无论成功失败，loading 状态一定恢复
+      if (mounted) {
         setState(() => _isLoading = false);
       }
     }
