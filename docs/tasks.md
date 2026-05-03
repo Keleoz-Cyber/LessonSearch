@@ -88,6 +88,22 @@
   - 登录页支持验证码/密码切换
   - 设置页新增"账号安全"入口，支持设置/修改密码
   - 密码使用 bcrypt 安全哈希存储
+- **设置密码体验优化**
+  - 设置密码成功后显示 Toast "密码设置成功"，延迟 800ms 再返回设置页
+  - 延迟期间保持按钮加载状态，防止重复点击
+  - 失败时明确显示错误信息，按钮立即恢复可点击状态
+- **DioException 错误解析安全修复**
+  - `set_password_page.dart` 新增 `_parseDioError()` 方法，安全解析 error response
+  - 兼容 data 为 Map/String/List/null 等各种类型
+  - 使用 finally 确保无论成功/失败/解析错误，loading 状态一定恢复
+- **退出登录未同步数据误判修复**
+  - `getUnsyncedCount()` 只统计 syncStatus == 'pending' 或 'failed' 的记录
+  - 不再统计已同步成功的历史队列记录（synced），避免显示"数千条未同步"
+  - 与 pendingSyncCountProvider 统计口径保持一致
+- **bcrypt 替换 passlib**
+  - 服务端移除 passlib 依赖，改用原生 bcrypt API（bcrypt.hashpw / bcrypt.checkpw）
+  - 解决 bcrypt 5.0+ 与 passlib 1.7.4 不兼容导致的 500 错误
+  - _verify_password 增加异常保护，避免 hash 格式错误时崩溃
 - **其他**
   - 邮件模板改为梦幻炫彩玻璃风格
   - 隐私政策与用户协议文档

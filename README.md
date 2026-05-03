@@ -67,6 +67,10 @@
 - **提交详情空状态** - 区分 record_count == 0（显示"无关联学生记录"）和 record_count > 0 但无异常（显示"全部到齐"）
 - **rejected 状态提示** - 已拒绝提交始终显示审核人、拒绝原因，不受空状态影响
 - **错误解析** - 统一错误详情解析方法，兼容 String / List / Map / null
+- **设置密码反馈** - 设置密码成功后显示 Toast 提示并延迟 800ms 返回，避免用户误以为未保存
+- **退出登录误判** - 修复 `getUnsyncedCount()` 统计逻辑，只统计 pending/failed，排除已同步成功的历史记录，避免显示"数千条未同步"
+- **DioException 安全解析** - `set_password_page.dart` 安全解析错误响应，兼容 data 为 Map/String/List/null，避免类型错误导致页面卡死
+- **bcrypt 替换 passlib** - 服务端移除 passlib 依赖，改用原生 bcrypt API，解决 bcrypt 5.0+ 与 passlib 1.7.4 不兼容导致的 500 错误
 
 - **提交权限** - 旧版任务（user_id=null）可正常提交
 - **职务加载** - 网络错误时显示重试按钮，不再误判为未分配

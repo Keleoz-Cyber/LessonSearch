@@ -485,10 +485,11 @@ Swagger文档：https://api.keleoz.cn/docs
 | POST | /register | 注册 | `{email, code, invitation_code}` | `{token, user}` |
 
 **密码登录说明：**
-- 密码使用 bcrypt 安全哈希存储（`users.password_hash`）
+- 密码使用原生 bcrypt 安全哈希存储（`users.password_hash`），服务端使用 `bcrypt.hashpw()` / `bcrypt.checkpw()`
 - 老用户 password_hash 为空时，密码登录返回 `"该账号尚未设置密码，请先使用验证码登录"`
 - 设置密码需先通过验证码登录获取 token，密码最小 6 位
 - `/auth/me` 返回 `has_password` 字段，供前端判断密码设置状态
+- 依赖：`bcrypt>=4.0.0`（已移除 passlib，避免 bcrypt 5.0+ 不兼容问题）
 
 ### 用户接口 (/api/user)
 
@@ -916,14 +917,46 @@ flutter pub run build_runner build --delete-conflicting-outputs
 
 所有周次计算必须用服务端 `GET /api/week/current` 返回的 `start_date` 和 `end_date`，不能用本地时间。
 
-#### Q: DioException如何提取错误信息？
+#### Q: DioException如何安全提取错误信息？
+
+**不要**直接访问 `e.response?.data['detail']`，因为 `data` 可能是 String/List/null，会导致类型错误。
 
 ```dart
-try {
-  await api.dio.post('/api/xxx');
+String _parseDioError(DioException e) {
+  try {
+    final data = e.response?.data;
+    if (data == null) return '';
+    if (data is String) return data;
+    if (data is Map) {
+      final detail = data['detail'];
+      if (detail is String) return detail;
+      if (detail is List && detail.isNotEmpty) return detail.first.toString();
+      final msg = data['message'];
+      if (msg is String) return msg;
+      return data.toString();
+    }
+    return data.toString();
+  } catch (_) {
+    return '';
+  }
+}
+
+// 使用
 } on DioException catch (e) {
-  final message = e.response?.data['detail'] ?? '操作失败';
-  Toast.show(context, message);
+  final msg = _parseDioError(e);
+  Toast.show(context, msg.isNotEmpty ? msg : '操作失败，请稍后重试');
+}
+```
+
+**必须**用 `finally` 确保 loading 状态恢复：
+```dart
+try {
+  setState(() => _isLoading = true);
+  await api.setPassword(password);
+} on DioException catch (e) {
+  Toast.show(context, _parseDioError(e));
+} finally {
+  if (mounted) setState(() => _isLoading = false);
 }
 ```
 

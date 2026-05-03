@@ -39,7 +39,7 @@
 | 端 | 技术 |
 |----|------|
 | 客户端 | Flutter 3.43、Riverpod 2.6、go_router 14、Dio、Drift 2.28、flutter_markdown、share_plus |
-| 服务端 | FastAPI、SQLAlchemy、PyJWT、MySQL 8、openpyxl |
+| 服务端 | FastAPI、SQLAlchemy、PyJWT、bcrypt、MySQL 8、openpyxl |
 | 部署 | 1Panel、Nginx反向代理、systemd、Let's Encrypt HTTPS |
 
 ---
@@ -438,7 +438,7 @@ python import_students_2022plus.py --commit --clear
 ## 十二、常见陷阱
 
 1. **周次计算必须用服务端API** — 不能用本地时间
-2. **DioException用 `e.response?.data['detail']` 提取错误**
+2. **DioException 错误解析必须安全处理** — `e.response?.data` 可能是 Map/String/List/null，不能直接访问 `data['detail']`。应使用封装好的 `_parseDioError()` 方法，内部用 try-catch 保护，避免类型错误导致页面崩溃且 loading 状态无法恢复
 3. **Drift查询 `select(table).get()` 返回列表**
 4. **FastAPI路由顺序** — 动态路径要在静态路径之后
 5. **服务器仅 2GB 内存** — 注意内存使用，精简监控 agent
