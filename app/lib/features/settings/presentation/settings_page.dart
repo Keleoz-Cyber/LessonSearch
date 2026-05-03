@@ -177,7 +177,7 @@ class SettingsPage extends ConsumerWidget {
           ListTile(
             leading: const Icon(Icons.system_update),
             title: const Text('检查更新'),
-            subtitle: const Text('当前版本: 0.6.0+25'),
+            subtitle: const Text('当前版本: 0.6.0'),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => _checkUpdate(context, ref),
           ),
@@ -571,7 +571,7 @@ class SettingsPage extends ConsumerWidget {
       final downloadUrl = response['download_url'] as String;
       final releaseNotes = response['release_notes'] as String;
 
-      const currentVersion = '0.6.0+25';
+      const currentVersion = '0.6.0';
       LoggerService.sync('当前版本: $currentVersion, 最新版本: $latestVersion');
 
       if (latestVersion == currentVersion) {
@@ -963,7 +963,7 @@ class _AboutPageState extends ConsumerState<AboutPage> {
 
               Center(
                 child: Text(
-                  '考勤助手 v0.6.0+25',
+                  '考勤助手 v0.6.0',
                   style: TextStyle(
                     color: Theme.of(
                       context,
