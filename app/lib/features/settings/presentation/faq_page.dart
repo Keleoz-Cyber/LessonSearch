@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class FaqItem {
@@ -327,12 +328,28 @@ class _FaqCardState extends State<_FaqCard> {
                 firstChild: const SizedBox.shrink(),
                 secondChild: Padding(
                   padding: const EdgeInsets.only(top: 12),
-                  child: Text(
-                    widget.item.answer,
-                    style: TextStyle(
-                      fontSize: 14,
-                      height: 1.6,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  child: MarkdownBody(
+                    data: widget.item.answer,
+                    selectable: true,
+                    styleSheet: MarkdownStyleSheet(
+                      p: TextStyle(
+                        fontSize: 14,
+                        height: 1.6,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                      strong: TextStyle(
+                        fontSize: 14,
+                        height: 1.6,
+                        fontWeight: FontWeight.bold,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                      listBullet: TextStyle(
+                        fontSize: 14,
+                        height: 1.6,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                      blockSpacing: 8,
+                      listIndent: 20,
                     ),
                   ),
                 ),
