@@ -58,6 +58,10 @@ def create_task(
 
     existing = db.query(AttendanceTask).filter(AttendanceTask.id == body.id).first()
     if existing:
+        # 权限校验：复用 update_task 的规则
+        if user_id and existing.user_id is not None and existing.user_id != user_id:
+            raise HTTPException(status_code=403, detail="无权修改此任务")
+
         # 幂等更新：如果请求带了状态字段，更新已有任务
         updated = False
         if body.status is not None and existing.status != body.status:
