@@ -695,91 +695,93 @@ class _SubmissionSearchPageState extends ConsumerState<SubmissionSearchPage> {
           title: Text('学生明细 (${records.length}人)'),
           content: SizedBox(
             width: double.maxFinite,
-            child: recordCount == 0
-                ? EmptyState.noLinkedRecords()
-                : (lateCount + absentCount + leaveCount + otherCount == 0)
-                    ? EmptyState.noAbnormalRecords()
-                    : SingleChildScrollView(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            // rejected 状态提示
-                            if (isRejected) ...[
-                              Container(
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  color: Colors.red.withValues(alpha: 0.05),
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(color: Colors.red.withValues(alpha: 0.2)),
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        const Icon(Icons.cancel, color: Colors.red, size: 18),
-                                        const SizedBox(width: 8),
-                                        const Text(
-                                          '已拒绝',
-                                          style: TextStyle(
-                                            color: Colors.red,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    if (item['reviewer_name'] != null) ...[
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        '审核人: ${item['reviewer_name']}',
-                                        style: const TextStyle(color: Colors.red, fontSize: 12),
-                                      ),
-                                    ],
-                                    if (item['review_note'] != null) ...[
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        '拒绝原因: ${item['review_note']}',
-                                        style: const TextStyle(color: Colors.red, fontSize: 12),
-                                      ),
-                                    ],
-                                  ],
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // rejected 状态提示（独立于空状态始终显示）
+                  if (isRejected) ...[
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.red.withValues(alpha: 0.05),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.red.withValues(alpha: 0.2)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(Icons.cancel, color: Colors.red, size: 18),
+                              const SizedBox(width: 8),
+                              const Text(
+                                '已拒绝',
+                                style: TextStyle(
+                                  color: Colors.red,
+                                  fontWeight: FontWeight.bold,
                                 ),
                               ),
-                              const SizedBox(height: 16),
                             ],
-                            // 统计摘要
-                            Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
-                              children: [
-                                if (lateCount > 0)
-                                  _buildMiniStat('迟到', lateCount, Colors.orange),
-                                if (absentCount > 0)
-                                  _buildMiniStat('缺勤', absentCount, Colors.red),
-                                if (leaveCount > 0)
-                                  _buildMiniStat('请假', leaveCount, Colors.blue),
-                                if (otherCount > 0)
-                                  _buildMiniStat('其他', otherCount, Colors.grey),
-                              ],
+                          ),
+                          if (item['reviewer_name'] != null) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              '审核人: ${item['reviewer_name']}',
+                              style: const TextStyle(color: Colors.red, fontSize: 12),
                             ),
-                            const SizedBox(height: 16),
-                            // 名单
-                            if (absentRecords.isNotEmpty) ...[
-                              _buildRecordGroup('缺勤', absentRecords, Colors.red),
-                            ],
-                            if (lateRecords.isNotEmpty) ...[
-                              _buildRecordGroup('迟到', lateRecords, Colors.orange),
-                            ],
-                            if (leaveRecords.isNotEmpty) ...[
-                              _buildRecordGroup('请假', leaveRecords, Colors.blue),
-                            ],
-                            if (otherRecords.isNotEmpty) ...[
-                              _buildRecordGroup('其他', otherRecords, Colors.grey),
-                            ],
                           ],
-                        ),
+                          if (item['review_note'] != null) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              '拒绝原因: ${item['review_note']}',
+                              style: const TextStyle(color: Colors.red, fontSize: 12),
+                            ),
+                          ],
+                        ],
                       ),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+                  if (recordCount == 0)
+                    EmptyState.noLinkedRecords()
+                  else if (lateCount + absentCount + leaveCount + otherCount == 0)
+                    EmptyState.noAbnormalRecords()
+                  else ...[
+                    // 统计摘要
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        if (lateCount > 0)
+                          _buildMiniStat('迟到', lateCount, Colors.orange),
+                        if (absentCount > 0)
+                          _buildMiniStat('缺勤', absentCount, Colors.red),
+                        if (leaveCount > 0)
+                          _buildMiniStat('请假', leaveCount, Colors.blue),
+                        if (otherCount > 0)
+                          _buildMiniStat('其他', otherCount, Colors.grey),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    // 名单
+                    if (absentRecords.isNotEmpty) ...[
+                      _buildRecordGroup('缺勤', absentRecords, Colors.red),
+                    ],
+                    if (lateRecords.isNotEmpty) ...[
+                      _buildRecordGroup('迟到', lateRecords, Colors.orange),
+                    ],
+                    if (leaveRecords.isNotEmpty) ...[
+                      _buildRecordGroup('请假', leaveRecords, Colors.blue),
+                    ],
+                    if (otherRecords.isNotEmpty) ...[
+                      _buildRecordGroup('其他', otherRecords, Colors.grey),
+                    ],
+                  ],
+                ],
+              ),
+            ),
           ),
           actions: [
             TextButton(

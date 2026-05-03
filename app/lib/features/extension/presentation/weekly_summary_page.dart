@@ -1173,28 +1173,72 @@ class _PendingSubmissionCard extends ConsumerWidget {
                       .where((r) => r['status'] == 'other')
                       .toList();
 
-                  if (recordCount == 0) {
-                    return EmptyState.noLinkedRecords();
-                  }
-                  if (lateCount + absentCount + leaveCount + otherCount == 0) {
-                    return EmptyState.noAbnormalRecords();
-                  }
+                  final isRejected = data['status'] == 'rejected';
 
                   return SingleChildScrollView(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: [
-                            _buildMiniStat('迟到', lateCount, Colors.orange),
-                            _buildMiniStat('缺勤', absentCount, Colors.red),
-                            _buildMiniStat('请假', leaveCount, Colors.blue),
-                            _buildMiniStat('其他', otherCount, Colors.grey),
-                          ],
-                        ),
+                        // rejected 状态提示（独立于空状态始终显示）
+                        if (isRejected) ...[
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.red.withValues(alpha: 0.05),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.red.withValues(alpha: 0.2)),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    const Icon(Icons.cancel, color: Colors.red, size: 18),
+                                    const SizedBox(width: 8),
+                                    const Text(
+                                      '已拒绝',
+                                      style: TextStyle(
+                                        color: Colors.red,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                if (submission['reviewer_name'] != null) ...[
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    '审核人: ${submission['reviewer_name']}',
+                                    style: const TextStyle(color: Colors.red, fontSize: 12),
+                                  ),
+                                ],
+                                if (submission['review_note'] != null) ...[
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    '拒绝原因: ${submission['review_note']}',
+                                    style: const TextStyle(color: Colors.red, fontSize: 12),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                        ],
+                        if (recordCount == 0)
+                          EmptyState.noLinkedRecords()
+                        else if (lateCount + absentCount + leaveCount + otherCount == 0)
+                          EmptyState.noAbnormalRecords()
+                        else ...[
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: [
+                              _buildMiniStat('迟到', lateCount, Colors.orange),
+                              _buildMiniStat('缺勤', absentCount, Colors.red),
+                              _buildMiniStat('请假', leaveCount, Colors.blue),
+                              _buildMiniStat('其他', otherCount, Colors.grey),
+                            ],
+                          ),
                         const SizedBox(height: 16),
                         if (absentRecords.isNotEmpty) ...[
                           const Text(
@@ -1260,8 +1304,9 @@ class _PendingSubmissionCard extends ConsumerWidget {
                           ),
                         ],
                       ],
-                    ),
-                  );
+                    ],
+                  ),
+                );
                 },
               ),
         actions: [
@@ -1780,68 +1825,69 @@ class _ReviewedSubmissionCard extends ConsumerWidget {
               maxWidth: MediaQuery.of(context).size.width * 0.9,
               maxHeight: MediaQuery.of(context).size.height * 0.7,
             ),
-            child: recordCount == 0
-                ? EmptyState.noLinkedRecords()
-                : (lateCount + absentCount + leaveCount + otherCount == 0)
-                    ? EmptyState.noAbnormalRecords()
-                    : SingleChildScrollView(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            // rejected 状态提示
-                            if (isRejected) ...[
-                              Container(
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  color: Colors.red.withValues(alpha: 0.05),
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(color: Colors.red.withValues(alpha: 0.2)),
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        const Icon(Icons.cancel, color: Colors.red, size: 18),
-                                        const SizedBox(width: 8),
-                                        const Text(
-                                          '已拒绝',
-                                          style: TextStyle(
-                                            color: Colors.red,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    if (submission['reviewer_name'] != null) ...[
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        '审核人: ${submission['reviewer_name']}',
-                                        style: const TextStyle(color: Colors.red, fontSize: 12),
-                                      ),
-                                    ],
-                                    if (submission['review_note'] != null) ...[
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        '拒绝原因: ${submission['review_note']}',
-                                        style: const TextStyle(color: Colors.red, fontSize: 12),
-                                      ),
-                                    ],
-                                  ],
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // rejected 状态提示（独立于空状态始终显示）
+                  if (isRejected) ...[
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.red.withValues(alpha: 0.05),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.red.withValues(alpha: 0.2)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(Icons.cancel, color: Colors.red, size: 18),
+                              const SizedBox(width: 8),
+                              const Text(
+                                '已拒绝',
+                                style: TextStyle(
+                                  color: Colors.red,
+                                  fontWeight: FontWeight.bold,
                                 ),
                               ),
-                              const SizedBox(height: 16),
                             ],
-                            Wrap(
-                              spacing: 12,
-                              runSpacing: 8,
-                              children: [
-                                _buildMiniStat('迟到', lateCount, Colors.orange),
-                                _buildMiniStat('缺勤', absentCount, Colors.red),
-                                _buildMiniStat('请假', leaveCount, Colors.blue),
-                              ],
+                          ),
+                          if (submission['reviewer_name'] != null) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              '审核人: ${submission['reviewer_name']}',
+                              style: const TextStyle(color: Colors.red, fontSize: 12),
                             ),
+                          ],
+                          if (submission['review_note'] != null) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              '拒绝原因: ${submission['review_note']}',
+                              style: const TextStyle(color: Colors.red, fontSize: 12),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+                  if (recordCount == 0)
+                    EmptyState.noLinkedRecords()
+                  else if (lateCount + absentCount + leaveCount + otherCount == 0)
+                    EmptyState.noAbnormalRecords()
+                  else ...[
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 8,
+                      children: [
+                        _buildMiniStat('迟到', lateCount, Colors.orange),
+                        _buildMiniStat('缺勤', absentCount, Colors.red),
+                        _buildMiniStat('请假', leaveCount, Colors.blue),
+                      ],
+                    ),
                         const SizedBox(height: 16),
                         if (absentRecords.isNotEmpty) ...[
                           const Text(
@@ -1875,8 +1921,9 @@ class _ReviewedSubmissionCard extends ConsumerWidget {
                           ),
                         ],
                       ],
-                    ),
+                    ],
                   ),
+                ),
           ),
           actions: [
             TextButton(
