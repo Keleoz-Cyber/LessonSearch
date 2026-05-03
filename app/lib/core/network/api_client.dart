@@ -106,6 +106,24 @@ class ApiClient {
     return res.data as Map<String, dynamic>;
   }
 
+  Future<Map<String, dynamic>> passwordLogin({
+    required String email,
+    required String password,
+  }) async {
+    final res = await dio.post(
+      '/auth/password-login',
+      data: {'email': email, 'password': password},
+    );
+    return res.data as Map<String, dynamic>;
+  }
+
+  Future<void> setPassword(String password) async {
+    await dio.post(
+      '/auth/set-password',
+      data: {'password': password},
+    );
+  }
+
   // === 应用版本 ===
 
   Future<Map<String, dynamic>> checkUpdate() async {

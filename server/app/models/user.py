@@ -17,6 +17,7 @@ class User(Base):
     real_name = Column(String(50), nullable=True)  # 真实姓名（实名制）
     created_at = Column(DateTime, server_default=func.now())
     last_login_at = Column(DateTime, nullable=True)
+    password_hash = Column(String(255), nullable=True)
 
 
 class VerificationCode(Base):

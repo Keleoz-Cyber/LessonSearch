@@ -34,6 +34,15 @@ class LoginResponse(BaseModel):
     user: UserOut
 
 
+class PasswordLoginRequest(BaseModel):
+    email: EmailStr
+    password: str
+
+
+class SetPasswordRequest(BaseModel):
+    password: str
+
+
 class UpdateRealNameRequest(BaseModel):
     real_name: str
 

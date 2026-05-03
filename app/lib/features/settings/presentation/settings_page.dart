@@ -10,6 +10,7 @@ import '../../../core/sync/sync_service.dart';
 import '../../../shared/providers.dart';
 import '../../../shared/widgets/toast.dart';
 import 'markdown_document_page.dart';
+import 'set_password_page.dart';
 
 class SettingsPage extends ConsumerWidget {
   const SettingsPage({super.key});
@@ -33,6 +34,30 @@ class SettingsPage extends ConsumerWidget {
             trailing: const Icon(Icons.chevron_right),
             onTap: () => _handleAuth(context, ref, isLoggedIn),
           ),
+          if (isLoggedIn)
+            Consumer(
+              builder: (context, ref, child) {
+                final hasPasswordAsync = ref.watch(hasPasswordProvider);
+                return ListTile(
+                  leading: const Icon(Icons.password_outlined),
+                  title: const Text('账号安全'),
+                  subtitle: hasPasswordAsync.when(
+                    data: (hasPassword) => Text(
+                      hasPassword ? '已设置密码，点击修改' : '未设置密码，点击设置',
+                    ),
+                    loading: () => const Text('加载中...'),
+                    error: (_, __) => const Text('点击设置密码'),
+                  ),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const SetPasswordPage(),
+                    ),
+                  ),
+                );
+              },
+            ),
 
           const Divider(),
 

@@ -44,6 +44,17 @@ final userEmailProvider = Provider<String?>((ref) {
   return authService.userEmail;
 });
 
+/// 是否已设置密码
+final hasPasswordProvider = FutureProvider<bool>((ref) async {
+  try {
+    final api = ref.watch(apiClientProvider);
+    final user = await api.getCurrentUser();
+    return user['has_password'] == true;
+  } catch (e) {
+    return false;
+  }
+});
+
 /// 反馈服务（振动/音效）
 final feedbackServiceProvider = Provider<FeedbackService>((ref) {
   return FeedbackService(ref.watch(sharedPreferencesProvider));

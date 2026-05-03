@@ -2,6 +2,8 @@ from app.schemas.user import (
     SendCodeRequest,
     LoginRequest,
     RegisterRequest,
+    PasswordLoginRequest,
+    SetPasswordRequest,
     UserOut,
     LoginResponse,
 )
@@ -26,6 +28,8 @@ __all__ = [
     "SendCodeRequest",
     "LoginRequest",
     "RegisterRequest",
+    "PasswordLoginRequest",
+    "SetPasswordRequest",
     "UserOut",
     "LoginResponse",
     "GradeOut",

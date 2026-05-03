@@ -5,10 +5,17 @@ from email.mime.text import MIMEText
 from fastapi import APIRouter, Depends, HTTPException, Header, Response
 from sqlalchemy.orm import Session
 import jwt
+from passlib.context import CryptContext
 
 from app.core.database import get_db
 from app.models import User, VerificationCode, InvitationCode
-from app.schemas import SendCodeRequest, LoginRequest, RegisterRequest, LoginResponse, UserOut
+from app.schemas import (
+    SendCodeRequest, LoginRequest, RegisterRequest,
+    PasswordLoginRequest, SetPasswordRequest,
+    LoginResponse, UserOut,
+)
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 from app.core.config import (
     JWT_SECRET,
     JWT_EXPIRE_HOURS,
@@ -275,6 +282,69 @@ def register(body: RegisterRequest, db: Session = Depends(get_db)):
     }
 
 
-@router.get("/me", response_model=UserOut)
+def _hash_password(password: str) -> str:
+    return pwd_context.hash(password)
+
+
+def _verify_password(plain_password: str, hashed_password: str) -> bool:
+    return pwd_context.verify(plain_password, hashed_password)
+
+
+@router.post("/password-login", response_model=LoginResponse)
+def password_login(body: PasswordLoginRequest, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.email == body.email).first()
+    if not user:
+        raise HTTPException(status_code=400, detail="账户不存在")
+
+    if not user.password_hash:
+        raise HTTPException(
+            status_code=400, detail="该账号尚未设置密码，请先使用验证码登录"
+        )
+
+    if not _verify_password(body.password, user.password_hash):
+        raise HTTPException(status_code=400, detail="密码错误")
+
+    user.last_login_at = datetime.now()
+    db.commit()
+    db.refresh(user)
+
+    token = _create_token(user.id)
+
+    return {
+        "token": token,
+        "user": {
+            "id": user.id,
+            "email": user.email,
+            "nickname": user.nickname,
+            "real_name": user.real_name,
+            "role": user.role or "member",
+            "is_new_user": False,
+        },
+    }
+
+
+@router.post("/set-password")
+def set_password(
+    body: SetPasswordRequest,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if len(body.password) < 6:
+        raise HTTPException(status_code=400, detail="密码至少需要 6 位")
+
+    user.password_hash = _hash_password(body.password)
+    db.commit()
+
+    return {"message": "密码设置成功"}
+
+
+@router.get("/me")
 def get_me(user: User = Depends(get_current_user)):
-    return UserOut(id=user.id, email=user.email, nickname=user.nickname)
+    return {
+        "id": user.id,
+        "email": user.email,
+        "nickname": user.nickname,
+        "real_name": user.real_name,
+        "role": user.role or "member",
+        "has_password": user.password_hash is not None,
+    }
