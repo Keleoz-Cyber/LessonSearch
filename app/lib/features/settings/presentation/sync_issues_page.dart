@@ -25,11 +25,8 @@ class SyncIssueGroup {
   });
 }
 
-/// 查询所有未同步/失败项
-final syncIssuesProvider = FutureProvider<List<SyncIssueGroup>>((ref) async {
-  final db = ref.watch(databaseProvider);
-  final allItems = await db.select(db.syncQueue).get();
-
+/// 将 SyncQueue 数据分组为 SyncIssueGroup
+List<SyncIssueGroup> _buildSyncIssueGroups(List<SyncQueueData> allItems) {
   final pending = allItems.where((s) => s.syncStatus == 'pending').toList();
   final authFailed = allItems.where((s) =>
       s.syncStatus == 'failed' && s.retryCount == 999).toList();
@@ -76,6 +73,21 @@ final syncIssuesProvider = FutureProvider<List<SyncIssueGroup>>((ref) async {
         actionHint: '点击"立即重试"可重置并再次尝试',
       ),
   ];
+}
+
+/// 查询所有未同步/失败项（StreamProvider，每1秒自动刷新）
+final syncIssuesProvider = StreamProvider<List<SyncIssueGroup>>((ref) async* {
+  final db = ref.watch(databaseProvider);
+
+  // 初始查询
+  final initialItems = await db.select(db.syncQueue).get();
+  yield _buildSyncIssueGroups(initialItems);
+
+  // 每1秒轮询一次，实时刷新
+  await for (final _ in Stream.periodic(const Duration(seconds: 1))) {
+    final items = await db.select(db.syncQueue).get();
+    yield _buildSyncIssueGroups(items);
+  }
 });
 
 class SyncIssuesPage extends ConsumerWidget {
