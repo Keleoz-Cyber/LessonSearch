@@ -991,6 +991,9 @@ class _SubmissionCard extends ConsumerWidget {
       final absentCount = data['absent_count'] as int? ?? 0;
       final leaveCount = data['leave_count'] as int? ?? 0;
       final otherCount = data['other_count'] as int? ?? 0;
+      final recordCount = records.length;
+      final submissionStatus = data['status'] as String?;
+      final isRejected = submissionStatus == 'rejected';
 
       final lateRecords = records.where((r) => r['status'] == 'late').toList();
       final absentRecords = records
@@ -1012,6 +1015,50 @@ class _SubmissionCard extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
+                // rejected 状态提示
+                if (isRejected) ...[
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withValues(alpha: 0.05),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.red.withValues(alpha: 0.2)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(Icons.cancel, color: Colors.red, size: 18),
+                            const SizedBox(width: 8),
+                            const Text(
+                              '已拒绝',
+                              style: TextStyle(
+                                color: Colors.red,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (submission['reviewer_name'] != null) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            '审核人: ${submission['reviewer_name']}',
+                            style: const TextStyle(color: Colors.red, fontSize: 12),
+                          ),
+                        ],
+                        if (submission['review_note'] != null) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            '拒绝原因: ${submission['review_note']}',
+                            style: const TextStyle(color: Colors.red, fontSize: 12),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
@@ -1023,24 +1070,10 @@ class _SubmissionCard extends ConsumerWidget {
                   ],
                 ),
                 const SizedBox(height: 16),
-                if (records.isEmpty)
-                  const Center(
-                    child: Padding(
-                      padding: EdgeInsets.all(24),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.check_circle,
-                            size: 48,
-                            color: Colors.green,
-                          ),
-                          SizedBox(height: 16),
-                          Text('全部到齐，无异常记录'),
-                        ],
-                      ),
-                    ),
-                  ),
+                if (recordCount == 0)
+                  EmptyState.noLinkedRecords()
+                else if (lateCount + absentCount + leaveCount + otherCount == 0)
+                  EmptyState.noAbnormalRecords(),
                 if (absentRecords.isNotEmpty) ...[
                   const Text(
                     '缺勤名单:',

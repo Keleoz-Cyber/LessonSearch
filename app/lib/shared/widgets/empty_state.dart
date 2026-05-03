@@ -41,6 +41,21 @@ class EmptyState extends StatelessWidget {
     color: Colors.green,
   );
 
+  /// 提交有记录但无异常学生
+  factory EmptyState.noAbnormalRecords() => EmptyState(
+    icon: Icons.check_circle_outline,
+    message: '本次提交无异常学生，全部到齐。',
+    color: Colors.green,
+  );
+
+  /// 提交没有关联学生记录（record_count == 0）
+  factory EmptyState.noLinkedRecords() => EmptyState(
+    icon: Icons.warning_amber_rounded,
+    message: '该提交没有关联到学生记录',
+    hint: '可能是旧版本或同步异常产生的记录。建议重新提交一份正常记录，或联系管理员确认。',
+    color: Colors.orange,
+  );
+
   factory EmptyState.noStudents() =>
       EmptyState(icon: Icons.people_outline, message: '暂无学生数据');
 
