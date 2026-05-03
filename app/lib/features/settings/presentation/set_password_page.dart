@@ -64,19 +64,23 @@ class _SetPasswordPageState extends ConsumerState<SetPasswordPage> {
 
       if (mounted) {
         Toast.show(context, '密码设置成功');
-        Navigator.pop(context);
+        // 延迟 800ms 让用户看到提示，期间保持加载状态防止重复点击
+        await Future.delayed(const Duration(milliseconds: 800));
+        if (mounted) {
+          Navigator.pop(context);
+        }
       }
     } on DioException catch (e) {
       final detail = _parseErrorDetail(e.response?.data['detail']);
       if (mounted) {
         Toast.show(context, detail.isNotEmpty ? detail : '设置失败');
+        setState(() => _isLoading = false);
       }
     } on Exception {
       if (mounted) {
         Toast.show(context, '网络错误，请稍后重试');
+        setState(() => _isLoading = false);
       }
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
     }
   }
 

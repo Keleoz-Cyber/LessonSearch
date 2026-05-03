@@ -59,7 +59,11 @@ class AppDatabase extends _$AppDatabase {
 
   Future<int> getUnsyncedCount() async {
     var count = 0;
-    final queueList = await select(syncQueue).get();
+    // 只统计真正未同步的数据：pending 和 failed（无论 retryCount）
+    // 不统计已同步成功的（synced）记录，避免历史队列积累导致误判
+    final queueQuery = select(syncQueue)
+      ..where((s) => s.syncStatus.equals('pending') | s.syncStatus.equals('failed'));
+    final queueList = await queueQuery.get();
     count += queueList.length;
     final unfinishedQuery = select(attendanceTasks)
       ..where((t) => t.status.equals('unfinished'));
