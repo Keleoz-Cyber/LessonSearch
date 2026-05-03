@@ -46,7 +46,10 @@ class SettingsPage extends ConsumerWidget {
                       hasPassword ? '已设置密码，点击修改' : '未设置密码，点击设置',
                     ),
                     loading: () => const Text('加载中...'),
-                    error: (_, __) => const Text('点击设置密码'),
+                    error: (_, __) => const Text(
+                      '加载失败，请重新登录',
+                      style: TextStyle(color: Colors.orange),
+                    ),
                   ),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => Navigator.push(

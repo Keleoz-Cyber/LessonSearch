@@ -45,14 +45,11 @@ final userEmailProvider = Provider<String?>((ref) {
 });
 
 /// 是否已设置密码
+/// 注意：异常会向上传播，UI 层需处理 error 状态（显示"加载失败，请重新登录"）
 final hasPasswordProvider = FutureProvider<bool>((ref) async {
-  try {
-    final api = ref.watch(apiClientProvider);
-    final user = await api.getCurrentUser();
-    return user['has_password'] == true;
-  } catch (e) {
-    return false;
-  }
+  final api = ref.watch(apiClientProvider);
+  final user = await api.getCurrentUser();
+  return user['has_password'] == true;
 });
 
 /// 反馈服务（振动/音效）

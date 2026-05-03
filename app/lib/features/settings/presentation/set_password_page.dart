@@ -51,6 +51,8 @@ class _SetPasswordPageState extends ConsumerState<SetPasswordPage> {
       final apiClient = ref.read(apiClientProvider);
       await apiClient.setPassword(password);
 
+      ref.invalidate(hasPasswordProvider);
+
       if (mounted) {
         Toast.show(context, '密码设置成功');
         Navigator.pop(context);

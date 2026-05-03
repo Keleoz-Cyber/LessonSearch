@@ -32,6 +32,15 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     super.dispose();
   }
 
+  /// 统一解析后端返回的 detail 字段，兼容 String / List / Map / null
+  String _parseErrorDetail(dynamic detail) {
+    if (detail == null) return '';
+    if (detail is String) return detail;
+    if (detail is List && detail.isNotEmpty) return detail.first.toString();
+    if (detail is Map) return detail['msg']?.toString() ?? detail.toString();
+    return detail.toString();
+  }
+
   Future<void> _sendCode() async {
     final email = _emailController.text.trim();
     if (email.isEmpty || !email.contains('@')) {
@@ -62,12 +71,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       } else if (status == 500) {
         hint = '服务器错误，请检查SMTP配置';
       } else {
-        final detail = e.response?.data['detail'];
-        if (detail is List) {
-          hint = detail.isNotEmpty ? detail.first.toString() : '发送失败';
-        } else {
-          hint = detail?.toString() ?? '发送失败';
-        }
+        final detail = _parseErrorDetail(e.response?.data['detail']);
+        hint = detail.isNotEmpty ? detail : '发送失败';
       }
       Toast.show(context, hint);
     } on Exception {
@@ -103,7 +108,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
       await _handleLoginSuccess(response);
     } on DioException catch (e) {
-      final detail = e.response?.data['detail'] ?? '';
+      final detail = _parseErrorDetail(e.response?.data['detail']);
       String hint = '登录失败';
       if (detail.contains('账户不存在')) {
         hint = '账户不存在，请先注册';
@@ -145,7 +150,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
       await _handleLoginSuccess(response);
     } on DioException catch (e) {
-      final detail = e.response?.data['detail'] ?? '';
+      final detail = _parseErrorDetail(e.response?.data['detail']);
       String hint = '登录失败';
       if (detail.contains('账户不存在')) {
         hint = '账户不存在，请先注册';
