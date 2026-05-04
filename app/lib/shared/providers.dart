@@ -161,6 +161,41 @@ final pendingSyncCountProvider = StreamProvider<int>((ref) async* {
   }
 });
 
+/// 同步问题数量（实时）
+/// 包含：pending + failed（所有 failed，包括 retryCount >= 5 和 999）
+final syncIssueCountProvider = StreamProvider<int>((ref) async* {
+  final db = ref.watch(databaseProvider);
+  
+  Future<int> countIssues() async {
+    final all = await db.select(db.syncQueue).get();
+    return all.where((s) =>
+      s.syncStatus == 'pending' || s.syncStatus == 'failed'
+    ).length;
+  }
+  
+  yield await countIssues();
+  
+  await for (final _ in Stream.periodic(const Duration(seconds: 2))) {
+    yield await countIssues();
+  }
+});
+
+/// 是否存在 syncStatus == 'failed' 的记录（实时）
+final hasSyncFailedProvider = StreamProvider<bool>((ref) async* {
+  final db = ref.watch(databaseProvider);
+  
+  Future<bool> checkFailed() async {
+    final all = await db.select(db.syncQueue).get();
+    return all.any((s) => s.syncStatus == 'failed');
+  }
+  
+  yield await checkFailed();
+  
+  await for (final _ in Stream.periodic(const Duration(seconds: 2))) {
+    yield await checkFailed();
+  }
+});
+
 /// 点名流程状态管理
 final rollCallProvider = StateNotifierProvider<RollCallNotifier, RollCallState>(
   (ref) {

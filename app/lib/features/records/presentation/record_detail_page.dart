@@ -305,6 +305,13 @@ class _RecordDetailPageState extends ConsumerState<RecordDetailPage> {
   // ============================================================
 
   Widget _buildNameCheckView(BuildContext context) {
+    final hasSyncFailed = ref.watch(hasSyncFailedProvider);
+    final isSyncFailed = hasSyncFailed.when(
+      data: (failed) => failed,
+      loading: () => false,
+      error: (_, __) => false,
+    );
+
     final abnormal = _editing
         ? _entries
         : _entries.where((e) => e.status != AttendanceStatus.present).toList();
@@ -318,7 +325,7 @@ class _RecordDetailPageState extends ConsumerState<RecordDetailPage> {
       appBar: AppBar(
         title: const Text('记名详情'),
         actions: [
-          if (!_isSubmitted && !_isAbandoned)
+          if (!_isSubmitted && !_isAbandoned && !isSyncFailed)
             TextButton.icon(
               icon: Icon(_editing ? Icons.check : Icons.edit),
               label: Text(_editing ? '完成' : '编辑'),
@@ -375,6 +382,27 @@ class _RecordDetailPageState extends ConsumerState<RecordDetailPage> {
                 ],
               ),
             ),
+          if (isSyncFailed && !_isSubmitted && !_isAbandoned)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              color: Colors.red.withValues(alpha: 0.1),
+              child: Row(
+                children: [
+                  const Icon(Icons.error_outline, color: Colors.red, size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      '存在同步失败数据，为避免数据不一致，暂时禁止编辑。请先到同步问题详情处理。',
+                      style: TextStyle(
+                        color: Colors.red,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           Expanded(
             child: abnormal.isEmpty
                 ? Center(
@@ -398,10 +426,10 @@ class _RecordDetailPageState extends ConsumerState<RecordDetailPage> {
                               ),
                             ),
                           ),
-                          ...entry.value.map((record) {
+                           ...entry.value.map((record) {
                             return _RecordRow(
                               entry: record,
-                              editing: _editing && !_isSubmitted && !_isAbandoned,
+                              editing: _editing && !_isSubmitted && !_isAbandoned && !isSyncFailed,
                               onStatusChanged: (status, {remark}) => _updateStatus(
                                 record.recordId,
                                 status,

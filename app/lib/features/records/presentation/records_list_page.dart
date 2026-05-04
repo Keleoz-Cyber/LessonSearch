@@ -118,6 +118,18 @@ class _RecordsListPageState extends ConsumerState<RecordsListPage> {
       // 获取失败时忽略检查
     }
 
+    // 检查是否有同步失败数据
+    final hasSyncFailed = ref.read(hasSyncFailedProvider);
+    final isSyncFailed = hasSyncFailed.when(
+      data: (failed) => failed,
+      loading: () => false,
+      error: (_, __) => false,
+    );
+    if (isSyncFailed) {
+      Toast.show(context, '存在同步失败数据，请先到同步问题详情处理后再操作');
+      return;
+    }
+
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(

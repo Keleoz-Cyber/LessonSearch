@@ -60,6 +60,12 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(nameCheckProvider);
+    final hasSyncFailed = ref.watch(hasSyncFailedProvider);
+    final isSyncFailed = hasSyncFailed.when(
+      data: (failed) => failed,
+      loading: () => false,
+      error: (_, __) => false,
+    );
 
     if (state.isLoading) {
       return Scaffold(
@@ -128,10 +134,10 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
       );
     }
 
-    return _buildExecutingView(context, state);
+    return _buildExecutingView(context, state, isSyncFailed);
   }
 
-  Widget _buildExecutingView(BuildContext context, NameCheckState state) {
+  Widget _buildExecutingView(BuildContext context, NameCheckState state, bool isSyncFailed) {
     final currentClass = state.currentClass;
     final students = state.currentStudents;
 
@@ -197,6 +203,29 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
                       ),
                     );
                   },
+                ),
+              ),
+
+            // 同步失败红色提示条
+            if (isSyncFailed)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                color: Colors.red.withValues(alpha: 0.1),
+                child: Row(
+                  children: [
+                    const Icon(Icons.error_outline, color: Colors.red, size: 18),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        '存在同步失败数据，为避免数据不一致，暂时禁止编辑。请先到同步问题详情处理。',
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
 
@@ -392,6 +421,14 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
       }
     }
 
+    // 同步失败时禁用所有编辑按钮
+    final hasSyncFailed = ref.watch(hasSyncFailedProvider);
+    final isSyncFailed = hasSyncFailed.when(
+      data: (failed) => failed,
+      loading: () => false,
+      error: (_, __) => false,
+    );
+
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -415,7 +452,7 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
                   child: _ActionButton(
                     label: '缺勤',
                     color: Colors.red,
-                    onPressed: _focusedIndex != null
+                    onPressed: (!isSyncFailed && _focusedIndex != null)
                         ? () => mark(AttendanceStatus.absent)
                         : null,
                   ),
@@ -425,7 +462,7 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
                   child: _ActionButton(
                     label: '迟到',
                     color: Colors.amber.shade700,
-                    onPressed: _focusedIndex != null
+                    onPressed: (!isSyncFailed && _focusedIndex != null)
                         ? () => mark(AttendanceStatus.late_)
                         : null,
                   ),
@@ -435,7 +472,7 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
                   child: _ActionButton(
                     label: '请假',
                     color: Colors.blue,
-                    onPressed: _focusedIndex != null
+                    onPressed: (!isSyncFailed && _focusedIndex != null)
                         ? () => mark(AttendanceStatus.leave)
                         : null,
                   ),
@@ -445,7 +482,9 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
                   child: _ActionButton(
                     label: '其他',
                     color: Colors.grey,
-                    onPressed: _focusedIndex != null ? () => markOther() : null,
+                    onPressed: (!isSyncFailed && _focusedIndex != null)
+                        ? () => markOther()
+                        : null,
                   ),
                 ),
               ],
@@ -454,7 +493,9 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
             SizedBox(
               width: double.infinity,
               child: FilledButton(
-                onPressed: _focusedIndex != null ? () => markPresent() : null,
+                onPressed: (!isSyncFailed && _focusedIndex != null)
+                    ? () => markPresent()
+                    : null,
                 style: FilledButton.styleFrom(
                   minimumSize: const Size.fromHeight(44),
                 ),

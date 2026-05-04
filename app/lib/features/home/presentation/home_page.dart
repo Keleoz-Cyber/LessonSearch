@@ -247,6 +247,12 @@ class _HomePageState extends ConsumerState<HomePage> {
   Widget _buildSyncWarningCard() {
     final pendingCount = ref.watch(pendingSyncCountProvider);
     final syncState = ref.watch(syncStateProvider);
+    final hasSyncFailed = ref.watch(hasSyncFailedProvider);
+    final isSyncFailed = hasSyncFailed.when(
+      data: (failed) => failed,
+      loading: () => false,
+      error: (_, __) => false,
+    );
 
     return pendingCount.when(
       data: (count) {
@@ -262,15 +268,19 @@ class _HomePageState extends ConsumerState<HomePage> {
         return Padding(
           padding: const EdgeInsets.only(bottom: 16),
           child: Card(
-            color: syncState == SyncState.syncing
-                ? Colors.blue.withValues(alpha: 0.1)
-                : Colors.orange.withValues(alpha: 0.1),
+            color: isSyncFailed
+                ? Colors.red.withValues(alpha: 0.1)
+                : syncState == SyncState.syncing
+                    ? Colors.blue.withValues(alpha: 0.1)
+                    : Colors.orange.withValues(alpha: 0.1),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
               side: BorderSide(
-                color: syncState == SyncState.syncing
-                    ? Colors.blue.withValues(alpha: 0.3)
-                    : Colors.orange.withValues(alpha: 0.3),
+                color: isSyncFailed
+                    ? Colors.red.withValues(alpha: 0.3)
+                    : syncState == SyncState.syncing
+                        ? Colors.blue.withValues(alpha: 0.3)
+                        : Colors.orange.withValues(alpha: 0.3),
               ),
             ),
             child: Padding(
@@ -280,18 +290,24 @@ class _HomePageState extends ConsumerState<HomePage> {
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: syncState == SyncState.syncing
-                          ? Colors.blue.withValues(alpha: 0.2)
-                          : Colors.orange.withValues(alpha: 0.2),
+                      color: isSyncFailed
+                          ? Colors.red.withValues(alpha: 0.2)
+                          : syncState == SyncState.syncing
+                              ? Colors.blue.withValues(alpha: 0.2)
+                              : Colors.orange.withValues(alpha: 0.2),
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
-                      syncState == SyncState.syncing
-                          ? Icons.sync
-                          : Icons.warning_amber,
-                      color: syncState == SyncState.syncing
-                          ? Colors.blue
-                          : Colors.orange,
+                      isSyncFailed
+                          ? Icons.error_outline
+                          : syncState == SyncState.syncing
+                              ? Icons.sync
+                              : Icons.warning_amber,
+                      color: isSyncFailed
+                          ? Colors.red
+                          : syncState == SyncState.syncing
+                              ? Colors.blue
+                              : Colors.orange,
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -300,24 +316,29 @@ class _HomePageState extends ConsumerState<HomePage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          syncState == SyncState.syncing
-                              ? '正在自动同步 $count 条记录...'
-                              : '有 $count 条记录未同步',
-                          style: const TextStyle(
+                          isSyncFailed
+                              ? '有 $count 条数据同步失败，请先处理后再继续编辑或提交'
+                              : syncState == SyncState.syncing
+                                  ? '正在自动同步 $count 条记录...'
+                                  : '有 $count 条记录未同步',
+                          style: TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 15,
+                            color: isSyncFailed ? Colors.red : null,
                           ),
                           overflow: TextOverflow.ellipsis,
                           maxLines: 1,
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          syncState == SyncState.syncing
-                              ? '同步期间请避免编辑记录或提交审核，以防数据冲突'
-                              : '系统将在后台自动同步，请避免重复编辑同一条记录',
+                          isSyncFailed
+                              ? '存在同步失败数据，请点击右上角同步图标查看详情'
+                              : syncState == SyncState.syncing
+                                  ? '同步期间请避免编辑记录或提交审核，以防数据冲突'
+                                  : '系统将在后台自动同步，请避免重复编辑同一条记录',
                           style: TextStyle(
                             fontSize: 13,
-                            color: Colors.grey[600],
+                            color: isSyncFailed ? Colors.red[600] : Colors.grey[600],
                           ),
                           overflow: TextOverflow.ellipsis,
                           maxLines: 2,

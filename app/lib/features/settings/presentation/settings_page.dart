@@ -99,16 +99,38 @@ class SettingsPage extends ConsumerWidget {
           ),
           Consumer(
             builder: (context, ref, child) {
-              final pendingCountAsync = ref.watch(pendingSyncCountProvider);
-              return pendingCountAsync.when(
+              final syncIssueCountAsync = ref.watch(syncIssueCountProvider);
+              final hasSyncFailed = ref.watch(hasSyncFailedProvider);
+              final isSyncFailed = hasSyncFailed.when(
+                data: (failed) => failed,
+                loading: () => false,
+                error: (_, __) => false,
+              );
+              return syncIssueCountAsync.when(
                 loading: () => const SizedBox.shrink(),
                 error: (_, __) => const SizedBox.shrink(),
                 data: (count) {
                   if (count == 0) return const SizedBox.shrink();
                   return ListTile(
-                    leading: const Icon(Icons.warning_amber, color: Colors.orange),
-                    title: const Text('查看同步问题详情'),
-                    subtitle: Text('$count 条数据未同步，点击查看详情'),
+                    leading: Icon(
+                      isSyncFailed ? Icons.error_outline : Icons.warning_amber,
+                      color: isSyncFailed ? Colors.red : Colors.orange,
+                    ),
+                    title: Text(
+                      '查看同步问题详情',
+                      style: TextStyle(
+                        color: isSyncFailed ? Colors.red : null,
+                        fontWeight: isSyncFailed ? FontWeight.bold : null,
+                      ),
+                    ),
+                    subtitle: Text(
+                      isSyncFailed
+                          ? '有 $count 条同步问题（含失败），请先处理'
+                          : '$count 条数据未同步，点击查看详情',
+                      style: TextStyle(
+                        color: isSyncFailed ? Colors.red : null,
+                      ),
+                    ),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => context.push('/settings/sync-issues'),
                   );

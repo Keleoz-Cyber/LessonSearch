@@ -659,7 +659,7 @@ class _SubmitTaskTab extends ConsumerWidget {
   }
 }
 
-class _SubmitButton extends StatelessWidget {
+class _SubmitButton extends ConsumerWidget {
   final bool loading;
   final AsyncValue<int> pendingCount;
   final SyncState syncState;
@@ -673,7 +673,7 @@ class _SubmitButton extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     // 如果正在提交中（弹出确认对话框后），显示 loading
     if (loading) {
       return FilledButton(
@@ -693,6 +693,34 @@ class _SubmitButton extends StatelessWidget {
     final isSyncing = syncState == SyncState.syncing;
     final count = pendingCount.valueOrNull ?? 0;
     final hasPending = count > 0;
+
+    // 检查是否有同步失败数据
+    final hasSyncFailed = ref.watch(hasSyncFailedProvider);
+    final isSyncFailed = hasSyncFailed.when(
+      data: (failed) => failed,
+      loading: () => false,
+      error: (_, __) => false,
+    );
+
+    // 如果有同步失败数据，禁用按钮并显示红色提示
+    if (isSyncFailed) {
+      return FilledButton(
+        onPressed: null,
+        style: FilledButton.styleFrom(
+          minimumSize: const Size.fromHeight(48),
+          backgroundColor: Colors.red,
+          foregroundColor: Colors.white,
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.error_outline, size: 18),
+            const SizedBox(width: 8),
+            Text('有 $count 条同步失败，请先处理'),
+          ],
+        ),
+      );
+    }
 
     // 如果正在同步或有待同步记录，禁用按钮并显示提示
     if (isSyncing || hasPending) {

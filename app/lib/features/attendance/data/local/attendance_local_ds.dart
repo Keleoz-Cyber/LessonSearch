@@ -415,4 +415,27 @@ class AttendanceLocalDataSource {
   Future<void> clearSyncQueue() async {
     await _db.delete(_db.syncQueue).go();
   }
+
+  /// 获取同步问题数量（pending + failed，包括所有 failed）
+  Future<int> getSyncIssueCount() async {
+    final all = await _db.select(_db.syncQueue).get();
+    return all.where((s) =>
+      s.syncStatus == 'pending' || s.syncStatus == 'failed'
+    ).length;
+  }
+
+  /// 判断是否存在 syncStatus == 'failed' 的记录
+  Future<bool> hasSyncFailedItems() async {
+    final all = await _db.select(_db.syncQueue).get();
+    return all.any((s) => s.syncStatus == 'failed');
+  }
+
+  /// 返回 pending + failed，用于同步问题详情页展示
+  Future<List<SyncQueueData>> getSyncIssueItems() async {
+    return await (_db.select(_db.syncQueue)
+          ..where((s) =>
+            s.syncStatus.equals('pending') | s.syncStatus.equals('failed'))
+          ..orderBy([(s) => OrderingTerm.asc(s.id)]))
+        .get();
+  }
 }
