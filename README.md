@@ -55,7 +55,7 @@
 
 | 管理员审核 | 周汇总 | 同步问题详情 |
 |:----------:|:------:|:------------:|
-| ![审核](docs/screenshots/管理员审核.png) | ![汇总](docs/screenshots/周汇总.png) | ![同步](docs/screenshots/同步问题详情.png) |
+| ![审核](docs/screenshots/同步问题详情.png) | ![汇总](docs/screenshots/周汇总.png) | ![同步](docs/screenshots/管理员审核.png) |
 | 通过/拒绝，全程可追溯 | 按周次汇总统计 | 查看待同步/失败记录 |
 
 ---
