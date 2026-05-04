@@ -45,7 +45,9 @@ final userEmailProvider = Provider<String?>((ref) {
 });
 
 /// 是否已设置密码
-/// 注意：异常会向上传播，UI 层需处理 error 状态（显示"加载失败，请重新登录"）
+/// 注意：异常会向上传播，UI 层需处理 error 状态
+/// - 401/token 过期：提示重新登录，跳转登录页
+/// - 网络错误/500/超时：显示"加载失败，点击重试"，点击后 invalidate 重新请求
 final hasPasswordProvider = FutureProvider<bool>((ref) async {
   final api = ref.watch(apiClientProvider);
   final user = await api.getCurrentUser();

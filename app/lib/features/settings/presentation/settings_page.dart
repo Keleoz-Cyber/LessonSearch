@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -46,18 +47,56 @@ class SettingsPage extends ConsumerWidget {
                       hasPassword ? '已设置密码，点击修改' : '未设置密码，点击设置',
                     ),
                     loading: () => const Text('加载中...'),
-                    error: (_, __) => const Text(
-                      '加载失败，请重新登录',
-                      style: TextStyle(color: Colors.orange),
-                    ),
+                    error: (error, _) {
+                      // 区分 401 和普通网络错误
+                      final is401 = error is DioException &&
+                          error.response?.statusCode == 401;
+                      return Text(
+                        is401
+                            ? '登录状态已过期，请重新登录后查看'
+                            : '加载失败，点击重试',
+                        style: TextStyle(
+                          color: is401 ? Colors.orange : Colors.red,
+                        ),
+                      );
+                    },
                   ),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const SetPasswordPage(),
+                  trailing: hasPasswordAsync.when(
+                    data: (_) => const Icon(Icons.chevron_right),
+                    loading: () => const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
                     ),
+                    error: (_, __) => const Icon(Icons.refresh, color: Colors.grey),
                   ),
+                  onTap: () {
+                    // 如果是 error 状态，点击重试
+                    if (hasPasswordAsync is AsyncError) {
+                      final is401 = hasPasswordAsync.error is DioException &&
+                          (hasPasswordAsync.error as DioException)
+                                  .response?.statusCode ==
+                              401;
+                      if (is401) {
+                        // 401 跳转登录页（不退出登录，不清数据）
+                        context.go('/login');
+                      } else {
+                        // 普通错误重试
+                        ref.invalidate(hasPasswordProvider);
+                      }
+                      return;
+                    }
+                    // 正常状态，进入设置密码页
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const SetPasswordPage(),
+                      ),
+                    ).then((_) {
+                      // 从设置密码页返回后自动刷新
+                      ref.invalidate(hasPasswordProvider);
+                    });
+                  },
                 );
               },
             ),
