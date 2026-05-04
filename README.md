@@ -1,56 +1,53 @@
 # 考勤助手
 
-> 面向学校课堂查课场景的 Flutter + FastAPI 全栈应用。
-> 
-> 支持点名、记名、查课记录管理、名单提交审核、周汇总与 Excel 导出。
-> 
-> **本项目已在学校查课工作中正式投入使用**，覆盖从现场记名到管理员审核的完整闭环。
+<div align="center">
+
+![Logo](app/assets/icon.png)
+
+**面向学校查课场景的 Flutter + FastAPI 全栈应用**
+
+[![Version](https://img.shields.io/badge/version-v0.6.0-blue)](CHANGELOG.md)
+[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![Platform](https://img.shields.io/badge/platform-Android-lightgrey)]()
+[![Flutter](https://img.shields.io/badge/Flutter-3.43-02569B?logo=flutter)]()
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.110-009688?logo=fastapi)]()
+
+**已在高校查课工作中正式投入使用**
+
+点名 · 记名 · 名单提交 · 管理员审核 · 周汇总 · Excel 导出
+
+</div>
 
 ---
 
-## 项目简介
+## 为什么需要这个项目？
 
-考勤助手是为高校学生会/学习部查课工作开发的一套完整应用。
+在高校查课工作中，通常需要两人配合：一人点名，一人记录。传统方式存在以下问题：
 
-在日常查课中，通常需要两人在教室配合：一人负责点名，另一人使用 App 记录每位学生的出勤状态（到课、缺勤、迟到、请假、其他）。查课完成后，成员将名单提交审核，管理员审核通过后生成周汇总并导出 Excel。
+- ❌ **弱网/断网**：教室网络不稳定，App 无法使用
+- ❌ **数据不一致**：本地修改与服务端状态不同步
+- ❌ **审核追溯困难**：谁审核、是否通过、拒绝原因难以查询
+- ❌ **异常处理复杂**：Token 过期、同步失败、重复提交等边界情况
 
-**这不是一个 Demo，而是围绕真实校园查课流程持续迭代的功能完整应用。** 项目重点解决了以下问题：
-
-- **弱网/断网场景**：教室网络不稳定时，App 必须能正常使用
-- **数据一致性**：本地修改与服务端状态不一致时如何检测与修复
-- **审核追溯**：提交后谁审核、是否通过、拒绝原因是什么，全程可追溯
-- **异常保护**：Token 过期、同步失败、重复提交等边界情况的兜底处理
+**考勤助手** 通过本地优先架构 + SyncQueue 同步队列，完美解决了这些问题。
 
 ---
 
-## 核心功能
+## 功能展示
 
 ### 现场查课
-- **点名**：按学号顺序逐人点名，支持多班级、撤销上一位
-- **记名**：逐人标记考勤状态，支持左右滑动切换班级，未处理自动标为"到课"
-- **汇报文本生成**：自动生成学委汇报和总群汇报文本，一键复制跳转微信/QQ
 
-### 记录管理
-- **查课记录**：查看历史查课记录，支持编辑修改考勤状态
-- **记录锁定**：已提交审核的任务禁止修改，防止数据被篡改
-- **放弃任务**：标记为 abandoned，保留数据但不再参与提交
+| 首页 | 记名页面 | 名单提交 |
+|:----:|:--------:|:--------:|
+| ![首页](docs/screenshots/首页.png) | ![记名](docs/screenshots/记名.png) | ![提交](docs/screenshots/名单提交.png) |
+| 功能入口，一目了然 | 逐人标记考勤状态 | 选择任务提交审核 |
 
-### 名单提交与审核
-- **名单提交**：成员选择本周已完成的记名任务提交审核
-- **提交前强制同步**：确保本地数据已全部同步到服务端后再提交
-- **管理员审核**：管理员查看提交详情，通过或拒绝并填写原因
-- **审核状态**：pending / approved / rejected / cancelled，全程可追溯
+### 审核与汇总
 
-### 周汇总与导出
-- **周名单汇总**：按周次查看所有已审核提交的汇总统计
-- **Excel 导出**：导出含迟到、缺勤、请假、其他列的考勤表
-- **排行榜**：近7天/近30天/总榜，异常分数、缺勤率、缺勤人次多维度统计
-
-### 同步与帮助
-- **同步队列**：本地优先 + 后台静默同步，失败自动重试
-- **同步问题详情**：查看待同步、失败、认证过期的具体记录
-- **密码登录 / 验证码登录**：两种登录方式共存，支持设置/修改密码
-- **FAQ 帮助中心**：内置 19 个常见问题，涵盖同步、提交、审核、记录等场景
+| 管理员审核 | 周汇总 | 同步问题详情 |
+|:----------:|:------:|:------------:|
+| ![审核](docs/screenshots/管理员审核.png) | ![汇总](docs/screenshots/周汇总.png) | ![同步](docs/screenshots/同步问题详情.png) |
+| 通过/拒绝，全程可追溯 | 按周次汇总统计 | 查看待同步/失败记录 |
 
 ---
 
@@ -66,7 +63,7 @@ flowchart LR
     E -->|拒绝| B
 ```
 
-### 详细流程
+**详细流程：**
 
 1. **现场记名** → 选择年级、专业、班级，逐人标记考勤状态
 2. **修改记录** → 在查课记录中反复修改，直到确认无误
@@ -79,84 +76,115 @@ flowchart LR
 
 ## 技术架构
 
-```
-Flutter App (Android)
-  ├── Drift (SQLite) 本地数据库
-  ├── SyncQueue 同步队列
-  └── Dio + JWT 认证
-          ↓ HTTPS
-    FastAPI 服务端
-      └── MySQL 8
-```
-
-### 前端
-- **Flutter 3.43** + **Material 3**
-- **Riverpod** 状态管理
-- **Drift** 本地 SQLite 数据库
-- **go_router** 路由管理
-- **Dio** 网络请求 + 拦截器
-
-### 后端
-- **FastAPI** + **SQLAlchemy**
-- **PyJWT** 认证
-- **bcrypt** 密码哈希
-- **MySQL 8** 主数据库
-- **OpenResty** 反向代理
-
-### 数据流
-
-**写操作（本地优先）：**
-```
-用户操作 → Notifier → Repository
-    → LocalDS (Drift) → SyncQueue 入队
-    → SyncService 定期消费 → RemoteDS → API → MySQL
+```mermaid
+graph TB
+    subgraph "Flutter 客户端"
+        A[UI 层] --> B[Notifier]
+        B --> C[Repository]
+        C --> D[LocalDS<br>Drift SQLite]
+        C --> E[RemoteDS<br>Dio]
+        D --> F[SyncQueue]
+    end
+    
+    subgraph "FastAPI 服务端"
+        E -->|HTTPS| G[API Gateway]
+        G --> H[Auth<br>JWT]
+        G --> I[Business Logic]
+        I --> J[MySQL 8]
+    end
+    
+    F -->|10s 轮询| E
 ```
 
-**读操作：**
-```
-用户打开页面 → Notifier → Repository → LocalDS.query() → Drift
-```
+**技术栈：**
+
+| 端 | 技术 | 用途 |
+|----|------|------|
+| 客户端 | Flutter 3.43 | 跨平台 UI 框架 |
+| 状态管理 | Riverpod 2.6 | 响应式状态管理 |
+| 本地数据库 | Drift 2.28 | SQLite ORM |
+| 网络请求 | Dio | HTTP 客户端 |
+| 服务端 | FastAPI | Python Web 框架 |
+| 数据库 | MySQL 8 | 主数据库 |
+| 认证 | PyJWT + bcrypt | JWT 认证 + 密码哈希 |
 
 ---
 
 ## 项目亮点
 
 ### 1. 本地优先，弱网可用
-所有查课操作先写本地数据库，再异步同步到服务端。**教室网络不稳定时，App 完全可用**，网络恢复后自动补齐同步。
+
+| 传统方式 | 本项目 |
+|----------|--------|
+| 网络断开 = 无法使用 | 网络断开 = 正常使用 |
+| 数据丢失风险 | 数据安全保留 |
+| 手动重试 | 自动补齐同步 |
+
+**实现方式：** 所有操作先写本地 Drift 数据库，再异步同步到服务端。
 
 ### 2. SyncQueue 同步队列
+
+```mermaid
+stateDiagram-v2
+    [*] --> pending: 修改入队
+    pending --> syncing: 10s 轮询
+    syncing --> synced: 成功
+    syncing --> failed: 失败
+    failed --> pending: 自动重试
+    failed --> abandoned: 超过 5 次
+```
+
+**特性：**
 - 每次修改自动入队（`pending` 状态）
 - SyncService 每 10 秒消费队列，批量提交（2~50 条合并为一次请求）
 - 失败自动分类：网络错误重试、401 认证过期保留数据、其他错误最多重试 5 次
-- 支持手动触发同步和同步问题详情查看
 
 ### 3. 提交前强制同步
-名单提交前必须完成同步，如果有失败项会阻止提交并提示具体原因，**避免"我明明修改了但提交的还是旧数据"的问题**。
+
+**问题：** 用户修改了记录，但提交时服务端还是旧数据
+
+**解决方案：** 名单提交前必须完成同步，如果有失败项会阻止提交并提示具体原因
+
+```dart
+// submission_page.dart
+final result = await syncService.syncNow();
+if (result.failed > 0) {
+  Toast.show(context, '同步失败 ${result.failed} 项，请检查网络后重试');
+  return; // 阻止提交
+}
+```
 
 ### 4. Token 过期保护
-Token 过期返回 401 时，**只清除 token，保留本地所有数据和用户信息**。重新登录后自动恢复认证失败项并继续同步，**数据不丢失**。
+
+**传统方式：** Token 过期 → 清空所有数据 → 重新登录 → 数据丢失
+
+**本项目：** Token 过期 → 只清除 token → 保留本地数据 → 重新登录 → 继续同步
+
+```dart
+// api_client.dart
+if (statusCode == 401) {
+  _token = null;
+  onAuthExpired?.call(); // 只清除 token，不清数据
+}
+```
 
 ### 5. 记录锁定与权限
-- 已提交审核（pending / approved）的任务，服务端禁止修改记录（返回 403）
-- 前端同步检测，已提交任务禁用编辑并显示橙色提示
-- 删除任务改为标记 abandoned，已提交的任务不允许删除
+
+**状态流转：**
+- `pending` → `approved`：记录锁定，禁止修改
+- `pending` → `rejected`：记录解锁，可以修改后重新提交
+- 任何状态 → `abandoned`：任务放弃，保留数据但不再参与提交
+
+**实现：** 服务端检查记录是否已关联 pending/approved submission，已提交则返回 403
 
 ### 6. 异常状态完整追溯
-- 审核拒绝始终显示审核人和拒绝原因
-- rejected / cancelled 的提交可以重新提交
-- 历史提交记录管理员可随时查询
 
----
-
-## 页面预览
-
-| 首页 | 记名页面 | 名单提交 |
-|------|----------|----------|
-| ![首页](docs/screenshots/首页.png) | ![记名](docs/screenshots/记名.png) | ![提交](docs/screenshots/名单提交.png) |
-
-| 管理员审核 | 周汇总 | 同步问题详情 |
-|------------|--------|--------------|
-| ![审核](docs/screenshots/管理员审核.png) | ![汇总](docs/screenshots/周汇总.png) | ![同步](docs/screenshots/同步问题详情.png) |
+**追溯链：**
+- 谁提交的？ → `submission.user_id`
+- 谁审核的？ → `submission.reviewer_id`
+- 什么时候？ → `submission.review_time`
+- 拒绝原因？ → `submission.review_note`
+- 历史记录？ → `my_submissions_provider`
 
 ---
 
@@ -165,9 +193,17 @@ Token 过期返回 401 时，**只清除 token，保留本地所有数据和用�
 ### 前端
 
 ```bash
-cd app
+# 克隆仓库
+git clone https://github.com/Keleoz-Cyber/LessonSearch.git
+cd LessonSearch/app
+
+# 安装依赖
 flutter pub get
-flutter pub run flutter_launcher_icons:main  # 生成图标
+
+# 生成图标
+flutter pub run flutter_launcher_icons:main
+
+# 运行
 flutter run
 ```
 
@@ -175,8 +211,12 @@ flutter run
 
 ```bash
 cd server
+
+# 创建虚拟环境
 python -m venv venv
 source venv/bin/activate  # Windows: venv\Scripts\activate
+
+# 安装依赖
 pip install -r requirements.txt
 
 # 配置环境变量
@@ -202,7 +242,11 @@ python migrations/add_password_hash.py
 ```
 ├── app/                          # Flutter 前端
 │   ├── lib/
-│   │   ├── core/                 # 数据库、网络、同步、路由
+│   │   ├── core/                 # 核心模块
+│   │   │   ├── database/         # Drift 表定义
+│   │   │   ├── network/          # Dio 封装
+│   │   │   ├── sync/             # SyncService
+│   │   │   └── router/           # go_router 路由
 │   │   ├── features/             # 功能模块
 │   │   │   ├── attendance/       # 点名、记名
 │   │   │   ├── auth/             # 登录、实名
@@ -225,10 +269,9 @@ python migrations/add_password_hash.py
 ├── docs/                         # 开发文档
 │   ├── dev-guide.md              # 完整开发文档
 │   ├── business-flow.md          # 业务流程文档
-│   └── tasks.md                  # 开发任务表
+│   └── screenshots/              # 应用截图
 │
 └── scripts/                      # 数据导入脚本
-    └── import_students_2022plus.py
 ```
 
 ---
@@ -236,14 +279,18 @@ python migrations/add_password_hash.py
 ## 配置说明
 
 ### 前端
+
 无需额外配置，默认连接 `https://api.keleoz.cn/api`。如需修改 API 地址：
+
 ```dart
 // app/lib/core/network/api_client.dart
 static const String defaultBaseUrl = 'https://your-domain.com/api';
 ```
 
 ### 后端
+
 创建 `server/.env` 文件，配置以下项：
+
 ```env
 # 数据库
 DATABASE_URL=mysql+pymysql://user:password@localhost/lesson_search
@@ -263,15 +310,51 @@ SMTP_PASSWORD=your-password
 
 ---
 
+## 贡献指南
+
+欢迎贡献代码、报告问题或提出建议！
+
+### 如何参与
+
+1. **Fork** 本仓库
+2. **创建** 你的特性分支 (`git checkout -b feature/AmazingFeature`)
+3. **提交** 你的修改 (`git commit -m 'Add some AmazingFeature'`)
+4. **推送到** 分支 (`git push origin feature/AmazingFeature`)
+5. **打开** Pull Request
+
+### 代码规范
+
+- **Flutter**：遵循 [Flutter 官方风格指南](https://flutter.dev/docs/development/tools/formatting)
+- **Python**：遵循 [PEP 8](https://peps.python.org/pep-0008/)
+- **提交信息**：使用 [Conventional Commits](https://www.conventionalcommits.org/) 格式
+
+### Issue 模板
+
+报告问题时，请包含：
+- 问题描述
+- 复现步骤
+- 预期行为
+- 实际行为
+- 环境信息（Flutter 版本、Python 版本、操作系统）
+
+### Pull Request 流程
+
+1. 确保代码通过 `flutter analyze` 和 `ruff check`
+2. 更新相关文档
+3. 添加测试（如适用）
+4. 等待 Review
+
+---
+
 ## 更新日志
 
 完整版本更新日志请查看 [CHANGELOG.md](CHANGELOG.md)。
 
-当前版本亮点：
+**当前版本亮点：**
 - v0.6.0：密码登录、批量同步优化、同步保护机制、设置页增强、全新图标
 
 ---
 
 ## License
 
-待补充
+本项目采用 MIT License - 详见 [LICENSE](LICENSE) 文件
