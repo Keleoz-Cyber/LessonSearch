@@ -52,10 +52,24 @@ class ApiClient {
         onError: (error, handler) {
           final statusCode = error.response?.statusCode;
           final uri = error.requestOptions.uri;
-          LoggerService.network(
-            '✗ $statusCode $uri: ${error.message}',
-            isError: true,
-          );
+          
+          // statusCode null 时区分具体错误类型
+          String errorMsg;
+          if (statusCode != null) {
+            errorMsg = '$statusCode $uri: ${error.message}';
+          } else if (error.type == DioExceptionType.connectionTimeout ||
+                     error.type == DioExceptionType.sendTimeout ||
+                     error.type == DioExceptionType.receiveTimeout) {
+            errorMsg = 'TIMEOUT $uri: ${error.type.name}';
+          } else if (error.type == DioExceptionType.connectionError) {
+            errorMsg = 'CONN_ERROR $uri: ${error.message ?? "连接失败"}';
+          } else if (error.type == DioExceptionType.cancel) {
+            errorMsg = 'CANCEL $uri';
+          } else {
+            errorMsg = 'UNKNOWN $uri: ${error.message}';
+          }
+          
+          LoggerService.network('✗ $errorMsg', isError: true);
           if (statusCode == 401) {
             _token = null;
             onAuthExpired?.call();

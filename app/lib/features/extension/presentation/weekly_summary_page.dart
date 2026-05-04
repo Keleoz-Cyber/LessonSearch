@@ -200,10 +200,13 @@ class _CurrentWeekTab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final pendingAsync = ref.watch(pendingSubmissionsProvider(weekNumber));
-    final submissionStatusAsync = ref.watch(
-      weekSubmissionStatusProvider(weekNumber),
-    );
+    // pendingSubmissions 和 submissionStatus 是管理员接口，member 不请求
+    final pendingAsync = isAdmin
+        ? ref.watch(pendingSubmissionsProvider(weekNumber))
+        : const AsyncValue<List<dynamic>>.loading();
+    final submissionStatusAsync = isAdmin
+        ? ref.watch(weekSubmissionStatusProvider(weekNumber))
+        : const AsyncValue<Map<String, dynamic>>.loading();
     final weekSummaryAsync = ref.watch(weekSummaryProvider(weekNumber));
     final exportStatusAsync = ref.watch(exportStatusProvider(weekNumber));
     final startDate = DateTime.parse(weekData['start_date'] as String);
@@ -1988,8 +1991,12 @@ class _HistoryWeekCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // exportStatus 所有用户都可以请求（非管理员接口）
     final exportStatusAsync = ref.watch(exportStatusProvider(weekNumber));
-    final weekSummaryAsync = ref.watch(weekSummaryProvider(weekNumber));
+    // 只有管理员才请求 weekSummary，避免 member 账号收到 403
+    final weekSummaryAsync = isAdmin
+        ? ref.watch(weekSummaryProvider(weekNumber))
+        : const AsyncValue<Map<String, dynamic>>.loading();
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),

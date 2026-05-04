@@ -4,6 +4,28 @@
 
 ---
 
+## v0.6.2
+
+发布后体验修复版本，不涉及业务逻辑变更。
+
+### 日志优化
+
+- **Dio 网络日志** - statusCode null 时区分 timeout、connectionError、cancel 等具体错误类型，日志更清晰
+- **周名单汇总** - member 账号不再请求管理员接口（pending/reviewed），避免日志中大量 403
+
+### 健康检查
+
+- **/health 接口** - 返回 timestamp 和 version 字段
+- **/health/db 接口** - 新增数据库连接检测接口
+- **路由兼容** - /health 和 /api/health 都可访问，兼容前端 baseUrl
+
+### 性能优化
+
+- **/sync/version** - 优化 N+1 查询，改为一次 group_by 查询所有班级学生统计
+- **students.class_id** - 补充数据库索引
+
+---
+
 ## v0.6.1
 
 ### 同步保护模式
