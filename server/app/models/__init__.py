@@ -3,7 +3,7 @@ from app.models.student import Grade, Major, Class, Student
 from app.models.task import AttendanceTask, TaskClass
 from app.models.record import AttendanceRecord
 from app.models.week import WeekConfig, WeekExport
-from app.models.submission import Submission, SubmissionRecord
+from app.models.submission import Submission, SubmissionRecord, SubmissionSnapshot
 from app.models.duty import DutyAssignment
 from app.models.announcement import Announcement
 from app.models.ranking import RankingCache, RankingSummary
@@ -23,6 +23,7 @@ __all__ = [
     "WeekExport",
     "Submission",
     "SubmissionRecord",
+    "SubmissionSnapshot",
     "DutyAssignment",
     "Announcement",
     "RankingCache",

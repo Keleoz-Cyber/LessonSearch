@@ -5,16 +5,17 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import func
-from typing import List
+from typing import List, Dict, Any
 from datetime import datetime
 from io import BytesIO
 from urllib.parse import quote
+import json
 import openpyxl
 from openpyxl.styles import Font, Alignment, Border, Side
 
 from app.core.database import get_db
 from app.core.security import get_current_user
-from app.models import User, Submission, SubmissionRecord, AttendanceRecord, AttendanceTask, Student, Class, Major
+from app.models import User, Submission, SubmissionRecord, AttendanceRecord, AttendanceTask, Student, Class, Major, SubmissionSnapshot
 from app.models.week import WeekExport
 from app.schemas.submission import (
     CreateSubmissionRequest,
@@ -31,6 +32,142 @@ from app.schemas.submission import (
 from app.routers.week import get_current_week_config, calculate_week_number
 
 router = APIRouter(prefix="/submissions", tags=["submissions"])
+
+
+def _build_snapshot_data(db: Session, submission: Submission) -> dict:
+    """为 approved submission 构建快照数据"""
+    user = db.query(User).filter(User.id == submission.user_id).first()
+    reviewer = None
+    if submission.reviewer_id:
+        reviewer = db.query(User).filter(User.id == submission.reviewer_id).first()
+    
+    submission_records = db.query(SubmissionRecord).filter(
+        SubmissionRecord.submission_id == submission.id
+    ).all()
+    
+    records = []
+    for sr in submission_records:
+        record = db.query(AttendanceRecord).filter(
+            AttendanceRecord.id == sr.record_id
+        ).first()
+        if not record:
+            continue
+        
+        student = db.query(Student).filter(Student.id == record.student_id).first()
+        if not student:
+            continue
+        
+        class_ = db.query(Class).filter(Class.id == student.class_id).first()
+        major = None
+        if class_:
+            major = db.query(Major).filter(Major.id == class_.major_id).first()
+        
+        records.append({
+            "record_id": record.id,
+            "task_id": record.task_id,
+            "student_id": student.id,
+            "student_name": student.name,
+            "student_no": student.student_no,
+            "class_id": student.class_id,
+            "class_name": class_.display_name if class_ else "未知",
+            "major_short_name": major.short_name if major else "",
+            "class_code": class_.class_code if class_ else "",
+            "status": record.status,
+            "record_time": (record.updated_at or record.created_at).isoformat() if (record.updated_at or record.created_at) else None,
+            "created_at": record.created_at.isoformat() if record.created_at else None,
+            "updated_at": record.updated_at.isoformat() if record.updated_at else None,
+        })
+    
+    return {
+        "submission": {
+            "id": submission.id,
+            "user_id": submission.user_id,
+            "week_number": submission.week_number,
+            "status": submission.status,
+            "class_names": submission.class_names,
+            "submitted_at": submission.submitted_at.isoformat() if submission.submitted_at else None,
+            "review_time": submission.review_time.isoformat() if submission.review_time else None,
+            "review_note": submission.review_note,
+        },
+        "submitter": {
+            "id": user.id if user else None,
+            "real_name": user.real_name if user else None,
+            "email": user.email if user else None,
+        },
+        "reviewer": {
+            "id": reviewer.id if reviewer else None,
+            "real_name": reviewer.real_name if reviewer else None,
+            "email": reviewer.email if reviewer else None,
+        },
+        "records": records,
+    }
+
+
+def _get_approved_records_from_snapshots(
+    db: Session, week_number: int
+) -> List[Dict[str, Any]]:
+    """从快照获取 approved 记录，fallback 到旧逻辑"""
+    snapshots = db.query(SubmissionSnapshot).filter(
+        SubmissionSnapshot.week_number == week_number
+    ).all()
+    
+    if snapshots:
+        # 使用快照
+        all_records = []
+        for snap in snapshots:
+            data = json.loads(snap.snapshot_data)
+            for r in data.get("records", []):
+                all_records.append(r)
+        return all_records
+    else:
+        # fallback: 旧逻辑实时查询
+        approved_submissions = db.query(Submission).filter(
+            Submission.week_number == week_number,
+            Submission.status == "approved"
+        ).all()
+        
+        if not approved_submissions:
+            return []
+        
+        approved_ids = [s.id for s in approved_submissions]
+        submission_records = db.query(SubmissionRecord).filter(
+            SubmissionRecord.submission_id.in_(approved_ids)
+        ).all()
+        
+        all_records = []
+        for sr in submission_records:
+            record = db.query(AttendanceRecord).filter(
+                AttendanceRecord.id == sr.record_id
+            ).first()
+            if not record:
+                continue
+            
+            student = db.query(Student).filter(Student.id == record.student_id).first()
+            if not student:
+                continue
+            
+            class_ = db.query(Class).filter(Class.id == student.class_id).first()
+            major = None
+            if class_:
+                major = db.query(Major).filter(Major.id == class_.major_id).first()
+            
+            all_records.append({
+                "record_id": record.id,
+                "task_id": record.task_id,
+                "student_id": student.id,
+                "student_name": student.name,
+                "student_no": student.student_no,
+                "class_id": student.class_id,
+                "class_name": class_.display_name if class_ else "未知",
+                "major_short_name": major.short_name if major else "",
+                "class_code": class_.class_code if class_ else "",
+                "status": record.status,
+                "record_time": (record.updated_at or record.created_at).isoformat() if (record.updated_at or record.created_at) else None,
+                "created_at": record.created_at.isoformat() if record.created_at else None,
+                "updated_at": record.updated_at.isoformat() if record.updated_at else None,
+            })
+        
+        return all_records
 
 
 @router.post("/", response_model=SubmissionResponse)
@@ -416,7 +553,7 @@ async def get_week_summary(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """获取周汇总统计"""
+    """获取周汇总统计（优先使用快照）"""
     from sqlalchemy import func as sql_func
     
     submissions = db.query(Submission).filter(
@@ -437,70 +574,36 @@ async def get_week_summary(
     other_student_count = 0
     total_abnormal_students = 0
     
-    approved_ids = [s.id for s in submissions if s.status == "approved"]
-    if approved_ids:
-        late_count = db.query(sql_func.count()).select_from(SubmissionRecord).join(
-            AttendanceRecord, SubmissionRecord.record_id == AttendanceRecord.id
-        ).filter(
-            SubmissionRecord.submission_id.in_(approved_ids),
-            AttendanceRecord.status == "late"
-        ).scalar() or 0
-        
-        absent_count = db.query(sql_func.count()).select_from(SubmissionRecord).join(
-            AttendanceRecord, SubmissionRecord.record_id == AttendanceRecord.id
-        ).filter(
-            SubmissionRecord.submission_id.in_(approved_ids),
-            AttendanceRecord.status == "absent"
-        ).scalar() or 0
-        
-        leave_count = db.query(sql_func.count()).select_from(SubmissionRecord).join(
-            AttendanceRecord, SubmissionRecord.record_id == AttendanceRecord.id
-        ).filter(
-            SubmissionRecord.submission_id.in_(approved_ids),
-            AttendanceRecord.status == "leave"
-        ).scalar() or 0
-        
-        other_count = db.query(sql_func.count()).select_from(SubmissionRecord).join(
-            AttendanceRecord, SubmissionRecord.record_id == AttendanceRecord.id
-        ).filter(
-            SubmissionRecord.submission_id.in_(approved_ids),
-            AttendanceRecord.status == "other"
-        ).scalar() or 0
-        
-        late_student_count = db.query(sql_func.count(sql_func.distinct(AttendanceRecord.student_id))).select_from(SubmissionRecord).join(
-            AttendanceRecord, SubmissionRecord.record_id == AttendanceRecord.id
-        ).filter(
-            SubmissionRecord.submission_id.in_(approved_ids),
-            AttendanceRecord.status == "late"
-        ).scalar() or 0
-        
-        absent_student_count = db.query(sql_func.count(sql_func.distinct(AttendanceRecord.student_id))).select_from(SubmissionRecord).join(
-            AttendanceRecord, SubmissionRecord.record_id == AttendanceRecord.id
-        ).filter(
-            SubmissionRecord.submission_id.in_(approved_ids),
-            AttendanceRecord.status == "absent"
-        ).scalar() or 0
-        
-        leave_student_count = db.query(sql_func.count(sql_func.distinct(AttendanceRecord.student_id))).select_from(SubmissionRecord).join(
-            AttendanceRecord, SubmissionRecord.record_id == AttendanceRecord.id
-        ).filter(
-            SubmissionRecord.submission_id.in_(approved_ids),
-            AttendanceRecord.status == "leave"
-        ).scalar() or 0
-        
-        other_student_count = db.query(sql_func.count(sql_func.distinct(AttendanceRecord.student_id))).select_from(SubmissionRecord).join(
-            AttendanceRecord, SubmissionRecord.record_id == AttendanceRecord.id
-        ).filter(
-            SubmissionRecord.submission_id.in_(approved_ids),
-            AttendanceRecord.status == "other"
-        ).scalar() or 0
-        
-        total_abnormal_students = db.query(sql_func.count(sql_func.distinct(AttendanceRecord.student_id))).select_from(SubmissionRecord).join(
-            AttendanceRecord, SubmissionRecord.record_id == AttendanceRecord.id
-        ).filter(
-            SubmissionRecord.submission_id.in_(approved_ids),
-            AttendanceRecord.status.in_(["late", "absent", "leave", "other"])
-        ).scalar() or 0
+    # 优先使用快照，fallback 到旧逻辑
+    all_records = _get_approved_records_from_snapshots(db, week_number)
+    
+    # 从快照或 fallback 数据中统计
+    late_students = set()
+    absent_students = set()
+    leave_students = set()
+    other_students = set()
+    
+    for r in all_records:
+        status = r.get("status")
+        sid = r.get("student_id")
+        if status == "late":
+            late_count += 1
+            late_students.add(sid)
+        elif status == "absent":
+            absent_count += 1
+            absent_students.add(sid)
+        elif status == "leave":
+            leave_count += 1
+            leave_students.add(sid)
+        elif status == "other":
+            other_count += 1
+            other_students.add(sid)
+    
+    late_student_count = len(late_students)
+    absent_student_count = len(absent_students)
+    leave_student_count = len(leave_students)
+    other_student_count = len(other_students)
+    total_abnormal_students = len(late_students | absent_students | leave_students | other_students)
     
     export = db.query(WeekExport).filter(
         WeekExport.week_number == week_number
@@ -531,7 +634,7 @@ async def get_week_summary_detail(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """获取周汇总详细名单"""
+    """获取周汇总详细名单（优先使用快照）"""
     export = db.query(WeekExport).filter(
         WeekExport.week_number == week_number
     ).first()
@@ -539,60 +642,39 @@ async def get_week_summary_detail(
     if current_user.role != "admin" and not export:
         raise HTTPException(status_code=403, detail="该周汇总尚未发布")
     
-    approved_submissions = db.query(Submission).filter(
-        Submission.week_number == week_number,
-        Submission.status == "approved"
-    ).all()
-    
-    approved_ids = [s.id for s in approved_submissions]
+    # 优先使用快照，fallback 到旧逻辑
+    all_records = _get_approved_records_from_snapshots(db, week_number)
     
     student_stats = {}
-    submission_records = []
     
-    if approved_ids:
-        submission_records = db.query(SubmissionRecord).filter(
-            SubmissionRecord.submission_id.in_(approved_ids)
-        ).all()
+    for r in all_records:
+        status = r.get("status")
+        if status not in ("late", "absent", "leave", "other"):
+            continue
         
-        for sr in submission_records:
-            record = db.query(AttendanceRecord).filter(
-                AttendanceRecord.id == sr.record_id
-            ).first()
-            
-            if record and record.status in ("late", "absent", "leave", "other"):
-                student = db.query(Student).filter(
-                    Student.id == record.student_id
-                ).first()
-                
-                if student:
-                    class_ = db.query(Class).filter(Class.id == student.class_id).first()
-                    major = None
-                    if class_:
-                        major = db.query(Major).filter(Major.id == class_.major_id).first()
-                    
-                    sid = student.id
-                    if sid not in student_stats:
-                        student_stats[sid] = {
-                            "student_id": sid,
-                            "name": student.name,
-                            "student_no": student.student_no,
-                            "class_name": class_.display_name if class_ else "未知",
-                            "major_short_name": major.short_name if major else "",
-                            "class_code": class_.class_code if class_ else "",
-                            "late": 0,
-                            "absent": 0,
-                            "leave": 0,
-                            "other": 0,
-                        }
-                    
-                    if record.status == "late":
-                        student_stats[sid]["late"] += 1
-                    elif record.status == "absent":
-                        student_stats[sid]["absent"] += 1
-                    elif record.status == "leave":
-                        student_stats[sid]["leave"] += 1
-                    elif record.status == "other":
-                        student_stats[sid]["other"] += 1
+        sid = r.get("student_id")
+        if sid not in student_stats:
+            student_stats[sid] = {
+                "student_id": sid,
+                "name": r.get("student_name", ""),
+                "student_no": r.get("student_no", ""),
+                "class_name": r.get("class_name", "未知"),
+                "major_short_name": r.get("major_short_name", ""),
+                "class_code": r.get("class_code", ""),
+                "late": 0,
+                "absent": 0,
+                "leave": 0,
+                "other": 0,
+            }
+        
+        if status == "late":
+            student_stats[sid]["late"] += 1
+        elif status == "absent":
+            student_stats[sid]["absent"] += 1
+        elif status == "leave":
+            student_stats[sid]["leave"] += 1
+        elif status == "other":
+            student_stats[sid]["other"] += 1
     
     sorted_students = sorted(
         student_stats.values(),
@@ -670,86 +752,63 @@ async def export_week_excel(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """导出周考勤Excel（管理员）"""
+    """导出周考勤Excel（管理员，优先使用快照）"""
     if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="需要管理员权限")
     
-    submissions = db.query(Submission).filter(
-        Submission.week_number == week_number,
-        Submission.status == "approved"
-    ).all()
+    # 优先使用快照，fallback 到旧逻辑
+    all_records = _get_approved_records_from_snapshots(db, week_number)
     
-    if not submissions:
+    if not all_records:
         raise HTTPException(status_code=400, detail="该周无已审核通过的提交")
     
-    records_data = []
-    for sub in submissions:
-        submission_records = db.query(SubmissionRecord).filter(
-            SubmissionRecord.submission_id == sub.id
-        ).all()
-        
-        for sr in submission_records:
-            record = db.query(AttendanceRecord).filter(
-                AttendanceRecord.id == sr.record_id
-            ).first()
-            if record and record.status in ("late", "absent", "leave", "other"):
-                student = db.query(Student).filter(
-                    Student.id == record.student_id
-                ).first()
-                if student:
-                    class_ = db.query(Class).filter(Class.id == student.class_id).first()
-                    major = None
-                    if class_:
-                        major = db.query(Major).filter(Major.id == class_.major_id).first()
-                    
-                    records_data.append({
-                        "student_id": student.id,
-                        "name": student.name,
-                        "student_no": student.student_no,
-                        "class_name": class_.display_name if class_ else "未知",
-                        "major_short_name": major.short_name if major else "",
-                        "class_code": class_.class_code if class_ else "",
-                        "status": record.status,
-                        "record_time": record.updated_at or record.created_at,
-                    })
-    
     student_stats = {}
-    for r in records_data:
-        sid = r["student_id"]
+    for r in all_records:
+        status = r.get("status")
+        if status not in ("late", "absent", "leave", "other"):
+            continue
+        
+        sid = r.get("student_id")
         if sid not in student_stats:
             student_stats[sid] = {
-                "name": r["name"],
-                "student_no": r["student_no"],
-                "class_name": r["class_name"],
-                "major_short_name": r["major_short_name"],
-                "class_code": r["class_code"],
+                "name": r.get("student_name", ""),
+                "student_no": r.get("student_no", ""),
+                "class_name": r.get("class_name", "未知"),
+                "major_short_name": r.get("major_short_name", ""),
+                "class_code": r.get("class_code", ""),
                 "late": 0,
                 "absent": 0,
                 "leave": 0,
                 "other": 0,
                 "record_times": [],
             }
-        if r["status"] == "late":
+        
+        if status == "late":
             student_stats[sid]["late"] += 1
-        elif r["status"] == "absent":
+        elif status == "absent":
             student_stats[sid]["absent"] += 1
-        elif r["status"] == "leave":
+        elif status == "leave":
             student_stats[sid]["leave"] += 1
-        elif r["status"] == "other":
+        elif status == "other":
             student_stats[sid]["other"] += 1
         
         # 记录时间和状态
-        if r["record_time"]:
-            status_label = {
-                "late": "迟",
-                "absent": "缺",
-                "leave": "假",
-                "other": "其"
-            }.get(r["status"], "")
-            student_stats[sid]["record_times"].append({
-                "time": r["record_time"],
-                "status_label": status_label
-            })
+        record_time_str = r.get("record_time")
+        if record_time_str:
+            try:
+                record_time = datetime.fromisoformat(record_time_str)
+                status_label = {
+                    "late": "迟",
+                    "absent": "缺",
+                    "leave": "假",
+                    "other": "其"
+                }.get(status, "")
+                student_stats[sid]["record_times"].append({
+                    "time": record_time,
+                    "status_label": status_label
+                })
+            except (ValueError, TypeError):
+                pass
     
     sorted_students = sorted(
         student_stats.values(),
@@ -992,6 +1051,22 @@ async def approve_submission(
     submission.review_time = datetime.now()
     if body and body.note:
         submission.review_note = body.note
+    
+    # 生成快照（幂等：如果已存在则不重复创建）
+    existing_snapshot = db.query(SubmissionSnapshot).filter(
+        SubmissionSnapshot.submission_id == submission_id
+    ).first()
+    
+    if not existing_snapshot:
+        snapshot_data = _build_snapshot_data(db, submission)
+        snapshot = SubmissionSnapshot(
+            submission_id=submission.id,
+            week_number=submission.week_number,
+            user_id=submission.user_id,
+            class_names=submission.class_names,
+            snapshot_data=json.dumps(snapshot_data, ensure_ascii=False)
+        )
+        db.add(snapshot)
     
     db.commit()
     

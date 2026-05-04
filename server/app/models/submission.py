@@ -37,3 +37,21 @@ class SubmissionRecord(Base):
     __table_args__ = (
         UniqueConstraint("record_id", name="uk_record"),  # 一条记录只能属于一个submission
     )
+
+
+class SubmissionSnapshot(Base):
+    """审核通过快照表 — 锁定单次 approved submission 的完整内容"""
+    __tablename__ = "submission_snapshots"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    submission_id = Column(Integer, ForeignKey("submissions.id"), nullable=False, unique=True)
+    week_number = Column(Integer, nullable=False)
+    user_id = Column(Integer, nullable=False)
+    class_names = Column(String(200), nullable=True)
+    snapshot_data = Column(Text, nullable=False)  # JSON 字符串
+    created_at = Column(DateTime, server_default=func.now())
+
+    __table_args__ = (
+        Index("idx_snapshot_week", "week_number"),
+        Index("idx_snapshot_user", "user_id"),
+    )
