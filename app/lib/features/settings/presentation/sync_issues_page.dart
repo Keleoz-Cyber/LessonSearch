@@ -369,7 +369,7 @@ class SyncIssuesPage extends ConsumerWidget {
     } else if (hasGivenUp) {
       return '会先重置已放弃项，然后重新尝试同步';
     }
-    return '点击后会立即尝试同步所有待同步和失败的数据';
+    return '旧版本遗留的无效项会自动跳过，不影响已提交数据';
   }
 
   Future<void> _retrySync(

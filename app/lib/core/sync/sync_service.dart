@@ -80,6 +80,17 @@ class SyncService {
     _isSyncing = true;
 
     try {
+      // 修复旧版本升级遗留的 SyncQueue 问题
+      final repair = await _local.repairLegacySyncQueue();
+      if (repair.values.any((v) => v > 0)) {
+        LoggerService.sync(
+          'REPAIR: syncing=${repair['syncing']}, '
+          'badPayload=${repair['badPayload']}, '
+          'incomplete=${repair['incompleteRecord']}, '
+          'cleanedSynced=${repair['cleanedSynced']}',
+        );
+      }
+
       final items = await _local.getPendingSyncItems();
       if (items.isEmpty) {
         state.value = SyncState.idle;

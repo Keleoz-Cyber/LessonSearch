@@ -14,6 +14,15 @@
 - **批量同步补充** - 批量同步 failed reason 包含"该任务已放弃"/"不可修改记录"时也安全跳过
 - **Dio 错误日志增强** - 403/400/500 错误日志现在打印 response.data 中的 detail 字段，便于排查
 
+### 旧版本升级遗留 SyncQueue 自修复
+
+- **syncing 残留修复** - 历史 syncStatus='syncing' 的卡死项自动重置为 pending
+- **坏 payload 跳过** - payload 为空或 JSON 解析失败的旧项自动 markSynced，不阻塞同步
+- **不完整 record/update 跳过** - 缺少 task_id/student_id/status 的旧项自动 markSynced
+- **历史队列清理** - 7 天前已 synced 的队列项自动清理，避免本地数据库膨胀
+- **同步前自动执行** - 每次同步前自动修复，不影响正常同步流程
+- **详情页文案优化** - 提示"旧版本遗留的无效项会自动跳过"
+
 ---
 
 ## v0.6.2

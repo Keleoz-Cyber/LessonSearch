@@ -416,6 +416,80 @@ class AttendanceLocalDataSource {
     await _db.delete(_db.syncQueue).go();
   }
 
+  /// 修复旧版本升级遗留的 SyncQueue 问题（幂等，可重复执行）
+  /// 返回修复统计：{syncing, badPayload, incompleteRecord, cleanedSynced}
+  Future<Map<String, int>> repairLegacySyncQueue() async {
+    int fixedSyncing = 0;
+    int skippedBadPayload = 0;
+    int skippedIncomplete = 0;
+    int cleanedSynced = 0;
+
+    final all = await _db.select(_db.syncQueue).get();
+
+    for (final item in all) {
+      // 1. syncing 残留项重置为 pending
+      if (item.syncStatus == 'syncing') {
+        await (_db.update(_db.syncQueue)
+              ..where((s) => s.id.equals(item.id)))
+            .write(const SyncQueueCompanion(
+          syncStatus: Value('pending'),
+        ));
+        fixedSyncing++;
+        continue;
+      }
+
+      // 只处理 synced/pending/failed 中可能需要修复的
+      // 以下逻辑只针对 pending 和 failed 的 record/update
+      if (item.entityType == 'record' && item.action == 'update') {
+        // 2. payload 为空或解析失败
+        if (item.payload == null || item.payload!.isEmpty) {
+          await markSynced(item.id);
+          skippedBadPayload++;
+          continue;
+        }
+
+        try {
+          final payload = jsonDecode(item.payload!) as Map<String, dynamic>;
+
+          // 3. record/update 缺少必要字段
+          final hasTaskId = payload.containsKey('task_id') && payload['task_id'] != null;
+          final hasStudentId = payload.containsKey('student_id') && payload['student_id'] != null;
+          final hasStatus = payload.containsKey('status') && payload['status'] != null;
+
+          if (!hasTaskId || !hasStudentId || !hasStatus) {
+            await markSynced(item.id);
+            skippedIncomplete++;
+            continue;
+          }
+        } catch (_) {
+          // JSON 解析失败，标记为 synced
+          await markSynced(item.id);
+          skippedBadPayload++;
+          continue;
+        }
+      }
+    }
+
+    // 4. 清理 7 天前已 synced 的历史队列项
+    final sevenDaysAgo = DateTime.now().subtract(const Duration(days: 7));
+    final oldSynced = await (_db.select(_db.syncQueue)
+          ..where((s) =>
+              s.syncStatus.equals('synced') &
+              s.createdAt.isSmallerThanValue(sevenDaysAgo)))
+        .get();
+    for (final item in oldSynced) {
+      await (_db.delete(_db.syncQueue)..where((s) => s.id.equals(item.id))).go();
+      cleanedSynced++;
+    }
+
+    return {
+      'syncing': fixedSyncing,
+      'badPayload': skippedBadPayload,
+      'incompleteRecord': skippedIncomplete,
+      'cleanedSynced': cleanedSynced,
+    };
+  }
+
   /// 获取同步问题数量（pending + failed，包括所有 failed）
   Future<int> getSyncIssueCount() async {
     final all = await _db.select(_db.syncQueue).get();
