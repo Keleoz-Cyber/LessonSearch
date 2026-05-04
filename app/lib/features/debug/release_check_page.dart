@@ -12,7 +12,7 @@ import '../../../shared/providers.dart';
 import '../../../shared/widgets/toast.dart';
 
 // TODO: 使用 package_info_plus 读取真实 App 版本，避免手动维护
-const _appVersion = '0.6.0';
+const _appVersion = '0.6.2';
 
 class ReleaseCheckPage extends ConsumerStatefulWidget {
   const ReleaseCheckPage({super.key});
