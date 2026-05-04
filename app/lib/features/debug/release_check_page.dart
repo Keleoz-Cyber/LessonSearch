@@ -4,11 +4,15 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/network/api_client.dart';
 import '../../../core/sync/sync_service.dart';
 import '../../../shared/providers.dart';
 import '../../../shared/widgets/toast.dart';
+
+// TODO: 使用 package_info_plus 读取真实 App 版本，避免手动维护
+const _appVersion = '0.6.0';
 
 class ReleaseCheckPage extends ConsumerStatefulWidget {
   const ReleaseCheckPage({super.key});
@@ -25,7 +29,7 @@ class _ReleaseCheckPageState extends ConsumerState<ReleaseCheckPage> {
   String? _tokenRemaining;
   int _taskCount = 0;
   int _recordCount = 0;
-  int _inProgressCount = 0;
+  int _unfinishedCount = 0;
   int _pendingCount = 0;
   int _failedCount = 0;
   bool _hasPassword = false;
@@ -38,6 +42,7 @@ class _ReleaseCheckPageState extends ConsumerState<ReleaseCheckPage> {
   }
 
   Future<void> _runAllChecks() async {
+    if (!mounted) return;
     setState(() => _loading = true);
 
     // 并行执行所有检查
@@ -48,6 +53,7 @@ class _ReleaseCheckPageState extends ConsumerState<ReleaseCheckPage> {
       _checkAccountSecurity(),
     ]);
 
+    if (!mounted) return;
     setState(() => _loading = false);
   }
 
@@ -57,11 +63,13 @@ class _ReleaseCheckPageState extends ConsumerState<ReleaseCheckPage> {
       final sw = Stopwatch()..start();
       final response = await api.dio.get('/sync/version');
       sw.stop();
+      if (!mounted) return;
       setState(() {
         _networkOk = response.statusCode == 200;
         _networkLatency = sw.elapsedMilliseconds;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _networkOk = false;
         _networkLatency = null;
@@ -72,6 +80,7 @@ class _ReleaseCheckPageState extends ConsumerState<ReleaseCheckPage> {
   Future<void> _checkToken() async {
     final auth = ref.read(authServiceProvider);
     if (auth.token == null || auth.token!.isEmpty) {
+      if (!mounted) return;
       setState(() {
         _tokenStatus = '未登录';
         _tokenRemaining = null;
@@ -82,6 +91,7 @@ class _ReleaseCheckPageState extends ConsumerState<ReleaseCheckPage> {
     try {
       final parts = auth.token!.split('.');
       if (parts.length != 3) {
+        if (!mounted) return;
         setState(() {
           _tokenStatus = '无效';
           _tokenRemaining = null;
@@ -97,6 +107,7 @@ class _ReleaseCheckPageState extends ConsumerState<ReleaseCheckPage> {
       final exp = map['exp'] as int?;
 
       if (exp == null) {
+        if (!mounted) return;
         setState(() {
           _tokenStatus = '无过期时间';
           _tokenRemaining = null;
@@ -109,6 +120,7 @@ class _ReleaseCheckPageState extends ConsumerState<ReleaseCheckPage> {
       final diff = expiry.difference(now);
 
       if (diff.isNegative) {
+        if (!mounted) return;
         setState(() {
           _tokenStatus = '已过期';
           _tokenRemaining = null;
@@ -116,12 +128,14 @@ class _ReleaseCheckPageState extends ConsumerState<ReleaseCheckPage> {
       } else {
         final days = diff.inDays;
         final hours = diff.inHours % 24;
+        if (!mounted) return;
         setState(() {
           _tokenStatus = '有效';
           _tokenRemaining = '${days}天${hours}小时';
         });
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _tokenStatus = '解析失败';
         _tokenRemaining = null;
@@ -138,13 +152,15 @@ class _ReleaseCheckPageState extends ConsumerState<ReleaseCheckPage> {
       final issueCount = await local.getSyncIssueCount();
       final failedItems = await local.getFailedSyncItems();
 
+      if (!mounted) return;
       setState(() {
         _taskCount = tasks.length;
         _recordCount = records.length;
-        _inProgressCount =
-            tasks.where((t) => t.status == 'in_progress').length;
-        _pendingCount =
-            issueCount - failedItems.length;
+        // 未完成任务：status 不是 completed 也不是 abandoned
+        _unfinishedCount = tasks
+            .where((t) => t.status != 'completed' && t.status != 'abandoned')
+            .length;
+        _pendingCount = issueCount - failedItems.length;
         _failedCount = failedItems.length;
       });
     } catch (_) {
@@ -156,16 +172,19 @@ class _ReleaseCheckPageState extends ConsumerState<ReleaseCheckPage> {
     try {
       final api = ref.read(apiClientProvider);
       final user = await api.getCurrentUser();
+      if (!mounted) return;
       setState(() {
         _hasPassword = user['has_password'] == true;
         _hasPasswordError = false;
       });
     } on DioException catch (e) {
+      if (!mounted) return;
       setState(() {
         _hasPassword = false;
         _hasPasswordError = true;
       });
     } catch (_) {
+      if (!mounted) return;
       setState(() {
         _hasPassword = false;
         _hasPasswordError = true;
@@ -179,11 +198,13 @@ class _ReleaseCheckPageState extends ConsumerState<ReleaseCheckPage> {
     final syncState = ref.watch(syncStateProvider);
 
     final totalIssues = _pendingCount + _failedCount;
-    final hasTokenProblem =
-        _tokenStatus == '已过期' || _tokenStatus == '无效' || _tokenStatus == '未登录';
+    final hasTokenProblem = _tokenStatus == '已过期' ||
+        _tokenStatus == '无效' ||
+        _tokenStatus == '未登录';
     final canRelease = _networkOk &&
         !hasTokenProblem &&
         totalIssues == 0 &&
+        !_hasPasswordError &&
         auth.isLoggedIn;
 
     return Scaffold(
@@ -212,7 +233,8 @@ class _ReleaseCheckPageState extends ConsumerState<ReleaseCheckPage> {
               padding: const EdgeInsets.all(16),
               children: [
                 // 总体结论
-                _buildConclusion(canRelease, totalIssues, hasTokenProblem),
+                _buildConclusion(
+                    canRelease, totalIssues, hasTokenProblem, _hasPasswordError),
                 const SizedBox(height: 20),
 
                 // 登录状态
@@ -290,7 +312,7 @@ class _ReleaseCheckPageState extends ConsumerState<ReleaseCheckPage> {
                           label: const Text('重试'),
                           onPressed: () async {
                             await _checkNetwork();
-                            setState(() {});
+                            if (mounted) setState(() {});
                           },
                         )
                       : null,
@@ -330,12 +352,25 @@ class _ReleaseCheckPageState extends ConsumerState<ReleaseCheckPage> {
                   ],
                   trailing: totalIssues > 0
                       ? TextButton.icon(
-                          icon: const Icon(Icons.sync, size: 16),
-                          label: const Text('立即同步'),
+                          icon: Icon(
+                            _failedCount > 0
+                                ? Icons.warning_amber
+                                : Icons.sync,
+                            size: 16,
+                          ),
+                          label: Text(
+                            _failedCount > 0 ? '查看同步问题' : '立即同步',
+                          ),
                           onPressed: () async {
-                            await ref.read(syncServiceProvider).syncNow();
-                            await _checkLocalData();
-                            setState(() {});
+                            if (_failedCount > 0) {
+                              // 有失败项，跳转同步问题详情页
+                              context.push('/settings/sync-issues');
+                            } else {
+                              // 只有 pending，立即同步
+                              await ref.read(syncServiceProvider).syncNow();
+                              await _checkLocalData();
+                              if (mounted) setState(() {});
+                            }
                           },
                         )
                       : null,
@@ -358,9 +393,9 @@ class _ReleaseCheckPageState extends ConsumerState<ReleaseCheckPage> {
                       ok: true,
                     ),
                     _CheckItem(
-                      label: '进行中任务',
-                      value: '$_inProgressCount',
-                      ok: _inProgressCount == 0,
+                      label: '未完成任务',
+                      value: '$_unfinishedCount',
+                      ok: _unfinishedCount == 0,
                     ),
                   ],
                 ),
@@ -387,7 +422,7 @@ class _ReleaseCheckPageState extends ConsumerState<ReleaseCheckPage> {
                           label: const Text('重试'),
                           onPressed: () async {
                             await _checkAccountSecurity();
-                            setState(() {});
+                            if (mounted) setState(() {});
                           },
                         )
                       : null,
@@ -401,7 +436,7 @@ class _ReleaseCheckPageState extends ConsumerState<ReleaseCheckPage> {
                   items: [
                     _CheckItem(
                       label: 'App 版本',
-                      value: '0.6.0',
+                      value: _appVersion,
                       ok: true,
                     ),
                     _CheckItem(
@@ -422,6 +457,7 @@ class _ReleaseCheckPageState extends ConsumerState<ReleaseCheckPage> {
     bool canRelease,
     int totalIssues,
     bool hasTokenProblem,
+    bool hasPasswordError,
   ) {
     final Color color;
     final IconData icon;
@@ -448,6 +484,11 @@ class _ReleaseCheckPageState extends ConsumerState<ReleaseCheckPage> {
       icon = Icons.warning;
       title = '请谨慎发布';
       subtitle = '服务器连接异常，建议先确认网络状态';
+    } else if (hasPasswordError) {
+      color = Colors.orange;
+      icon = Icons.warning;
+      title = '请谨慎发布';
+      subtitle = '账号安全状态加载失败，建议重试确认后再发布';
     } else {
       color = Colors.orange;
       icon = Icons.warning;
@@ -520,7 +561,8 @@ class _ReleaseCheckPageState extends ConsumerState<ReleaseCheckPage> {
           children: [
             Row(
               children: [
-                Icon(icon, size: 18, color: Theme.of(context).colorScheme.primary),
+                Icon(icon,
+                    size: 18, color: Theme.of(context).colorScheme.primary),
                 const SizedBox(width: 8),
                 Text(
                   title,
