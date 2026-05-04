@@ -427,7 +427,12 @@ class AttendanceLocalDataSource {
     final all = await _db.select(_db.syncQueue).get();
 
     for (final item in all) {
-      // 1. syncing 残留项重置为 pending
+      // 跳过 auth_failed 项（401 登录过期），留给 resetAuthFailedSyncItems() 处理
+      if (item.syncStatus == 'failed' && item.retryCount == 999) {
+        continue;
+      }
+
+      // 1. syncing 残留项重置为 pending（不 continue，继续后续校验）
       if (item.syncStatus == 'syncing') {
         await (_db.update(_db.syncQueue)
               ..where((s) => s.id.equals(item.id)))
@@ -435,11 +440,10 @@ class AttendanceLocalDataSource {
           syncStatus: Value('pending'),
         ));
         fixedSyncing++;
-        continue;
+        // 不 continue，继续检查 payload 是否有问题
       }
 
-      // 只处理 synced/pending/failed 中可能需要修复的
-      // 以下逻辑只针对 pending 和 failed 的 record/update
+      // 只处理 pending 和 failed（非 999）的 record/update
       if (item.entityType == 'record' && item.action == 'update') {
         // 2. payload 为空或解析失败
         if (item.payload == null || item.payload!.isEmpty) {
