@@ -886,12 +886,12 @@ class _CurrentWeekTab extends ConsumerWidget {
     WidgetRef ref,
     int weekNumber,
   ) async {
-    // 导出前检查是否有未同步数据
-    final pendingCountAsync = ref.read(pendingSyncCountProvider);
-    final pendingCount = pendingCountAsync.valueOrNull ?? 0;
+    // 导出前检查是否有未同步数据（pending + failed）
+    final issueCountAsync = ref.read(syncIssueCountProvider);
+    final issueCount = issueCountAsync.valueOrNull ?? 0;
     final syncState = ref.read(syncStateProvider);
 
-    if (pendingCount > 0 || syncState == SyncState.syncing) {
+    if (issueCount > 0 || syncState == SyncState.syncing) {
       final shouldSync = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
@@ -903,7 +903,7 @@ class _CurrentWeekTab extends ConsumerWidget {
               Text(
                 syncState == SyncState.syncing
                     ? '正在同步数据中，请等待同步完成后再导出。'
-                    : '有 $pendingCount 条数据未同步到服务器，导出前请先完成同步，确保数据完整。',
+                    : '有 $issueCount 条同步问题未处理，导出前请先完成同步，确保数据完整。',
               ),
             ],
           ),

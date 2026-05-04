@@ -166,24 +166,12 @@ class _SubmissionPageState extends ConsumerState<SubmissionPage>
         return;
       }
       
-      // 再次检查是否还有未同步项（同步过程中可能有新修改）
+      // 最终保险检查：只要存在 pending 或 failed，都阻止提交
       final localDS = ref.read(attendanceLocalDSProvider);
-      final pendingItems = await localDS.getPendingSyncItems();
-      if (pendingItems.isNotEmpty) {
-        // 还有未同步项，再次同步
-        result = await syncService.syncNow();
-        if (result.failed > 0) {
-          setState(() => _loading = false);
-          Toast.show(context, '同步失败 ${result.failed} 项，请检查网络后重试');
-          return;
-        }
-      }
-      
-      // 最终检查：如果仍有未同步项，阻止提交
-      final finalPending = await localDS.getPendingSyncItems();
-      if (finalPending.isNotEmpty) {
+      final issueCount = await localDS.getSyncIssueCount();
+      if (issueCount > 0) {
         setState(() => _loading = false);
-        Toast.show(context, '仍有 ${finalPending.length} 条记录未同步，请稍候再试');
+        Toast.show(context, '有 $issueCount 条同步问题未处理，请先到同步问题详情处理');
         return;
       }
       
@@ -478,8 +466,14 @@ class _SubmitTaskTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final adminsAsync = ref.watch(adminsProvider);
     final tasksAsync = ref.watch(weekNameCheckTasksProvider(weekNumber));
-    final pendingCount = ref.watch(pendingSyncCountProvider);
+    final issueCount = ref.watch(syncIssueCountProvider);
     final syncState = ref.watch(syncStateProvider);
+    final hasSyncFailed = ref.watch(hasSyncFailedProvider);
+    final isSyncFailed = hasSyncFailed.when(
+      data: (failed) => failed,
+      loading: () => false,
+      error: (_, __) => false,
+    );
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -487,21 +481,25 @@ class _SubmitTaskTab extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // 未同步记录提示
-          pendingCount.when(
+          issueCount.when(
             data: (count) {
               if (count == 0) return const SizedBox.shrink();
               return Padding(
                 padding: const EdgeInsets.only(bottom: 16),
                 child: Card(
-                  color: syncState == SyncState.syncing
-                      ? Colors.blue.withValues(alpha: 0.1)
-                      : Colors.orange.withValues(alpha: 0.1),
+                  color: isSyncFailed
+                      ? Colors.red.withValues(alpha: 0.1)
+                      : syncState == SyncState.syncing
+                          ? Colors.blue.withValues(alpha: 0.1)
+                          : Colors.orange.withValues(alpha: 0.1),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                     side: BorderSide(
-                      color: syncState == SyncState.syncing
-                          ? Colors.blue.withValues(alpha: 0.3)
-                          : Colors.orange.withValues(alpha: 0.3),
+                      color: isSyncFailed
+                          ? Colors.red.withValues(alpha: 0.3)
+                          : syncState == SyncState.syncing
+                              ? Colors.blue.withValues(alpha: 0.3)
+                              : Colors.orange.withValues(alpha: 0.3),
                     ),
                   ),
                   child: Padding(
@@ -509,23 +507,31 @@ class _SubmitTaskTab extends ConsumerWidget {
                     child: Row(
                       children: [
                         Icon(
-                          syncState == SyncState.syncing
-                              ? Icons.sync
-                              : Icons.warning_amber,
-                          color: syncState == SyncState.syncing
-                              ? Colors.blue
-                              : Colors.orange,
+                          isSyncFailed
+                              ? Icons.error_outline
+                              : syncState == SyncState.syncing
+                                  ? Icons.sync
+                                  : Icons.warning_amber,
+                          color: isSyncFailed
+                              ? Colors.red
+                              : syncState == SyncState.syncing
+                                  ? Colors.blue
+                                  : Colors.orange,
                         ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            syncState == SyncState.syncing
-                                ? '正在自动同步 $count 条记录，请稍候再提交'
-                                : '有 $count 条记录待同步，系统将在后台自动处理',
+                            isSyncFailed
+                                ? '有 $count 条同步失败，请先处理后再提交'
+                                : syncState == SyncState.syncing
+                                    ? '正在自动同步 $count 条记录，请稍候再提交'
+                                    : '有 $count 条记录待同步，系统将在后台自动处理',
                             style: TextStyle(
-                              color: syncState == SyncState.syncing
-                                  ? Colors.blue.shade800
-                                  : Colors.orange.shade800,
+                              color: isSyncFailed
+                                  ? Colors.red.shade800
+                                  : syncState == SyncState.syncing
+                                      ? Colors.blue.shade800
+                                      : Colors.orange.shade800,
                               fontWeight: FontWeight.w500,
                             ),
                             overflow: TextOverflow.ellipsis,
@@ -638,7 +644,7 @@ class _SubmitTaskTab extends ConsumerWidget {
           const SizedBox(height: 16),
           _SubmitButton(
             loading: loading,
-            pendingCount: pendingCount,
+            issueCount: issueCount,
             syncState: syncState,
             onSubmit: onSubmit,
           ),
@@ -661,13 +667,13 @@ class _SubmitTaskTab extends ConsumerWidget {
 
 class _SubmitButton extends ConsumerWidget {
   final bool loading;
-  final AsyncValue<int> pendingCount;
+  final AsyncValue<int> issueCount;
   final SyncState syncState;
   final VoidCallback onSubmit;
 
   const _SubmitButton({
     required this.loading,
-    required this.pendingCount,
+    required this.issueCount,
     required this.syncState,
     required this.onSubmit,
   });
@@ -689,10 +695,10 @@ class _SubmitButton extends ConsumerWidget {
       );
     }
 
-    // 监听同步状态和待同步数量
+    // 监听同步状态和同步问题数量
     final isSyncing = syncState == SyncState.syncing;
-    final count = pendingCount.valueOrNull ?? 0;
-    final hasPending = count > 0;
+    final count = issueCount.valueOrNull ?? 0;
+    final hasIssues = count > 0;
 
     // 检查是否有同步失败数据
     final hasSyncFailed = ref.watch(hasSyncFailedProvider);
@@ -722,8 +728,8 @@ class _SubmitButton extends ConsumerWidget {
       );
     }
 
-    // 如果正在同步或有待同步记录，禁用按钮并显示提示
-    if (isSyncing || hasPending) {
+    // 如果正在同步或有同步问题，禁用按钮并显示提示
+    if (isSyncing || hasIssues) {
       return FilledButton(
         onPressed: null,
         style: FilledButton.styleFrom(

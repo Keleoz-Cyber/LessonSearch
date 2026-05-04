@@ -118,7 +118,7 @@ class _HomePageState extends ConsumerState<HomePage> {
   @override
   Widget build(BuildContext context) {
     final syncState = ref.watch(syncStateProvider);
-    final pendingCount = ref.watch(pendingSyncCountProvider);
+    final issueCount = ref.watch(syncIssueCountProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -129,7 +129,7 @@ class _HomePageState extends ConsumerState<HomePage> {
         centerTitle: true,
         actions: [
           // 同步状态指示器（带数量徽章）
-          pendingCount.when(
+          issueCount.when(
             data: (count) {
               if (count == 0 && syncState != SyncState.syncing) {
                 return const SizedBox.shrink();
@@ -245,7 +245,7 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   /// 未同步记录警告卡片
   Widget _buildSyncWarningCard() {
-    final pendingCount = ref.watch(pendingSyncCountProvider);
+    final issueCount = ref.watch(syncIssueCountProvider);
     final syncState = ref.watch(syncStateProvider);
     final hasSyncFailed = ref.watch(hasSyncFailedProvider);
     final isSyncFailed = hasSyncFailed.when(
@@ -254,7 +254,7 @@ class _HomePageState extends ConsumerState<HomePage> {
       error: (_, __) => false,
     );
 
-    return pendingCount.when(
+    return issueCount.when(
       data: (count) {
         if (count == 0) return const SizedBox.shrink();
 
