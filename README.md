@@ -239,9 +239,16 @@ uvicorn main:app --reload --port 8000
 ### 数据库迁移
 
 ```bash
-# 添加 password_hash 字段（如未执行）
 cd server
+
+# 添加 password_hash 字段（v0.6.0+）
 python migrations/add_password_hash.py
+
+# 添加审核通过快照表（v0.6.1+）
+python migrations/add_submission_snapshots.py
+
+# 添加 students.class_id 索引（v0.6.2+）
+python migrations/add_students_class_id_index.py
 ```
 
 ---
