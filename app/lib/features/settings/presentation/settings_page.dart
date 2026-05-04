@@ -255,6 +255,13 @@ class SettingsPage extends ConsumerWidget {
             onTap: () => context.push('/debug/sync'),
           ),
           ListTile(
+            leading: const Icon(Icons.verified_outlined),
+            title: const Text('发布前检查'),
+            subtitle: const Text('打包 APK 或交付前快速检查 App 状态'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push('/debug/release-check'),
+          ),
+          ListTile(
             leading: const Icon(Icons.help_outline),
             title: const Text('常见问题与解决方案'),
             subtitle: const Text('使用过程中遇到问题的解答'),

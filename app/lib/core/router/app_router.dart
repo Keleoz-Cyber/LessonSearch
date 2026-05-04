@@ -22,6 +22,7 @@ import '../../features/settings/presentation/settings_page.dart';
 import '../../features/settings/presentation/faq_page.dart';
 import '../../features/settings/presentation/sync_issues_page.dart';
 import '../../features/debug/debug_page.dart';
+import '../../features/debug/release_check_page.dart';
 import '../../features/home/presentation/home_page.dart';
 import '../../shared/providers.dart';
 
@@ -208,6 +209,11 @@ final appRouter = GoRouter(
       path: '/debug/sync',
       name: 'sync-test',
       builder: (context, state) => const DebugPage(),
+    ),
+    GoRoute(
+      path: '/debug/release-check',
+      name: 'release-check',
+      builder: (context, state) => const ReleaseCheckPage(),
     ),
   ],
 );
