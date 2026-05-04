@@ -71,7 +71,12 @@ class SettingsPage extends ConsumerWidget {
                     error: (_, __) => const Icon(Icons.refresh, color: Colors.grey),
                   ),
                   onTap: () {
-                    // 如果是 error 状态，点击重试
+                    // loading 状态：提示稍候
+                    if (hasPasswordAsync is AsyncLoading) {
+                      Toast.show(context, '正在加载账号安全状态，请稍候');
+                      return;
+                    }
+                    // error 状态：区分 401 和普通错误
                     if (hasPasswordAsync is AsyncError) {
                       final is401 = hasPasswordAsync.error is DioException &&
                           (hasPasswordAsync.error as DioException)
