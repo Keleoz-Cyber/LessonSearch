@@ -8,7 +8,7 @@ from app.models import *
 app = FastAPI(
     title="考勤助手 API",
     description="考勤助手 App 服务端接口",
-    version="0.6.2",
+    version="0.6.3",
 )
 
 app.include_router(auth.router, prefix="/api")
@@ -36,7 +36,7 @@ def health():
     return {
         "status": "ok",
         "timestamp": datetime.utcnow().isoformat(),
-        "version": "0.6.2",
+        "version": "0.6.3",
     }
 
 

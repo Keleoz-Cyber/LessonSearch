@@ -162,7 +162,9 @@ class SyncService {
                 }
                 
                 if (reason.contains('记录不存在') ||
-                    reason.contains('已提交审核')) {
+                    reason.contains('已提交审核') ||
+                    reason.contains('该任务已放弃') ||
+                    reason.contains('不可修改记录')) {
                   // 跳过并标记为已同步
                   await _local.markSynced(matchedItem.id);
                   successCount++;
@@ -283,6 +285,13 @@ class SyncService {
               'SKIP (404): ${item.entityType}/${item.action} #${item.entityId}',
             );
             successCount++;
+          } else if (_isProtected403(errorStr)) {
+            // 服务端保护性拒绝（已提交审核/已放弃/不可修改），跳过
+            await _local.markSynced(item.id);
+            successCount++;
+            LoggerService.sync(
+              'SKIP (403 protected): ${item.entityType}/${item.action} #${item.entityId} - $errorStr',
+            );
           } else if (isNetwork) {
             await _local.markSyncFailed(item.id, retryCount: newRetry);
             failCount++;
@@ -340,6 +349,16 @@ class SyncService {
       LoggerService.sync('JSON 解析失败: $payloadJson - $e', isError: true);
       return <String, dynamic>{};
     }
+  }
+
+  /// 判断是否是服务端保护性 403（已提交审核/已放弃/不可修改）
+  /// 这类 403 是合理的，客户端应跳过而非重试
+  bool _isProtected403(String errorStr) {
+    if (!errorStr.contains('403')) return false;
+    return errorStr.contains('该记录已提交审核') ||
+        errorStr.contains('不可修改。如需修改，请先撤回提交') ||
+        errorStr.contains('该任务已放弃') ||
+        errorStr.contains('不可修改记录');
   }
 
   /// 在 batchItems 中查找匹配 task_id + student_id 的 SyncQueueData

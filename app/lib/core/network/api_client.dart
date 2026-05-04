@@ -52,11 +52,22 @@ class ApiClient {
         onError: (error, handler) {
           final statusCode = error.response?.statusCode;
           final uri = error.requestOptions.uri;
+          final responseData = error.response?.data;
+          
+          // 提取 detail 字段
+          String detail = '';
+          if (responseData is Map) {
+            detail = responseData['detail']?.toString() ?? '';
+          } else if (responseData is String) {
+            detail = responseData;
+          }
           
           // statusCode null 时区分具体错误类型
           String errorMsg;
           if (statusCode != null) {
-            errorMsg = '$statusCode $uri: ${error.message}';
+            errorMsg = detail.isNotEmpty
+                ? '$statusCode $uri: $detail'
+                : '$statusCode $uri: ${error.message}';
           } else if (error.type == DioExceptionType.connectionTimeout ||
                      error.type == DioExceptionType.sendTimeout ||
                      error.type == DioExceptionType.receiveTimeout) {
