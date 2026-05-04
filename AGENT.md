@@ -385,7 +385,7 @@ python import_students_2022plus.py --commit --clear
 3. **更新文档**
    - `AGENT.md` 版本号
    - `docs/dev-guide.md` 版本号
-   - `docs/tasks.md` 版本历史
+   - `CHANGELOG.md` 版本历史
 
 4. **本地测试**
    ```bash
@@ -452,7 +452,7 @@ python import_students_2022plus.py --commit --clear
 | 文档 | 说明 |
 |------|------|
 | `docs/dev-guide.md` | 完整开发文档（API接口、数据库设计、部署指南） |
-| `docs/tasks.md` | 开发任务表与版本历史 |
+| `CHANGELOG.md` | 版本更新历史 |
 | `docs/invitation-codes.md` | 邀请码管理指南 |
 | `docs/incident-2026-04-20-server-overload.md` | 服务器故障报告 |
 

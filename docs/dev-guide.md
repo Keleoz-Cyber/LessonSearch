@@ -842,7 +842,7 @@ python generate_invitation_codes.py 10  # 生成10个随机邀请码
 
 3. **更新文档**
    - `docs/dev-guide.md` 版本号
-   - `docs/tasks.md` 版本历史
+   - `CHANGELOG.md` 版本历史
    - `AGENT.md` 版本号
 
 4. **本地测试**
@@ -1008,5 +1008,5 @@ App 内置了【常见问题与解决方案】页面（设置 → 常见问题�
 |------|------|
 | AGENT.md | AI Agent协作指南（接手必读） |
 | AGENT.md | AI Agent 协作指南（接手必读） |
-| docs/tasks.md | 开发任务表 |
+| CHANGELOG.md | 版本更新历史 |
 | docs/invitation-codes.md | 邀请码管理指南 |
