@@ -26,7 +26,28 @@ def migrate():
             )
         )
         if result.fetchone():
-            print("submission_snapshots 表已存在，无需迁移")
+            # 表已存在，检查 snapshot_data 字段类型
+            col_result = conn.execute(
+                text(
+                    "SELECT DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS "
+                    "WHERE TABLE_NAME = 'submission_snapshots' "
+                    "AND COLUMN_NAME = 'snapshot_data'"
+                )
+            )
+            row = col_result.fetchone()
+            if row:
+                data_type = row[0]
+                if data_type.lower() != 'longtext':
+                    print(f"snapshot_data 字段类型为 {data_type}，正在修改为 LONGTEXT...")
+                    conn.execute(
+                        text("ALTER TABLE submission_snapshots MODIFY snapshot_data LONGTEXT NOT NULL")
+                    )
+                    conn.commit()
+                    print("修改完成：snapshot_data 已改为 LONGTEXT")
+                else:
+                    print("snapshot_data 已是 LONGTEXT，无需修改")
+            else:
+                print("未找到 snapshot_data 字段，跳过")
             return
 
         # 创建表
