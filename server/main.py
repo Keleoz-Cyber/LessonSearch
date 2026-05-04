@@ -31,6 +31,7 @@ app.include_router(data_version.router, prefix="/api")
 
 
 @app.get("/health")
+@app.get("/api/health")
 def health():
     return {
         "status": "ok",
@@ -40,6 +41,7 @@ def health():
 
 
 @app.get("/health/db")
+@app.get("/api/health/db")
 def health_db():
     try:
         from sqlalchemy import text
