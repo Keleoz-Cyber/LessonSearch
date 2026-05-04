@@ -11,6 +11,7 @@ import '../../../core/sync/sync_service.dart';
 import '../../../shared/providers.dart';
 import 'sync_tab.dart';
 import 'log_tab.dart';
+import 'release_check_page.dart';
 
 class DebugPage extends ConsumerStatefulWidget {
   const DebugPage({super.key});
@@ -26,7 +27,7 @@ class _DebugPageState extends ConsumerState<DebugPage>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
   }
 
   @override
@@ -46,6 +47,7 @@ class _DebugPageState extends ConsumerState<DebugPage>
             Tab(icon: Icon(Icons.info_outline), text: '概览'),
             Tab(icon: Icon(Icons.sync), text: '同步'),
             Tab(icon: Icon(Icons.article_outlined), text: '日志'),
+            Tab(icon: Icon(Icons.verified_outlined), text: '发布检查'),
           ],
         ),
       ),
@@ -55,6 +57,7 @@ class _DebugPageState extends ConsumerState<DebugPage>
           _OverviewTab(),
           SyncTab(),
           LogTab(),
+          ReleaseCheckPage(),
         ],
       ),
     );
