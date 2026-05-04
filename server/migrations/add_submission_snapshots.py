@@ -38,7 +38,7 @@ def migrate():
                     week_number INT NOT NULL,
                     user_id INT NOT NULL,
                     class_names VARCHAR(200) NULL,
-                    snapshot_data TEXT NOT NULL,
+                    snapshot_data LONGTEXT NOT NULL,
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (submission_id) REFERENCES submissions(id),
                     INDEX idx_snapshot_week (week_number),

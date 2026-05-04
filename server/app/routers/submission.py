@@ -73,6 +73,7 @@ def _build_snapshot_data(db: Session, submission: Submission) -> dict:
             "major_short_name": major.short_name if major else "",
             "class_code": class_.class_code if class_ else "",
             "status": record.status,
+            "remark": record.remark,
             "record_time": (record.updated_at or record.created_at).isoformat() if (record.updated_at or record.created_at) else None,
             "created_at": record.created_at.isoformat() if record.created_at else None,
             "updated_at": record.updated_at.isoformat() if record.updated_at else None,
@@ -103,71 +104,94 @@ def _build_snapshot_data(db: Session, submission: Submission) -> dict:
     }
 
 
+def _build_record_from_db(db: Session, record) -> dict:
+    """从数据库构建 record dict（fallback 用）"""
+    student = db.query(Student).filter(Student.id == record.student_id).first()
+    if not student:
+        return None
+    
+    class_ = db.query(Class).filter(Class.id == student.class_id).first()
+    major = None
+    if class_:
+        major = db.query(Major).filter(Major.id == class_.major_id).first()
+    
+    return {
+        "record_id": record.id,
+        "task_id": record.task_id,
+        "student_id": student.id,
+        "student_name": student.name,
+        "student_no": student.student_no,
+        "class_id": student.class_id,
+        "class_name": class_.display_name if class_ else "未知",
+        "major_short_name": major.short_name if major else "",
+        "class_code": class_.class_code if class_ else "",
+        "status": record.status,
+        "remark": record.remark,
+        "record_time": (record.updated_at or record.created_at).isoformat() if (record.updated_at or record.created_at) else None,
+        "created_at": record.created_at.isoformat() if record.created_at else None,
+        "updated_at": record.updated_at.isoformat() if record.updated_at else None,
+    }
+
+
 def _get_approved_records_from_snapshots(
     db: Session, week_number: int
 ) -> List[Dict[str, Any]]:
-    """从快照获取 approved 记录，fallback 到旧逻辑"""
+    """从快照获取 approved 记录，submission 级别 fallback"""
+    approved_submissions = db.query(Submission).filter(
+        Submission.week_number == week_number,
+        Submission.status == "approved"
+    ).all()
+    
+    if not approved_submissions:
+        return []
+    
+    # 预加载该周所有 snapshots
     snapshots = db.query(SubmissionSnapshot).filter(
         SubmissionSnapshot.week_number == week_number
     ).all()
+    snapshot_map = {s.submission_id: s for s in snapshots}
     
-    if snapshots:
-        # 使用快照
-        all_records = []
-        for snap in snapshots:
-            data = json.loads(snap.snapshot_data)
-            for r in data.get("records", []):
-                all_records.append(r)
-        return all_records
-    else:
-        # fallback: 旧逻辑实时查询
-        approved_submissions = db.query(Submission).filter(
-            Submission.week_number == week_number,
-            Submission.status == "approved"
-        ).all()
+    all_records = []
+    for sub in approved_submissions:
+        snapshot = snapshot_map.get(sub.id)
+        if snapshot:
+            # 使用快照
+            try:
+                data = json.loads(snapshot.snapshot_data)
+                for r in data.get("records", []):
+                    all_records.append(r)
+            except (json.JSONDecodeError, TypeError) as e:
+                print(f"[ERROR] Failed to parse snapshot for submission {sub.id}: {e}")
+                # fallback 到旧逻辑
+                sub_records = _fallback_records_for_submission(db, sub.id)
+                all_records.extend(sub_records)
+        else:
+            # fallback: 旧逻辑实时查询
+            sub_records = _fallback_records_for_submission(db, sub.id)
+            all_records.extend(sub_records)
+    
+    return all_records
+
+
+def _fallback_records_for_submission(db: Session, submission_id: int) -> List[Dict[str, Any]]:
+    """fallback: 实时查询单个 submission 的 records"""
+    submission_records = db.query(SubmissionRecord).filter(
+        SubmissionRecord.submission_id == submission_id
+    ).all()
+    
+    records = []
+    for sr in submission_records:
+        record = db.query(AttendanceRecord).filter(
+            AttendanceRecord.id == sr.record_id
+        ).first()
+        if not record:
+            continue
         
-        if not approved_submissions:
-            return []
-        
-        approved_ids = [s.id for s in approved_submissions]
-        submission_records = db.query(SubmissionRecord).filter(
-            SubmissionRecord.submission_id.in_(approved_ids)
-        ).all()
-        
-        all_records = []
-        for sr in submission_records:
-            record = db.query(AttendanceRecord).filter(
-                AttendanceRecord.id == sr.record_id
-            ).first()
-            if not record:
-                continue
-            
-            student = db.query(Student).filter(Student.id == record.student_id).first()
-            if not student:
-                continue
-            
-            class_ = db.query(Class).filter(Class.id == student.class_id).first()
-            major = None
-            if class_:
-                major = db.query(Major).filter(Major.id == class_.major_id).first()
-            
-            all_records.append({
-                "record_id": record.id,
-                "task_id": record.task_id,
-                "student_id": student.id,
-                "student_name": student.name,
-                "student_no": student.student_no,
-                "class_id": student.class_id,
-                "class_name": class_.display_name if class_ else "未知",
-                "major_short_name": major.short_name if major else "",
-                "class_code": class_.class_code if class_ else "",
-                "status": record.status,
-                "record_time": (record.updated_at or record.created_at).isoformat() if (record.updated_at or record.created_at) else None,
-                "created_at": record.created_at.isoformat() if record.created_at else None,
-                "updated_at": record.updated_at.isoformat() if record.updated_at else None,
-            })
-        
-        return all_records
+        r = _build_record_from_db(db, record)
+        if r:
+            records.append(r)
+    
+    return records
 
 
 @router.post("/", response_model=SubmissionResponse)
