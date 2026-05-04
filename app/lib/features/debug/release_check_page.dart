@@ -61,7 +61,7 @@ class _ReleaseCheckPageState extends ConsumerState<ReleaseCheckPage> {
     try {
       final api = ref.read(apiClientProvider);
       final sw = Stopwatch()..start();
-      final response = await api.dio.get('/sync/version');
+      final response = await api.dio.get('/health');
       sw.stop();
       if (!mounted) return;
       setState(() {

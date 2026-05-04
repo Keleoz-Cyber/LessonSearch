@@ -1,13 +1,14 @@
 from fastapi import FastAPI
+from datetime import datetime
 from routers import grades, majors, classes, students, tasks, records, auth, app_version, sync, data_version
 from app.routers import week, user, submission, duty, announcement, ranking
-from app.core.database import Base
+from app.core.database import Base, get_db
 from app.models import *
 
 app = FastAPI(
     title="考勤助手 API",
     description="考勤助手 App 服务端接口",
-    version="0.5.0",
+    version="0.6.1",
 )
 
 app.include_router(auth.router, prefix="/api")
@@ -31,4 +32,19 @@ app.include_router(data_version.router, prefix="/api")
 
 @app.get("/health")
 def health():
-    return {"status": "ok"}
+    return {
+        "status": "ok",
+        "timestamp": datetime.utcnow().isoformat(),
+        "version": "0.6.1",
+    }
+
+
+@app.get("/health/db")
+def health_db():
+    try:
+        from sqlalchemy import text
+        db = next(get_db())
+        db.execute(text("SELECT 1"))
+        return {"status": "ok", "database": "connected"}
+    except Exception as e:
+        return {"status": "error", "database": str(e)}

@@ -16,16 +16,22 @@ def get_sync_version(db=Depends(get_db)):
 
     base_version = f"{grade_count}-{major_count}-{class_count}"
 
+    # 优化：一次 group_by 查询获取所有班级的学生统计
+    student_stats = db.query(
+        Student.class_id,
+        func.count(Student.id).label("cnt"),
+        func.max(Student.id).label("max_id"),
+    ).group_by(Student.class_id).all()
+
+    stats_map = {row.class_id: (row.cnt, row.max_id or 0) for row in student_stats}
+
+    # 获取所有班级 ID
+    class_ids = db.query(Class.id).all()
+
     class_versions = {}
-    classes = db.query(Class).all()
-    for c in classes:
-        student_count = db.query(func.count(Student.id)).filter(
-            Student.class_id == c.id
-        ).scalar()
-        max_id = db.query(func.max(Student.id)).filter(
-            Student.class_id == c.id
-        ).scalar()
-        class_versions[c.id] = f"{student_count}-{max_id or 0}"
+    for (cid,) in class_ids:
+        cnt, max_id = stats_map.get(cid, (0, 0))
+        class_versions[cid] = f"{cnt}-{max_id}"
 
     return {
         "base_version": base_version,
