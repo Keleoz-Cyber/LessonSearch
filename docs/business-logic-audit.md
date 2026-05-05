@@ -3,7 +3,7 @@
 > 基于 v0.6.4 代码实际实现和 business-flow.md 整理
 > 检查日期：2026-05-04
 > 修复日期：2026-05-04
-> 状态：P0 问题已修复并推送
+> 状态：P0 问题已修复并推送（含快照机制 v0.6.1）
 
 ---
 
@@ -17,10 +17,12 @@
 3. syncNow() 等待逻辑修复，提交前强制等待同步完成
 4. submitted-task-ids 明确过滤 pending/approved，排除 rejected/cancelled
 5. 总群汇报文案修正，避免"不可撤销"误导
-
-⚠️ **遗留问题**：
-- 周汇总和 Excel 导出仍读取实时数据（无快照机制）
-- 需要后续评估是否增加 snapshot 表
+6. 周汇总和 Excel 导出基于审核通过快照（submission_snapshots），审核后数据不会被篡改
+7. 同步保护模式：存在 failed 数据时禁止编辑/提交/放弃
+8. 退出登录保护：有未同步数据时禁止退出
+9. 设置密码反馈优化、DioException 安全解析、bcrypt 替换 passlib
+10. 403 保护性拒绝跳过、SyncQueue 旧版本自修复
+11. 点名拼音显示优化（汉字间加空格）
 
 ---
 
@@ -106,19 +108,21 @@
 
 #### 问题 5：周汇总和 Excel 导出读取实时数据，无快照
 - 严重等级：**中**
+- 修复状态：**✅ 已修复（v0.6.1）**
 - 涉及文件：
   - `server/app/routers/submission.py`（get_week_summary, export_week_excel）
-- 当前代码行为：
-  - `get_week_summary` 实时查询 `attendance_records` 表
-  - `export_week_excel` 实时查询 `attendance_records` 表
-  - 如果 approved 后记录被修改（目前可以修改），统计结果会变化
-- 为什么有风险：
-  - 管理员本周导出的 Excel 和上周看到的数据可能不一致
-  - 历史数据无法追溯
-- 建议修复方式：
-  - **最小方案**：approved 后禁止修改原始记录（修复问题 1 后此问题缓解）
-  - **更稳方案**：提交时保存 snapshot，汇总和导出使用 snapshot
-- 是否必须后端修复：**是**
+  - `server/app/models/submission.py`（SubmissionSnapshot）
+  - `server/migrations/add_submission_snapshots.py`
+- 修复内容：
+  1. 新增 `submission_snapshots` 表，管理员审核通过时自动锁定提交内容
+  2. `get_week_summary` 和 `export_week_excel` 优先读取快照数据
+  3. submission 级别 fallback：同一周有快照和无快照的 approved submission 都能正确处理
+  4. 幂等生成：重复审核不会重复生成快照
+- 当前代码行为（修复后）：
+  - 管理员审核通过 → 自动生成 submission_snapshot（锁定提交内容）
+  - 周汇总 / Excel 导出 → 优先读取 snapshot，fallback 到实时查询
+  - 即使后续修改了原始记录，周汇总和 Excel 仍然基于审核通过时的数据
+- 效果：审核通过后数据不会被篡改，导出结果稳定
 
 #### 问题 6：record update 接口没有 user_id 校验
 - 严重等级：**中**
@@ -151,7 +155,7 @@
 | 周汇总已发布 | ⚠️ 前端允许，但后端403（如果已 approved） | ❌ 禁止（如果已 approved） | ⚠️ 部分一致 |
 | Excel 已导出 | ⚠️ 前端允许，但后端403（如果已 approved） | ❌ 禁止（如果已 approved） | ⚠️ 部分一致 |
 
-**结论**：P0 修复后，pending/approved 状态下前后端均禁止修改，符合业务规则 5、6。周汇总/Excel 导出状态依赖 approved 状态，基本符合业务规则 9。
+**结论**：P0 修复后，pending/approved 状态下前后端均禁止修改，符合业务规则 5、6。周汇总/Excel 导出基于审核通过快照（v0.6.1+），审核后数据不会被篡改。
 
 #### 3.2 Submission 状态流转检查
 
@@ -219,9 +223,9 @@ SyncService 同步到服务端 AttendanceRecord
 
 #### 4.3 根本原因
 
-- **没有记录锁定机制**：提交后 AttendanceRecord 仍可变
-- **没有快照机制**：周汇总和 Excel 读取实时数据
-- **没有版本控制**：无法区分"提交时的状态"和"当前状态"
+- **有快照机制**：v0.6.1 新增 submission_snapshots 表，审核通过时自动锁定
+- **有记录锁定**：pending/approved 禁止修改（服务端 403）
+- **有同步保护**：存在 failed 数据时禁止编辑/提交
 
 ---
 
@@ -263,10 +267,11 @@ SyncService 同步到服务端 AttendanceRecord
 
 #### P2（长期优化，未实施）
 
-7. **⏳ 增加提交快照表**
-   - 状态：未实施
-   - 原因：需要新建表，改动较大，当前 approved 后禁止修改已缓解此问题
-   - 方案：新建 `submission_snapshots` 表，提交时保存 record 快照
+7. **✅ 增加提交快照表**
+   - 状态：已实施（v0.6.1）
+   - 文件：`server/app/models/submission.py`（SubmissionSnapshot）、`server/migrations/add_submission_snapshots.py`
+   - 实现：管理员审核通过时自动生成快照，周汇总和 Excel 优先读取快照
+   - 效果：审核通过后数据不会被篡改，导出结果稳定
 
 8. **⏳ 增加 record version 校验**
    - 状态：未实施
@@ -332,4 +337,4 @@ SyncService 同步到服务端 AttendanceRecord
 
 ---
 
-**总结**：核心流程基本正确，但存在**两个严重漏洞**（审核后可修改、无锁定标记）和**若干边界问题**。建议优先修复 P0 项。
+**总结**：核心流程基本正确，P0 级问题已全部修复。审核后记录锁定、审核通过快照、同步保护模式均已实现。遗留问题为 record version 校验（长期优化）。
