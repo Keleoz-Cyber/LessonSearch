@@ -50,7 +50,7 @@ def parse_class_name(class_name: str) -> Tuple[str, str]:
 
 
 def generate_pinyin(name: str) -> Tuple[str, str]:
-    full = "".join(lazy_pinyin(name, style=Style.TONE))
+    full = " ".join(lazy_pinyin(name, style=Style.TONE))
     abbr = "".join(lazy_pinyin(name, style=Style.FIRST_LETTER))
     return full, abbr
 
