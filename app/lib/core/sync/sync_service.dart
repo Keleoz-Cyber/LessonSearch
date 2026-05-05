@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
 import '../../features/attendance/data/local/attendance_local_ds.dart';
@@ -208,15 +209,18 @@ class SyncService {
               continue; // 继续处理下一个 batch
             } catch (e) {
               final errorStr = e.toString();
+              final errorDetail = _extractErrorDetail(e);
+              final combinedError = '$errorStr $errorDetail';
               final isNetwork =
-                  errorStr.contains('SocketException') ||
-                  errorStr.contains('Connection refused') ||
-                  errorStr.contains('timed out') ||
-                  errorStr.contains('Network is unreachable');
+                  e is DioException &&
+                  (e.type == DioExceptionType.connectionTimeout ||
+                   e.type == DioExceptionType.sendTimeout ||
+                   e.type == DioExceptionType.receiveTimeout ||
+                   e.type == DioExceptionType.connectionError);
               final is401 =
-                  errorStr.contains('401') ||
-                  errorStr.contains('未登录') ||
-                  errorStr.contains('Unauthorized');
+                  combinedError.contains('401') ||
+                  combinedError.contains('未登录') ||
+                  combinedError.contains('Unauthorized');
               
               if (is401) {
                 // 认证过期，整批标记为失败（需要重新登录）
@@ -265,19 +269,22 @@ class SyncService {
         } catch (e) {
           final newRetry = item.retryCount + 1;
           final errorStr = e.toString();
+          final errorDetail = _extractErrorDetail(e);
+          final combinedError = '$errorStr $errorDetail';
           final is404 =
-              errorStr.contains('404') ||
-              errorStr.contains('任务不存在') ||
-              errorStr.contains('记录不存在');
+              combinedError.contains('404') ||
+              combinedError.contains('任务不存在') ||
+              combinedError.contains('记录不存在');
           final isNetwork =
-              errorStr.contains('SocketException') ||
-              errorStr.contains('Connection refused') ||
-              errorStr.contains('timed out') ||
-              errorStr.contains('Network is unreachable');
+              e is DioException &&
+              (e.type == DioExceptionType.connectionTimeout ||
+               e.type == DioExceptionType.sendTimeout ||
+               e.type == DioExceptionType.receiveTimeout ||
+               e.type == DioExceptionType.connectionError);
           final is401 =
-              errorStr.contains('401') ||
-              errorStr.contains('未登录') ||
-              errorStr.contains('Unauthorized');
+              combinedError.contains('401') ||
+              combinedError.contains('未登录') ||
+              combinedError.contains('Unauthorized');
 
           if (is401) {
             // 认证过期，标记为失败但不重试（需要重新登录）
@@ -296,12 +303,12 @@ class SyncService {
               'SKIP (404): ${item.entityType}/${item.action} #${item.entityId}',
             );
             successCount++;
-          } else if (_isProtected403(errorStr)) {
+          } else if (_isProtected403(e)) {
             // 服务端保护性拒绝（已提交审核/已放弃/不可修改），跳过
             await _local.markSynced(item.id);
             successCount++;
             LoggerService.sync(
-              'SKIP (403 protected): ${item.entityType}/${item.action} #${item.entityId} - $errorStr',
+              'SKIP (403 protected): ${item.entityType}/${item.action} #${item.entityId} - $errorDetail',
             );
           } else if (isNetwork) {
             await _local.markSyncFailed(item.id, retryCount: newRetry);
@@ -362,14 +369,49 @@ class SyncService {
     }
   }
 
+  /// 提取错误 detail 字段，兼容 DioException / 其他异常
+  String _extractErrorDetail(Object e) {
+    if (e is DioException) {
+      final data = e.response?.data;
+      if (data is Map && data['detail'] != null) {
+        return data['detail'].toString();
+      }
+      if (data is String) {
+        return data;
+      }
+      if (data is List && data.isNotEmpty) {
+        return data.first.toString();
+      }
+      return e.message ?? e.toString();
+    }
+    return e.toString();
+  }
+
   /// 判断是否是服务端保护性 403（已提交审核/已放弃/不可修改）
   /// 这类 403 是合理的，客户端应跳过而非重试
-  bool _isProtected403(String errorStr) {
-    if (!errorStr.contains('403')) return false;
-    return errorStr.contains('该记录已提交审核') ||
-        errorStr.contains('不可修改。如需修改，请先撤回提交') ||
-        errorStr.contains('该任务已放弃') ||
-        errorStr.contains('不可修改记录');
+  bool _isProtected403(Object e) {
+    if (e is DioException) {
+      if (e.response?.statusCode != 403) return false;
+      final detail = _extractErrorDetail(e);
+      // 明确的权限拒绝不跳过
+      if (detail.contains('无权修改') || detail.contains('无权限')) {
+        return false;
+      }
+      return detail.contains('该记录已提交审核') ||
+          detail.contains('已提交审核') ||
+          detail.contains('不可修改。如需修改，请先撤回提交') ||
+          detail.contains('该任务已放弃') ||
+          detail.contains('不可修改记录');
+    }
+
+    final s = e.toString();
+    if (!s.contains('403')) return false;
+    if (s.contains('无权修改') || s.contains('无权限')) return false;
+    return s.contains('该记录已提交审核') ||
+        s.contains('已提交审核') ||
+        s.contains('不可修改。如需修改，请先撤回提交') ||
+        s.contains('该任务已放弃') ||
+        s.contains('不可修改记录');
   }
 
   /// 在 batchItems 中查找匹配 task_id + student_id 的 SyncQueueData
