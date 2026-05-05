@@ -4,6 +4,21 @@
 
 ---
 
+## v0.6.4
+
+### 拼音优化
+
+- **拼音显示** - 点名页面拼音改为每个汉字之间加空格（如 WANG XIAO MING）
+- **拼音生成** - 导入脚本 generate_pinyin() 改为 `" ".join()`，新导入的学生自动带空格
+
+### 同步稳定性修复
+
+- **403 protected skip 修复** - 从 DioException.response.data.detail 提取错误信息判断，不再依赖 toString()
+- **SyncService 网络错误判断优化** - 使用 DioException.type 替代字符串匹配，更准确
+- **批量同步网络错误判断优化** - 同步使用 DioException.type
+
+---
+
 ## v0.6.3
 
 升级兼容修复版本。

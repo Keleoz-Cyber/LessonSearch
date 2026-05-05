@@ -3,24 +3,31 @@
 // ============================================================
 
 /// 公告版本号：每次修改公告内容后 +1，用户才会再次看到
-const int announcementVersion = 33;
+const int announcementVersion = 34;
 
-const String announcementTitle = '考勤助手 v0.6.3';
+const String announcementTitle = '考勤助手 v0.6.4';
 
 const String announcementContent = '''
 本应用用于学习部课堂考勤查课，支持点名和记名两种模式。
 
-## v0.6.3 更新内容
+## v0.6.4 更新内容
 
-- **升级兼容修复**：旧版本升级后，历史同步记录因服务端保护返回403时自动跳过，不再无限重试
-- **同步队列自修复**：自动修复卡死的同步项、清理无效历史队列
-- **日志优化**：错误日志显示具体原因，排查更方便
+- **拼音优化**：点名页面拼音显示为每个汉字之间加空格（如 WANG XIAO MING）
+- **同步兼容修复**：403保护性拒绝跳过逻辑修复，从 response.data.detail 提取错误信息
+- **SyncQueue 自修复**：自动修复旧版本遗留的无效同步记录
+- **SyncService 网络错误判断优化**：使用 DioException.type 替代字符串匹配
 
 请登录后使用，保护学生隐私数据安全。
 ''';
 
 /// 历史更新日志（Markdown格式，设置页查看）
 const String updateNotes = '''
+## v0.6.4 更新内容
+
+- **拼音优化**：点名页面拼音显示为每个汉字之间加空格
+- **SyncService 网络错误判断优化**：使用 DioException.type 替代字符串匹配
+- **403 protected skip 修复**：从 response.data.detail 提取错误信息判断
+
 ## v0.6.3 更新内容
 
 - **403保护性拒绝跳过** - 已提交审核/已放弃/不可修改的记录，同步时自动跳过
