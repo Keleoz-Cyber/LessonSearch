@@ -66,9 +66,14 @@ def create_records(task_id: str, body: list[RecordCreate], db: Session = Depends
                 existing.status = item.status
                 if item.remark is not None:
                     existing.remark = item.remark
-            except HTTPException:
-                # 已提交审核或已放弃，不更新，但仍然返回
-                pass
+            except HTTPException as e:
+                detail = str(e.detail)
+                if "已提交审核" in detail or "该任务已放弃" in detail or "不可修改记录" in detail:
+                    # 保护性拒绝，跳过更新但返回现有记录
+                    pass
+                else:
+                    # 权限问题或其他错误，必须重新抛出
+                    raise
             created.append(existing)
             continue
 
