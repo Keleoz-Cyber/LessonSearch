@@ -179,8 +179,9 @@ class AttendanceRepository {
     return _local.getRecordsByTask(taskId);
   }
 
-  /// 批量创建考勤记录（用于 finishNameCheck 等场景）
-  Future<void> createRecordsBatch({
+  /// 批量创建/更新考勤记录（用于 finishNameCheck 等场景）
+  /// 按 taskId+studentId upsert，返回 Map<studentId, recordId>
+  Future<Map<int, int>> createRecordsBatch({
     required String taskId,
     required List<({int studentId, int classId, AttendanceStatus status})>
     items,
@@ -199,22 +200,26 @@ class AttendanceRepository {
         )
         .toList();
 
-    final ids = await _local.insertRecordsBatch(records);
+    final resultMap = await _local.insertRecordsBatch(records);
 
     final syncItems = <Map<String, dynamic>>[];
-    for (var i = 0; i < ids.length; i++) {
+    for (final item in items) {
+      final recordId = resultMap[item.studentId];
+      if (recordId == null) continue;
       syncItems.add({
         'entityType': 'record',
-        'entityId': ids[i].toString(),
+        'entityId': recordId.toString(),
         'action': 'create',
         'payload': {
           'task_id': taskId,
-          'student_id': items[i].studentId,
-          'class_id': items[i].classId,
-          'status': items[i].status.value,
+          'student_id': item.studentId,
+          'class_id': item.classId,
+          'status': item.status.value,
         },
       });
     }
     await _local.enqueueSyncBatch(syncItems);
+
+    return resultMap;
   }
 }

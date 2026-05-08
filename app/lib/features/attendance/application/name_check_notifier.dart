@@ -355,9 +355,10 @@ class NameCheckNotifier extends StateNotifier<NameCheckState> {
       }
     }
 
-    // 批量写入 DB + SyncQueue（一个事务）
+    // 批量写入 DB + SyncQueue（一个事务），返回 studentId→recordId
+    Map<int, int>? recordIdMap;
     if (pendingItems.isNotEmpty) {
-      await _attendanceRepo.createRecordsBatch(
+      recordIdMap = await _attendanceRepo.createRecordsBatch(
         taskId: task.id,
         items: pendingItems,
       );
@@ -369,7 +370,7 @@ class NameCheckNotifier extends StateNotifier<NameCheckState> {
       phase: TaskPhase.confirming,
     );
 
-    // 数据库操作成功后，更新 UI 状态
+    // 数据库操作成功后，更新 UI 状态（含 recordId 回填）
     final updatedMap = Map<int, List<StudentWithStatus>>.from(
       state.studentsByClass,
     );
@@ -378,7 +379,12 @@ class NameCheckNotifier extends StateNotifier<NameCheckState> {
       final students = List<StudentWithStatus>.from(entry.value);
       for (var i = 0; i < students.length; i++) {
         if (students[i].status == AttendanceStatus.pending) {
-          students[i] = students[i].copyWith(status: AttendanceStatus.present);
+          final rid = recordIdMap?[students[i].student.id] ??
+              students[i].recordId;
+          students[i] = students[i].copyWith(
+            status: AttendanceStatus.present,
+            recordId: rid,
+          );
         }
       }
       updatedMap[classId] = students;

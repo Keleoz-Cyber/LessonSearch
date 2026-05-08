@@ -88,7 +88,8 @@ class SyncService {
           'REPAIR: syncing=${repair['syncing']}, '
           'badPayload=${repair['badPayload']}, '
           'incomplete=${repair['incompleteRecord']}, '
-          'cleanedSynced=${repair['cleanedSynced']}',
+          'cleanedSynced=${repair['cleanedSynced']}, '
+          'dupRecords=${repair['dupRecords']}',
         );
       }
 

@@ -153,7 +153,7 @@ class RecordsRepository {
     return summaries;
   }
 
-  /// 获取任务的所有记录详情
+  /// 获取任务的所有记录详情（去重：同一 studentId 保留最新 updatedAt）
   Future<List<RecordEntry>> getRecordEntries(String taskId) async {
     final records =
         await (_db.select(_db.attendanceRecords)
@@ -161,8 +161,17 @@ class RecordsRepository {
               ..orderBy([(r) => OrderingTerm.asc(r.id)]))
             .get();
 
-    final entries = <RecordEntry>[];
+    // 去重：同一 taskId+studentId，保留 id 最大（即最新）的记录
+    final deduped = <int, dynamic>{};
     for (final r in records) {
+      final existing = deduped[r.studentId];
+      if (existing == null || r.id > existing.id) {
+        deduped[r.studentId] = r;
+      }
+    }
+
+    final entries = <RecordEntry>[];
+    for (final r in deduped.values) {
       final student = await (_db.select(
         _db.students,
       )..where((s) => s.id.equals(r.studentId))).getSingleOrNull();

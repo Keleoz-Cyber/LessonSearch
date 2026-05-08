@@ -140,6 +140,25 @@ class AttendanceLocalDataSource {
   // ============================================================
 
   Future<int> insertRecord(domain.AttendanceRecord record) async {
+    // 按 taskId + studentId 唯一性检查，已存在则更新而非插入
+    final existing = await (_db.select(_db.attendanceRecords)
+          ..where((r) =>
+              r.taskId.equals(record.taskId) &
+              r.studentId.equals(record.studentId))
+          ..limit(1))
+        .getSingleOrNull();
+
+    if (existing != null) {
+      await (_db.update(_db.attendanceRecords)
+            ..where((r) => r.id.equals(existing.id)))
+          .write(AttendanceRecordsCompanion(
+        status: Value(record.status.value),
+        remark: Value(record.remark),
+        updatedAt: Value(DateTime.now()),
+      ));
+      return existing.id;
+    }
+
     return await _db
         .into(_db.attendanceRecords)
         .insert(
@@ -155,30 +174,19 @@ class AttendanceLocalDataSource {
         );
   }
 
-  /// 批量创建考勤记录（事务内执行）
-  Future<List<int>> insertRecordsBatch(
+  /// 批量创建考勤记录（事务内执行），按 taskId+studentId upsert
+  /// 返回 Map<studentId, recordId>
+  Future<Map<int, int>> insertRecordsBatch(
     List<domain.AttendanceRecord> records,
   ) async {
-    final ids = <int>[];
+    final resultMap = <int, int>{};
     await _db.transaction(() async {
       for (final record in records) {
-        final id = await _db
-            .into(_db.attendanceRecords)
-            .insert(
-              AttendanceRecordsCompanion.insert(
-                taskId: record.taskId,
-                studentId: record.studentId,
-                classId: record.classId,
-                status: Value(record.status.value),
-                remark: Value(record.remark),
-                createdAt: Value(record.createdAt),
-                updatedAt: Value(record.updatedAt),
-              ),
-            );
-        ids.add(id);
+        final id = await insertRecord(record);
+        resultMap[record.studentId] = id;
       }
     });
-    return ids;
+    return resultMap;
   }
 
   Future<void> updateRecordStatus(
@@ -220,6 +228,32 @@ class AttendanceLocalDataSource {
               ..orderBy([(r) => OrderingTerm.asc(r.id)]))
             .get();
     return rows.map(_mapRowToRecord).toList();
+  }
+
+  /// 清理 taskId+studentId 重复的记录，保留 updatedAt 最新的一条
+  /// 返回被清理的重复记录数量
+  Future<int> cleanDupRecords() async {
+    final allRecords = await _db.select(_db.attendanceRecords).get();
+    // 按 (taskId, studentId) 分组，找出重复项
+    final groups = <String, List<AttendanceRecord>>{};
+    for (final r in allRecords) {
+      final key = '${r.taskId}_${r.studentId}';
+      groups.putIfAbsent(key, () => []).add(r);
+    }
+    int removed = 0;
+    for (final entry in groups.entries) {
+      if (entry.value.length <= 1) continue;
+      // 按 updatedAt 降序排列，保留第一条
+      entry.value.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+      for (var i = 1; i < entry.value.length; i++) {
+        final toRemove = entry.value[i];
+        await (_db.delete(_db.attendanceRecords)
+              ..where((r) => r.id.equals(toRemove.id)))
+            .go();
+        removed++;
+      }
+    }
+    return removed;
   }
 
   domain.AttendanceRecord _mapRowToRecord(AttendanceRecord row) {
@@ -486,11 +520,15 @@ class AttendanceLocalDataSource {
       cleanedSynced++;
     }
 
+    // 5. 清理 taskId+studentId 重复的 attendance_records
+    final dupRemoved = await cleanDupRecords();
+
     return {
       'syncing': fixedSyncing,
       'badPayload': skippedBadPayload,
       'incompleteRecord': skippedIncomplete,
       'cleanedSynced': cleanedSynced,
+      'dupRecords': dupRemoved,
     };
   }
 
