@@ -6,7 +6,7 @@
 
 **面向学校查课场景的 Flutter + FastAPI 全栈应用**
 
-[![Version](https://img.shields.io/badge/version-v0.6.4-blue)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-v0.6.5-blue)](CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Android-lightgrey)]()
 [![Flutter](https://img.shields.io/badge/Flutter-3.43-02569B?logo=flutter)]()
@@ -367,7 +367,7 @@ SMTP_PASSWORD=your-password
 完整版本更新日志请查看 [CHANGELOG.md](CHANGELOG.md)。
 
 **当前版本亮点：**
-- v0.6.4：拼音显示优化（汉字间加空格）、403 protected skip 修复、SyncService 网络错误判断优化
+- v0.6.5：记名重复记录根因修复、SyncQueue create/update 区分、服务端防御性 upsert
 
 ---
 

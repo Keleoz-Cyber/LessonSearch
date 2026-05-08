@@ -4,6 +4,21 @@
 
 ---
 
+## v0.6.5
+
+### 记名重复记录修复
+
+- **insertRecord upsert** - 本地改为 taskId+studentId upsert，已存在则更新而非插入，从根因消除重复记录
+- **UpsertResult 区分** - 新增 UpsertResult(id, created) 区分新建/更新，SyncQueue 入队 action 正确设置为 create 或 update
+- **finishNameCheck 回填** - 批量创建 present 记录后回填 recordId，重新编辑时走 updateRecord 而非创建新记录
+- **记录详情去重** - getRecordEntries 同一 studentId 去重，优先 updatedAt 最新
+- **历史重复清理** - cleanDupRecords() 自动清理重复记录，每次同步前执行
+- **服务端 upsert** - create_records 现有记录也更新 status（带权限保护检查）
+- **服务端去重** - create_submission 按 task_id+student_id 去重，优先 updated_at
+- **权限异常保护** - create_records 只吞保护性 HTTPException，权限错误重新 raise
+
+---
+
 ## v0.6.4
 
 ### 拼音优化

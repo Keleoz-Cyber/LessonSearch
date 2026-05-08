@@ -3,25 +3,30 @@
 // ============================================================
 
 /// 公告版本号：每次修改公告内容后 +1，用户才会再次看到
-const int announcementVersion = 34;
+const int announcementVersion = 35;
 
-const String announcementTitle = '考勤助手 v0.6.4';
+const String announcementTitle = '考勤助手 v0.6.5';
 
 const String announcementContent = '''
 本应用用于学习部课堂考勤查课，支持点名和记名两种模式。
 
-## v0.6.4 更新内容
+## v0.6.5 更新内容
 
-- **拼音优化**：点名页面拼音显示为每个汉字之间加空格（如 WANG XIAO MING）
-- **同步兼容修复**：403保护性拒绝跳过逻辑修复，从 response.data.detail 提取错误信息
-- **SyncQueue 自修复**：自动修复旧版本遗留的无效同步记录
-- **SyncService 网络错误判断优化**：使用 DioException.type 替代字符串匹配
+- **记名重复记录修复**：重新编辑后不会再出现同一学生多条记录，提交详情异常名单正确显示
+- **同步一致性修复**：本地 upsert 与服务端状态保持一致，不会因为同步动作错误导致数据不一致
+- **去重逻辑优化**：记录详情、提交审核、周汇总均按 taskId+studentId 去重
 
 请登录后使用，保护学生隐私数据安全。
 ''';
 
 /// 历史更新日志（Markdown格式，设置页查看）
 const String updateNotes = '''
+## v0.6.5 更新内容
+
+- **记名重复记录修复**：重新编辑后不再出现同一学生多条记录
+- **SyncQueue 修复**：create/update 动作正确区分
+- **去重逻辑优化**：按 updatedAt 去重替代按 id 去重
+
 ## v0.6.4 更新内容
 
 - **拼音优化**：点名页面拼音显示为每个汉字之间加空格
