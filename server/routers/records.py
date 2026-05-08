@@ -43,10 +43,15 @@ def _check_record_editable(record_id: int, current_user: User, db: Session) -> A
 
 
 @router.post("", response_model=list[RecordOut], status_code=201)
-def create_records(task_id: str, body: list[RecordCreate], db: Session = Depends(get_db)):
+def create_records(task_id: str, body: list[RecordCreate], db: Session = Depends(get_db),
+                   current_user: User = Depends(get_current_user)):
     task = db.query(AttendanceTask).filter(AttendanceTask.id == task_id).first()
     if not task:
         raise HTTPException(status_code=404, detail="任务不存在")
+    
+    # 检查任务权限（如 task 有 user_id，必须是本人或旧版 null 任务）
+    if task.user_id is not None and task.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="无权操作此任务")
 
     created = []
     for item in body:
@@ -55,6 +60,15 @@ def create_records(task_id: str, body: list[RecordCreate], db: Session = Depends
             AttendanceRecord.student_id == item.student_id,
         ).first()
         if existing:
+            # 已存在则更新（带保护检查）
+            try:
+                _check_record_editable(existing.id, current_user, db)
+                existing.status = item.status
+                if item.remark is not None:
+                    existing.remark = item.remark
+            except HTTPException:
+                # 已提交审核或已放弃，不更新，但仍然返回
+                pass
             created.append(existing)
             continue
 

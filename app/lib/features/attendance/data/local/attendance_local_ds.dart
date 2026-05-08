@@ -4,6 +4,13 @@ import 'package:drift/drift.dart';
 import '../../../../core/database/app_database.dart';
 import '../../domain/models.dart' as domain;
 
+/// record upsert 结果
+class UpsertResult {
+  final int id;
+  final bool created;
+  const UpsertResult({required this.id, required this.created});
+}
+
 /// 封装 Drift 数据库操作，负责 Drift 数据类 <-> 领域模型的转换
 class AttendanceLocalDataSource {
   final AppDatabase _db;
@@ -139,7 +146,7 @@ class AttendanceLocalDataSource {
   // 考勤记录
   // ============================================================
 
-  Future<int> insertRecord(domain.AttendanceRecord record) async {
+  Future<UpsertResult> insertRecord(domain.AttendanceRecord record) async {
     // 按 taskId + studentId 唯一性检查，已存在则更新而非插入
     final existing = await (_db.select(_db.attendanceRecords)
           ..where((r) =>
@@ -156,10 +163,10 @@ class AttendanceLocalDataSource {
         remark: Value(record.remark),
         updatedAt: Value(DateTime.now()),
       ));
-      return existing.id;
+      return UpsertResult(id: existing.id, created: false);
     }
 
-    return await _db
+    final id = await _db
         .into(_db.attendanceRecords)
         .insert(
           AttendanceRecordsCompanion.insert(
@@ -172,18 +179,19 @@ class AttendanceLocalDataSource {
             updatedAt: Value(record.updatedAt),
           ),
         );
+    return UpsertResult(id: id, created: true);
   }
 
   /// 批量创建考勤记录（事务内执行），按 taskId+studentId upsert
-  /// 返回 Map<studentId, recordId>
-  Future<Map<int, int>> insertRecordsBatch(
+  /// 返回 Map<studentId, UpsertResult>
+  Future<Map<int, UpsertResult>> insertRecordsBatch(
     List<domain.AttendanceRecord> records,
   ) async {
-    final resultMap = <int, int>{};
+    final resultMap = <int, UpsertResult>{};
     await _db.transaction(() async {
       for (final record in records) {
-        final id = await insertRecord(record);
-        resultMap[record.studentId] = id;
+        final result = await insertRecord(record);
+        resultMap[record.studentId] = result;
       }
     });
     return resultMap;

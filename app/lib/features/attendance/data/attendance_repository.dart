@@ -102,7 +102,7 @@ class AttendanceRepository {
   // 考勤记录
   // ============================================================
 
-  /// 创建单条考勤记录：写入 Drift + 入队同步
+  /// 创建单条考勤记录：写入 Drift + 入队同步（upsert）
   Future<AttendanceRecord> createRecord({
     required String taskId,
     required int studentId,
@@ -121,18 +121,19 @@ class AttendanceRepository {
       updatedAt: now,
     );
 
-    final id = await _local.insertRecord(record);
-    final saved = record.copyWith(id: id);
+    final result = await _local.insertRecord(record);
+    final saved = record.copyWith(id: result.id);
 
     await _local.enqueueSync(
       entityType: 'record',
-      entityId: id.toString(),
-      action: 'create',
+      entityId: result.id.toString(),
+      action: result.created ? 'create' : 'update',
       payload: {
         'task_id': taskId,
         'student_id': studentId,
         'class_id': classId,
         'status': status.value,
+        if (remark != null) 'remark': remark,
       },
     );
 
@@ -200,16 +201,18 @@ class AttendanceRepository {
         )
         .toList();
 
-    final resultMap = await _local.insertRecordsBatch(records);
+    final results = await _local.insertRecordsBatch(records);
 
     final syncItems = <Map<String, dynamic>>[];
+    final recordIdMap = <int, int>{};
     for (final item in items) {
-      final recordId = resultMap[item.studentId];
-      if (recordId == null) continue;
+      final result = results[item.studentId];
+      if (result == null) continue;
+      recordIdMap[item.studentId] = result.id;
       syncItems.add({
         'entityType': 'record',
-        'entityId': recordId.toString(),
-        'action': 'create',
+        'entityId': result.id.toString(),
+        'action': result.created ? 'create' : 'update',
         'payload': {
           'task_id': taskId,
           'student_id': item.studentId,
@@ -220,6 +223,6 @@ class AttendanceRepository {
     }
     await _local.enqueueSyncBatch(syncItems);
 
-    return resultMap;
+    return recordIdMap;
   }
 }

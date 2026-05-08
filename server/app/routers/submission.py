@@ -232,12 +232,21 @@ async def create_submission(
         AttendanceRecord.task_id.in_(body.task_ids)
     ).all()
 
-    # 按 task_id + student_id 去重，保留 updated_at 最新的一条
+    # 按 task_id + student_id 去重，保留最新的一条
     deduped = {}
     for r in records:
         key = (r.task_id, r.student_id)
-        if key not in deduped or (r.updated_at and deduped[key].updated_at and r.updated_at > deduped[key].updated_at):
+        if key not in deduped:
             deduped[key] = r
+        else:
+            # 优先 updated_at，其次 created_at，最后 id
+            old_time = deduped[key].updated_at or deduped[key].created_at
+            new_time = r.updated_at or r.created_at
+            if new_time and (not old_time or new_time > old_time):
+                deduped[key] = r
+            elif not new_time and not old_time:
+                if r.id > deduped[key].id:
+                    deduped[key] = r
     records = list(deduped.values())
     
     # 重复提交检查：只拦截关联了 pending/approved submission 的记录
