@@ -6,6 +6,13 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../shared/providers.dart';
 import '../../../shared/widgets/loading_overlay.dart';
 import '../../../shared/widgets/toast.dart';
+import '../../../shared/design_system/colors.dart';
+import '../../../shared/design_system/tokens.dart';
+import '../../../shared/design_system/typography.dart';
+import '../../../shared/design_system/widgets/app_card.dart';
+import '../../../shared/design_system/widgets/progress_bar.dart';
+import '../../../shared/design_system/widgets/status_pill.dart';
+import '../../../shared/design_system/widgets/sync_status_banner.dart';
 import '../data/records_repository.dart';
 import '../../attendance/domain/models.dart';
 import '../../attendance/domain/text_template.dart';
@@ -362,94 +369,8 @@ class _RecordDetailPageState extends ConsumerState<RecordDetailPage> {
       ),
       body: Column(
         children: [
-          if (_isAbandoned)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(12),
-              color: Colors.grey.withValues(alpha: 0.1),
-              child: Row(
-                children: [
-                  Icon(Icons.info_outline, color: Colors.grey.shade700, size: 20),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      '该记录已放弃，仅可查看，不可编辑或提交。',
-                      style: TextStyle(
-                        color: Colors.grey.shade800,
-                        fontSize: 13,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          if (_submitStatusUnknown && !_isAbandoned)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(12),
-              color: Colors.red.withValues(alpha: 0.1),
-              child: Row(
-                children: [
-                  const Icon(Icons.cloud_off, color: Colors.red, size: 20),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      '无法确认提交状态，编辑已锁定。请检查网络后重试。',
-                      style: TextStyle(
-                        color: Colors.red.shade800,
-                        fontSize: 13,
-                      ),
-                    ),
-                  ),
-                  TextButton(
-                    onPressed: _loading ? null : _load,
-                    child: const Text('重试'),
-                  ),
-                ],
-              ),
-            ),
-          if (_isSubmitted && !_isAbandoned)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(12),
-              color: Colors.orange.withOpacity(0.1),
-              child: Row(
-                children: [
-                  Icon(Icons.info_outline, color: Colors.orange.shade700, size: 20),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      '该记录已提交审核，不可修改。如需修改，请先撤回提交或联系管理员。',
-                      style: TextStyle(
-                        color: Colors.orange.shade800,
-                        fontSize: 13,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          if (isSyncFailed && !_isSubmitted && !_isAbandoned)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(12),
-              color: Colors.red.withValues(alpha: 0.1),
-              child: Row(
-                children: [
-                  const Icon(Icons.error_outline, color: Colors.red, size: 20),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      '存在同步失败数据，为避免数据不一致，暂时禁止编辑。请先到同步问题详情处理。',
-                      style: TextStyle(
-                        color: Colors.red,
-                        fontSize: 13,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+          _buildStatusBanner(isSyncFailed),
+          _buildSummaryCard(),
           Expanded(
             child: abnormal.isEmpty
                 ? Center(
@@ -498,6 +419,168 @@ class _RecordDetailPageState extends ConsumerState<RecordDetailPage> {
       ),
     );
   }
+
+  // ============================================================
+  // 状态横幅 + 顶部信息卡
+  // ============================================================
+
+  Widget _buildStatusBanner(bool isSyncFailed) {
+    if (_isAbandoned) {
+      return const Padding(
+        padding: EdgeInsets.fromLTRB(16, 12, 16, 0),
+        child: SyncStatusBanner(
+          state: SyncBannerState.unknown,
+          title: '该记录已放弃',
+          description: '仅可查看，不可编辑或提交',
+        ),
+      );
+    }
+    if (_submitStatusUnknown) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+        child: SyncStatusBanner(
+          state: SyncBannerState.unknown,
+          title: '无法确认提交状态',
+          description: '编辑已锁定，请检查网络后重试',
+          actionLabel: '重试',
+          onAction: _loading ? null : _load,
+        ),
+      );
+    }
+    if (_isSubmitted) {
+      return const Padding(
+        padding: EdgeInsets.fromLTRB(16, 12, 16, 0),
+        child: SyncStatusBanner(
+          state: SyncBannerState.ready,
+          title: '该记录已提交审核',
+          description: '不可修改。如需修改请先撤回提交或联系管理员',
+        ),
+      );
+    }
+    if (isSyncFailed) {
+      return const Padding(
+        padding: EdgeInsets.fromLTRB(16, 12, 16, 0),
+        child: SyncStatusBanner(
+          state: SyncBannerState.failed,
+          title: '存在同步失败数据',
+          description: '为避免数据不一致，编辑已锁定',
+        ),
+      );
+    }
+    return const SizedBox.shrink();
+  }
+
+  Widget _buildSummaryCard() {
+    final c = context.colors;
+    final byClass = <String, List<RecordEntry>>{};
+    for (final e in _entries) {
+      byClass.putIfAbsent(e.className, () => []).add(e);
+    }
+    final classNames = byClass.keys.join(' · ');
+
+    int present = 0, absent = 0, late_ = 0, leave = 0, other = 0;
+    for (final e in _entries) {
+      switch (e.status) {
+        case AttendanceStatus.present:
+          present++;
+          break;
+        case AttendanceStatus.absent:
+          absent++;
+          break;
+        case AttendanceStatus.late_:
+          late_++;
+          break;
+        case AttendanceStatus.leave:
+          leave++;
+          break;
+        case AttendanceStatus.other:
+          other++;
+          break;
+        case AttendanceStatus.pending:
+          break;
+      }
+    }
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.lg,
+        AppSpacing.lg,
+        AppSpacing.lg,
+        AppSpacing.sm,
+      ),
+      child: AppCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    classNames,
+                    style: AppTextStyles.h2.copyWith(color: c.textPrimary),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                if (_isSubmitted)
+                  const StatusPill.success(label: '已提交')
+                else if (_isAbandoned)
+                  const StatusPill.neutral(label: '已放弃')
+                else
+                  const StatusPill.neutral(label: '草稿'),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              _taskDate ?? '',
+              style: AppTextStyles.sm.copyWith(color: c.textSecondary),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            SegmentedProgressBar(
+              totalCount: _entries.length,
+              segments: [
+                ProgressSegment(value: present, color: c.stateSuccess),
+                ProgressSegment(value: absent, color: c.stateDanger),
+                ProgressSegment(value: late_, color: c.stateWarning),
+                ProgressSegment(value: leave, color: c.stateInfo),
+                ProgressSegment(value: other, color: c.textSecondary),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Wrap(
+              spacing: 16,
+              runSpacing: 4,
+              children: [
+                _statText('${_entries.length}', '总数', c.textPrimary),
+                if (present > 0) _statText('$present', '到', c.stateSuccess),
+                if (absent > 0) _statText('$absent', '缺', c.stateDanger),
+                if (late_ > 0) _statText('$late_', '迟', c.stateWarning),
+                if (leave > 0) _statText('$leave', '假', c.stateInfo),
+                if (other > 0) _statText('$other', '他', c.textSecondary),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _statText(String value, String label, Color color) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          value,
+          style: AppTextStyles.withTabular(AppTextStyles.bodyMedium)
+              .copyWith(color: color, fontWeight: FontWeight.w600),
+        ),
+        const SizedBox(width: 2),
+        Text(
+          label,
+          style: AppTextStyles.sm.copyWith(color: context.colors.textSecondary),
+        ),
+      ],
+    );
+  }
 }
 
 class _RecordRow extends StatelessWidget {
@@ -527,6 +610,15 @@ class _RecordRow extends StatelessWidget {
     AttendanceStatus.leave => '请假',
     AttendanceStatus.other => entry.remark ?? '其他',
     AttendanceStatus.pending => '待查',
+  };
+
+  StatusPillVariant get _pillVariant => switch (entry.status) {
+    AttendanceStatus.present => StatusPillVariant.success,
+    AttendanceStatus.absent => StatusPillVariant.danger,
+    AttendanceStatus.late_ => StatusPillVariant.warning,
+    AttendanceStatus.leave => StatusPillVariant.info,
+    AttendanceStatus.other => StatusPillVariant.neutral,
+    AttendanceStatus.pending => StatusPillVariant.neutral,
   };
 
   @override
@@ -579,37 +671,16 @@ class _RecordRow extends StatelessWidget {
                   child: Text('其他...'),
                 ),
               ],
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 4,
-                ),
-                decoration: BoxDecoration(
-                  color: _color.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(4),
-                  border: Border.all(color: _color.withValues(alpha: 0.3)),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(_label, style: TextStyle(color: _color, fontSize: 13)),
-                    Icon(Icons.arrow_drop_down, size: 16, color: _color),
-                  ],
-                ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  StatusPill(variant: _pillVariant, label: _label),
+                  Icon(Icons.arrow_drop_down, size: 16, color: _color),
+                ],
               ),
             )
           else
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              decoration: BoxDecoration(
-                color: _color.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Text(
-                _label,
-                style: TextStyle(color: _color, fontSize: 13),
-              ),
-            ),
+            StatusPill(variant: _pillVariant, label: _label),
         ],
       ),
     );
