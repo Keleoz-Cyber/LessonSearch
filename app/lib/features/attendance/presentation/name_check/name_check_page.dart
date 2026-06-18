@@ -156,7 +156,7 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
     final c = context.colors;
     final disabled = onPressed == null;
     return SizedBox(
-      width: 44,
+      width: 40,
       height: 48,
       child: OutlinedButton(
         onPressed: onPressed,
@@ -581,41 +581,45 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
         size: AppButtonSize.lg,
         fullWidth: true,
       ),
-      secondary: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _smallActionButton(
-            '缺',
-            c.stateDanger,
-            (!isSyncFailed && !_isMarking && _focusedIndex != null)
-                ? () => mark(AttendanceStatus.absent)
-                : null,
-          ),
-          const SizedBox(width: 6),
-          _smallActionButton(
-            '迟',
-            c.stateWarning,
-            (!isSyncFailed && !_isMarking && _focusedIndex != null)
-                ? () => mark(AttendanceStatus.late_)
-                : null,
-          ),
-          const SizedBox(width: 6),
-          _smallActionButton(
-            '假',
-            c.stateInfo,
-            (!isSyncFailed && !_isMarking && _focusedIndex != null)
-                ? () => mark(AttendanceStatus.leave)
-                : null,
-          ),
-          const SizedBox(width: 6),
-          _smallActionButton(
-            '他',
-            c.textSecondary,
-            (!isSyncFailed && !_isMarking && _focusedIndex != null)
-                ? markOther
-                : null,
-          ),
-        ],
+      secondary: FittedBox(
+        fit: BoxFit.scaleDown,
+        alignment: Alignment.centerLeft,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _smallActionButton(
+              '缺',
+              c.stateDanger,
+              (!isSyncFailed && !_isMarking && _focusedIndex != null)
+                  ? () => mark(AttendanceStatus.absent)
+                  : null,
+            ),
+            const SizedBox(width: 4),
+            _smallActionButton(
+              '迟',
+              c.stateWarning,
+              (!isSyncFailed && !_isMarking && _focusedIndex != null)
+                  ? () => mark(AttendanceStatus.late_)
+                  : null,
+            ),
+            const SizedBox(width: 4),
+            _smallActionButton(
+              '假',
+              c.stateInfo,
+              (!isSyncFailed && !_isMarking && _focusedIndex != null)
+                  ? () => mark(AttendanceStatus.leave)
+                  : null,
+            ),
+            const SizedBox(width: 4),
+            _smallActionButton(
+              '他',
+              c.textSecondary,
+              (!isSyncFailed && !_isMarking && _focusedIndex != null)
+                  ? markOther
+                  : null,
+            ),
+          ],
+        ),
       ),
     );
   }

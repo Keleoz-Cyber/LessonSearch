@@ -62,7 +62,9 @@ class BottomActionBar extends StatelessWidget {
               Row(
                 children: [
                   if (secondary != null) ...[
-                    secondary!,
+                    // secondary 用 Flexible 包裹，避免在窄屏上挤压 primary 按钮。
+                    // FittedBox/intrinsic 由 secondary 自身处理。
+                    Flexible(child: secondary!),
                     const SizedBox(width: AppSpacing.md),
                   ],
                   Expanded(child: primary),

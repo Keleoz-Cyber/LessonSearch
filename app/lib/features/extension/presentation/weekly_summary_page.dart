@@ -451,13 +451,17 @@ class _CurrentWeekTab extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('提交状态', style: Theme.of(context).textTheme.titleMedium),
-                const Spacer(),
-                Text(
-                  '有职务: $totalDuty人  已提交: $submittedCount人  未提交: $notSubmittedCount人',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    '有职务: $totalDuty人  已提交: $submittedCount人  未提交: $notSubmittedCount人',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                    textAlign: TextAlign.end,
                   ),
                 ),
               ],
