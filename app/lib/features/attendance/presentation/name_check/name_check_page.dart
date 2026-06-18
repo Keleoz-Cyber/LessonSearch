@@ -2,6 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../shared/design_system/colors.dart';
+import '../../../../shared/design_system/tokens.dart';
+import '../../../../shared/design_system/typography.dart';
+import '../../../../shared/design_system/widgets/app_button.dart';
+import '../../../../shared/design_system/widgets/bottom_action_bar.dart';
+import '../../../../shared/design_system/widgets/progress_bar.dart';
+import '../../../../shared/design_system/widgets/segmented_control.dart';
+import '../../../../shared/design_system/widgets/status_pill.dart';
+import '../../../../shared/design_system/widgets/sync_status_banner.dart';
 import '../../../../shared/providers.dart';
 import '../../../../shared/widgets/loading_overlay.dart';
 import '../../../../shared/widgets/toast.dart';
@@ -37,6 +46,138 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
   void dispose() {
     _pageController.dispose();
     super.dispose();
+  }
+
+  Widget _buildTopBar(BuildContext context, NameCheckState state) {
+    final c = context.colors;
+    final cls = state.currentClass;
+    final segments = _calcProgressSegments(state, c);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: c.bgCanvas,
+        border: Border(bottom: BorderSide(color: c.borderSubtle)),
+      ),
+      child: SafeArea(
+        bottom: false,
+        child: Column(
+          children: [
+            SizedBox(
+              height: 52,
+              child: Row(
+                children: [
+                  IconButton(
+                    icon: Icon(Icons.arrow_back, color: c.textPrimary),
+                    onPressed: () => _showExitDialog(context),
+                  ),
+                  Expanded(
+                    child: Text(
+                      cls?.displayName ?? '',
+                      style: AppTextStyles.h2.copyWith(color: c.textPrimary),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: Text(
+                      '${state.processedStudents}/${state.totalStudents}',
+                      style: AppTextStyles.withTabular(AppTextStyles.bodyMedium)
+                          .copyWith(color: c.textSecondary),
+                    ),
+                  ),
+                  IconButton(
+                    icon: Icon(
+                      Icons.check_circle_outline,
+                      color: c.brandPrimary,
+                    ),
+                    tooltip: '确认名单',
+                    onPressed: _isMarking
+                        ? null
+                        : () => _showFinishDialog(context, state),
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+              child: SegmentedProgressBar(
+                segments: segments,
+                totalCount: state.totalStudents,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  List<ProgressSegment> _calcProgressSegments(
+    NameCheckState state,
+    AppColors c,
+  ) {
+    int present = 0, absent = 0, late_ = 0, leave = 0, other = 0;
+    for (final list in state.studentsByClass.values) {
+      for (final s in list) {
+        switch (s.status) {
+          case AttendanceStatus.present:
+            present++;
+            break;
+          case AttendanceStatus.absent:
+            absent++;
+            break;
+          case AttendanceStatus.late_:
+            late_++;
+            break;
+          case AttendanceStatus.leave:
+            leave++;
+            break;
+          case AttendanceStatus.other:
+            other++;
+            break;
+          case AttendanceStatus.pending:
+            break;
+        }
+      }
+    }
+    return [
+      ProgressSegment(value: present, color: c.stateSuccess),
+      ProgressSegment(value: absent, color: c.stateDanger),
+      ProgressSegment(value: late_, color: c.stateWarning),
+      ProgressSegment(value: leave, color: c.stateInfo),
+      ProgressSegment(value: other, color: c.textSecondary),
+    ];
+  }
+
+  Widget _smallActionButton(
+    String label,
+    Color color,
+    VoidCallback? onPressed,
+  ) {
+    final c = context.colors;
+    final disabled = onPressed == null;
+    return SizedBox(
+      width: 44,
+      height: 48,
+      child: OutlinedButton(
+        onPressed: onPressed,
+        style: OutlinedButton.styleFrom(
+          padding: EdgeInsets.zero,
+          foregroundColor: color,
+          side: BorderSide(
+            color: disabled ? c.borderSubtle : color.withValues(alpha: 0.4),
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.normal),
+          ),
+        ),
+        child: Text(
+          label,
+          style: AppTextStyles.bodyMedium.copyWith(
+            color: disabled ? c.textDisabled : color,
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -144,7 +285,6 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
     NameCheckState state,
     bool isSyncFailed,
   ) {
-    final currentClass = state.currentClass;
     final students = state.currentStudents;
 
     return PopScope(
@@ -154,87 +294,45 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
         await _showExitDialog(context);
       },
       child: Scaffold(
-        appBar: AppBar(
-          title: Text(currentClass?.displayName ?? ''),
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back),
-            onPressed: () => _showExitDialog(context),
-          ),
-          actions: [
-            Center(
-              child: Padding(
-                padding: EdgeInsets.only(right: 8),
-                child: Text(
-                  '${state.processedStudents}/${state.totalStudents}',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-              ),
-            ),
-            IconButton(
-              icon: const Icon(Icons.check_circle_outline),
-              tooltip: '确认名单',
-              onPressed: _isMarking
-                  ? null
-                  : () => _showFinishDialog(context, state),
-            ),
-          ],
+        appBar: PreferredSize(
+          preferredSize: const Size.fromHeight(72),
+          child: _buildTopBar(context, state),
         ),
         body: Column(
           children: [
             // 班级切换标签
             if (state.classes.length > 1)
-              SizedBox(
-                height: 48,
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  padding: EdgeInsets.symmetric(horizontal: 8),
-                  itemCount: state.classes.length,
-                  itemBuilder: (context, index) {
-                    final cls = state.classes[index];
-                    final isActive = index == state.currentClassIndex;
-                    return Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 4, vertical: 6),
-                      child: ChoiceChip(
-                        label: Text(cls.displayName),
-                        selected: isActive,
-                        onSelected: (_) {
-                          ref
-                              .read(nameCheckProvider.notifier)
-                              .switchClass(index);
-                          _pageController.animateToPage(
-                            index,
-                            duration: const Duration(milliseconds: 200),
-                            curve: Curves.easeInOut,
-                          );
-                          setState(() => _focusedIndex = 0);
-                        },
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                child: AppSegmentedControl<int>(
+                  items: [
+                    for (var i = 0; i < state.classes.length; i++)
+                      AppSegmentedItem(
+                        value: i,
+                        label: state.classes[i].displayName,
                       ),
+                  ],
+                  value: state.currentClassIndex,
+                  onChanged: (i) {
+                    ref.read(nameCheckProvider.notifier).switchClass(i);
+                    _pageController.animateToPage(
+                      i,
+                      duration: AppDuration.normal,
+                      curve: AppCurves.normal,
                     );
+                    setState(() => _focusedIndex = 0);
                   },
                 ),
               ),
 
             // 同步失败红色提示条
             if (isSyncFailed)
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(12),
-                color: Colors.red.withValues(alpha: 0.1),
-                child: Row(
-                  children: [
-                    const Icon(
-                      Icons.error_outline,
-                      color: Colors.red,
-                      size: 18,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        '存在同步失败数据，为避免数据不一致，暂时禁止编辑。请先到同步问题详情处理。',
-                        style: TextStyle(color: Colors.red, fontSize: 13),
-                      ),
-                    ),
-                  ],
+              const Padding(
+                padding: EdgeInsets.fromLTRB(16, 8, 16, 0),
+                child: SyncStatusBanner(
+                  state: SyncBannerState.failed,
+                  title: '存在同步失败数据',
+                  description: '为避免数据不一致，编辑已锁定。请到同步问题详情处理。',
                 ),
               ),
 
@@ -464,86 +562,58 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
       error: (error, stackTrace) => false,
     );
 
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black12,
-            blurRadius: 4,
-            offset: const Offset(0, -1),
+    final c = context.colors;
+    final focused = _focusedIndex != null && _focusedIndex! < students.length
+        ? students[_focusedIndex!]
+        : null;
+
+    return BottomActionBar(
+      hintText: focused != null
+          ? '当前学生：${focused.student.name}'
+          : '请选择学生',
+      primary: AppButton.primary(
+        label: '到课',
+        onPressed: (!isSyncFailed && !_isMarking && _focusedIndex != null)
+            ? markPresent
+            : null,
+        size: AppButtonSize.lg,
+        fullWidth: true,
+      ),
+      secondary: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _smallActionButton(
+            '缺',
+            c.stateDanger,
+            (!isSyncFailed && !_isMarking && _focusedIndex != null)
+                ? () => mark(AttendanceStatus.absent)
+                : null,
+          ),
+          const SizedBox(width: 6),
+          _smallActionButton(
+            '迟',
+            c.stateWarning,
+            (!isSyncFailed && !_isMarking && _focusedIndex != null)
+                ? () => mark(AttendanceStatus.late_)
+                : null,
+          ),
+          const SizedBox(width: 6),
+          _smallActionButton(
+            '假',
+            c.stateInfo,
+            (!isSyncFailed && !_isMarking && _focusedIndex != null)
+                ? () => mark(AttendanceStatus.leave)
+                : null,
+          ),
+          const SizedBox(width: 6),
+          _smallActionButton(
+            '他',
+            c.textSecondary,
+            (!isSyncFailed && !_isMarking && _focusedIndex != null)
+                ? markOther
+                : null,
           ),
         ],
-      ),
-      child: SafeArea(
-        top: false,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: _ActionButton(
-                    label: '缺勤',
-                    color: Colors.red,
-                    onPressed:
-                        (!isSyncFailed && !_isMarking && _focusedIndex != null)
-                        ? () => mark(AttendanceStatus.absent)
-                        : null,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _ActionButton(
-                    label: '迟到',
-                    color: Colors.amber.shade700,
-                    onPressed:
-                        (!isSyncFailed && !_isMarking && _focusedIndex != null)
-                        ? () => mark(AttendanceStatus.late_)
-                        : null,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _ActionButton(
-                    label: '请假',
-                    color: Colors.blue,
-                    onPressed:
-                        (!isSyncFailed && !_isMarking && _focusedIndex != null)
-                        ? () => mark(AttendanceStatus.leave)
-                        : null,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _ActionButton(
-                    label: '其他',
-                    color: Colors.grey,
-                    onPressed:
-                        (!isSyncFailed && !_isMarking && _focusedIndex != null)
-                        ? () => markOther()
-                        : null,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton(
-                onPressed:
-                    (!isSyncFailed && !_isMarking && _focusedIndex != null)
-                    ? () => markPresent()
-                    : null,
-                style: FilledButton.styleFrom(
-                  minimumSize: const Size.fromHeight(44),
-                ),
-                child: const Text('到课'),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -738,122 +808,76 @@ class _StudentCard extends StatelessWidget {
     required this.onTap,
   });
 
-  static const _statusLabels = {
-    AttendanceStatus.present: '到',
-    AttendanceStatus.absent: '缺',
-    AttendanceStatus.late_: '迟',
-    AttendanceStatus.leave: '假',
-  };
-
-  static Color _statusColor(AttendanceStatus status, bool isDark) {
-    return switch (status) {
-      AttendanceStatus.pending =>
-        isDark ? const Color(0xFF424242) : const Color(0xFFEEEEEE),
-      AttendanceStatus.present =>
-        isDark ? const Color(0xFF1B5E20) : const Color(0xFFC8E6C9),
-      AttendanceStatus.absent =>
-        isDark ? const Color(0xFFB71C1C) : const Color(0xFFFFCDD2),
-      AttendanceStatus.late_ =>
-        isDark ? const Color(0xFFF57F17) : const Color(0xFFFFECB3),
-      AttendanceStatus.leave =>
-        isDark ? const Color(0xFF0D47A1) : const Color(0xFFBBDEFB),
-      AttendanceStatus.other =>
-        isDark ? const Color(0xFF4A148C) : const Color(0xFFE1BEE7),
-    };
-  }
-
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bgColor = _statusColor(status, isDark);
-    final textColor = isDark ? Colors.white : Colors.black87;
-    final subtextColor = isDark ? Colors.grey.shade400 : Colors.grey.shade600;
-    final statusLabel = status == AttendanceStatus.other
-        ? (remark ?? '他')
-        : _statusLabels[status] ?? '';
+    final c = context.colors;
+    final isPending = status == AttendanceStatus.pending;
+    final bgColor = isFocused
+        ? c.brandSubtle
+        : (isPending ? c.bgSurface : c.bgMuted);
+    final borderColor = isFocused ? c.brandPrimary : c.borderSubtle;
 
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 150),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(8),
-        border: isFocused
-            ? Border.all(color: Theme.of(context).colorScheme.primary, width: 2)
-            : null,
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(8),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        name,
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w500,
-                          color: textColor,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      Text(
-                        studentNo,
-                        style: TextStyle(fontSize: 11, color: subtextColor),
-                      ),
-                    ],
-                  ),
-                ),
-                if (statusLabel.isNotEmpty)
-                  Text(
-                    statusLabel,
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
-                      color: textColor,
-                    ),
-                  ),
-              ],
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        child: AnimatedContainer(
+          duration: AppDuration.fast,
+          curve: AppCurves.fast,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: bgColor,
+            borderRadius: BorderRadius.circular(AppRadius.md),
+            border: Border.all(
+              color: borderColor,
+              width: isFocused ? 1.5 : 1,
             ),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      name,
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        color: c.textPrimary,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      studentNo,
+                      style: AppTextStyles.withTabular(
+                        AppTextStyles.xs,
+                      ).copyWith(color: c.textTertiary),
+                    ),
+                  ],
+                ),
+              ),
+              if (!isPending) ...[
+                const SizedBox(width: 8),
+                _statusPillFor(status, remark),
+              ],
+            ],
           ),
         ),
       ),
     );
   }
-}
 
-class _ActionButton extends StatelessWidget {
-  final String label;
-  final Color color;
-  final VoidCallback? onPressed;
-
-  const _ActionButton({
-    required this.label,
-    required this.color,
-    this.onPressed,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return OutlinedButton(
-      onPressed: onPressed,
-      style: OutlinedButton.styleFrom(
-        foregroundColor: color,
-        side: BorderSide(
-          color: onPressed != null ? color : Colors.grey.shade300,
-        ),
-        minimumSize: const Size(56, 44),
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-      ),
-      child: Text(label),
-    );
+  Widget _statusPillFor(AttendanceStatus s, String? remark) {
+    return switch (s) {
+      AttendanceStatus.present => const StatusPill.success(label: '到'),
+      AttendanceStatus.absent => const StatusPill.danger(label: '缺'),
+      AttendanceStatus.late_ => const StatusPill.warning(label: '迟'),
+      AttendanceStatus.leave => const StatusPill.info(label: '假'),
+      AttendanceStatus.other => StatusPill.neutral(label: remark ?? '他'),
+      AttendanceStatus.pending => const SizedBox.shrink(),
+    };
   }
 }
 
