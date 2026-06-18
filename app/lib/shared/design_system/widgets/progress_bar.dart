@@ -3,10 +3,18 @@ import 'package:flutter/material.dart';
 import '../colors.dart';
 import '../tokens.dart';
 
+/// 多段彩色进度条。
+///
+/// 每段对应 [ProgressSegment]，按 [ProgressSegment.value] 整数比例分配宽度。
+/// [totalCount] 为整体计数；剩余部分（`totalCount - sum(segments.value)`）
+/// 以 [AppColors.bgMuted] 灰色显示。
+///
+/// **行为约定**：
+/// - 当 `totalCount == 0` 时显示纯灰色条。
+/// - 当 segments 总和超出 `totalCount` 时，剩余 tail 不显示，
+///   但段间比例保持，bar 仍能正常渲染（容错处理）。
+/// - 调试模式下 `totalCount < 0` 或 `height <= 0` 会触发 assert。
 class SegmentedProgressBar extends StatelessWidget {
-  /// 各段数据：value 表示数量；color 表示该段颜色。
-  /// 总数 = totalCount。
-  /// 已处理总数 = segments.sumOf(value)；剩余部分以 muted 灰色显示。
   final List<ProgressSegment> segments;
   final int totalCount;
   final double height;
@@ -16,7 +24,8 @@ class SegmentedProgressBar extends StatelessWidget {
     required this.segments,
     required this.totalCount,
     this.height = 6,
-  });
+  })  : assert(totalCount >= 0, 'totalCount must be >= 0'),
+        assert(height > 0, 'height must be > 0');
 
   @override
   Widget build(BuildContext context) {
@@ -58,5 +67,6 @@ class SegmentedProgressBar extends StatelessWidget {
 class ProgressSegment {
   final int value;
   final Color color;
-  const ProgressSegment({required this.value, required this.color});
+  const ProgressSegment({required this.value, required this.color})
+      : assert(value >= 0, 'segment value must be >= 0');
 }
