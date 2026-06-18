@@ -37,27 +37,33 @@ class AppCard extends StatelessWidget {
           ]
         : const <BoxShadow>[];
 
-    final card = AnimatedContainer(
-      duration: AppDuration.fast,
-      curve: AppCurves.fast,
-      decoration: BoxDecoration(
-        color: bgColor,
-        border: Border.all(color: borderColor, width: selected ? 1.5 : 1),
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        boxShadow: shadows,
-      ),
-      padding: padding,
-      child: child,
+    final decoration = BoxDecoration(
+      color: bgColor,
+      border: Border.all(color: borderColor, width: selected ? 1.5 : 1),
+      borderRadius: BorderRadius.circular(AppRadius.md),
+      boxShadow: shadows,
     );
 
-    if (onTap == null) return card;
+    if (onTap == null) {
+      return AnimatedContainer(
+        duration: AppDuration.fast,
+        curve: AppCurves.fast,
+        decoration: decoration,
+        padding: padding,
+        child: child,
+      );
+    }
 
     return Material(
       color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        child: card,
+      borderRadius: BorderRadius.circular(AppRadius.md),
+      child: Ink(
+        decoration: decoration,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          child: Padding(padding: padding, child: child),
+        ),
       ),
     );
   }
