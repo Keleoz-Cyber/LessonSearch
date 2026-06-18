@@ -148,10 +148,14 @@ class _SubmissionPageState extends ConsumerState<SubmissionPage>
   }
 
   void _onTabChanged() {
-    if (_tabController.index == 0 && mounted) {
+    if (!mounted) return;
+    // 触发 build 重读 _tabController.index，确保 segmented control 与
+    // bottomNavigationBar 在 swipe / animateTo 后都能跟随当前 tab 状态。
+    setState(() {});
+    if (_tabController.index == 0) {
       ref.invalidate(weekNameCheckTasksProvider);
       ref.invalidate(submittedTaskIdsProvider);
-    } else if (_tabController.index == 1 && mounted) {
+    } else if (_tabController.index == 1) {
       ref.invalidate(mySubmissionsProvider);
     }
   }
