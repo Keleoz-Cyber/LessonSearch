@@ -11,6 +11,13 @@ import '../../../shared/widgets/loading_overlay.dart';
 import '../../../shared/widgets/toast.dart';
 import '../../../shared/widgets/status_badge.dart';
 import '../../../shared/widgets/empty_state.dart';
+import '../../../shared/design_system/colors.dart';
+import '../../../shared/design_system/tokens.dart';
+import '../../../shared/design_system/typography.dart';
+import '../../../shared/design_system/widgets/app_card.dart';
+import '../../../shared/design_system/widgets/bottom_action_bar.dart';
+import '../../../shared/design_system/widgets/segmented_control.dart';
+import '../../../shared/design_system/widgets/sync_status_banner.dart';
 import '../data/submission_service.dart';
 import '../../attendance/domain/models.dart';
 
@@ -432,84 +439,113 @@ class _SubmissionPageState extends ConsumerState<SubmissionPage>
     final currentWeekAsync = ref.watch(currentWeekProvider);
     final myDutyAsync = ref.watch(myDutyProvider);
 
+    final weekNumber = currentWeekAsync.valueOrNull?['week_number'] as int?;
+    final hasDuty = myDutyAsync.valueOrNull?['has_duty'] as bool? ?? false;
+    final showBottomBar =
+        hasDuty && weekNumber != null && _tabController.index == 0;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('名单提交'),
-        bottom: TabBar(
-          controller: _tabController,
-          tabs: const [
-            Tab(text: '提交任务'),
-            Tab(text: '我的提交'),
-          ],
-        ),
       ),
-      body: currentWeekAsync.when(
-        loading: () => const LoadingOverlay(
-          isLoading: true,
-          child: SizedBox.expand(),
-        ),
-        error: (e, _) => Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.error_outline, size: 48, color: Colors.grey),
-              const SizedBox(height: 16),
-              Text('加载失败: $e'),
-              const SizedBox(height: 16),
-              FilledButton(
-                onPressed: () => ref.invalidate(currentWeekProvider),
-                child: const Text('重试'),
+      bottomNavigationBar: showBottomBar
+          ? BottomActionBar(
+              hintText: _selectedTaskIds.isEmpty
+                  ? '请选择要提交的任务'
+                  : '已选择 ${_selectedTaskIds.length} 个任务',
+              primary: _SubmitButton(
+                loading: _loading,
+                issueCount: ref.watch(syncIssueCountProvider),
+                syncState: ref.watch(syncStateProvider),
+                onSubmit: () => _submit(weekNumber),
               ),
-            ],
+            )
+          : null,
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+            child: AppSegmentedControl<int>(
+              items: const [
+                AppSegmentedItem(value: 0, label: '提交任务'),
+                AppSegmentedItem(value: 1, label: '我的提交'),
+              ],
+              value: _tabController.index,
+              onChanged: (i) {
+                _tabController.animateTo(i);
+                setState(() {});
+              },
+            ),
           ),
-        ),
-        data: (weekData) {
-          final weekNumber = weekData['week_number'] as int;
-
-          return myDutyAsync.when(
-            loading: () => const LoadingOverlay(
-              isLoading: true,
-              child: SizedBox.expand(),
-            ),
-            error: (e, _) => Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.error_outline, size: 48, color: Colors.grey),
-                  const SizedBox(height: 16),
-                  Text('加载职务状态失败: $e'),
-                  const SizedBox(height: 16),
-                  FilledButton(
-                    onPressed: () => ref.invalidate(myDutyProvider),
-                    child: const Text('重试'),
-                  ),
-                ],
+          Expanded(
+            child: currentWeekAsync.when(
+              loading: () => const LoadingOverlay(
+                isLoading: true,
+                child: SizedBox.expand(),
               ),
-            ),
-            data: (duty) {
-              final hasDuty = duty['has_duty'] as bool? ?? false;
+              error: (e, _) => Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.error_outline, size: 48, color: Colors.grey),
+                    const SizedBox(height: 16),
+                    Text('加载失败: $e'),
+                    const SizedBox(height: 16),
+                    FilledButton(
+                      onPressed: () => ref.invalidate(currentWeekProvider),
+                      child: const Text('重试'),
+                    ),
+                  ],
+                ),
+              ),
+              data: (weekData) {
+                final wn = weekData['week_number'] as int;
 
-              if (!hasDuty) {
-                return _buildNoDutyView(context);
-              }
-
-              return TabBarView(
-                controller: _tabController,
-                children: [
-                  _SubmitTaskTab(
-                    weekNumber: weekNumber,
-                    selectedTaskIds: _selectedTaskIds,
-                    loading: _loading,
-                    onSelectionChanged: (ids) =>
-                        setState(() => _selectedTaskIds = ids),
-                    onSubmit: () => _submit(weekNumber),
+                return myDutyAsync.when(
+                  loading: () => const LoadingOverlay(
+                    isLoading: true,
+                    child: SizedBox.expand(),
                   ),
-                  _MySubmissionsTab(),
-                ],
-              );
-            },
-          );
-        },
+                  error: (e, _) => Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.error_outline, size: 48, color: Colors.grey),
+                        const SizedBox(height: 16),
+                        Text('加载职务状态失败: $e'),
+                        const SizedBox(height: 16),
+                        FilledButton(
+                          onPressed: () => ref.invalidate(myDutyProvider),
+                          child: const Text('重试'),
+                        ),
+                      ],
+                    ),
+                  ),
+                  data: (duty) {
+                    final hasDutyInner = duty['has_duty'] as bool? ?? false;
+
+                    if (!hasDutyInner) {
+                      return _buildNoDutyView(context);
+                    }
+
+                    return TabBarView(
+                      controller: _tabController,
+                      children: [
+                        _SubmitTaskTab(
+                          weekNumber: wn,
+                          selectedTaskIds: _selectedTaskIds,
+                          onSelectionChanged: (ids) =>
+                              setState(() => _selectedTaskIds = ids),
+                        ),
+                        _MySubmissionsTab(),
+                      ],
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -541,16 +577,12 @@ class _SubmissionPageState extends ConsumerState<SubmissionPage>
 class _SubmitTaskTab extends ConsumerWidget {
   final int weekNumber;
   final List<String> selectedTaskIds;
-  final bool loading;
   final void Function(List<String>) onSelectionChanged;
-  final VoidCallback onSubmit;
 
   const _SubmitTaskTab({
     required this.weekNumber,
     required this.selectedTaskIds,
-    required this.loading,
     required this.onSelectionChanged,
-    required this.onSubmit,
   });
 
   @override
@@ -575,64 +607,19 @@ class _SubmitTaskTab extends ConsumerWidget {
           issueCount.when(
             data: (count) {
               if (count == 0) return const SizedBox.shrink();
+              final state = isSyncFailed
+                  ? SyncBannerState.failed
+                  : syncState == SyncState.syncing
+                      ? SyncBannerState.syncing
+                      : SyncBannerState.unknown;
+              final title = isSyncFailed
+                  ? '$count 条同步失败，请先处理后再提交'
+                  : syncState == SyncState.syncing
+                      ? '正在自动同步 $count 条记录'
+                      : '$count 条记录待同步';
               return Padding(
                 padding: const EdgeInsets.only(bottom: 16),
-                child: Card(
-                  color: isSyncFailed
-                      ? Colors.red.withValues(alpha: 0.1)
-                      : syncState == SyncState.syncing
-                          ? Colors.blue.withValues(alpha: 0.1)
-                          : Colors.orange.withValues(alpha: 0.1),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    side: BorderSide(
-                      color: isSyncFailed
-                          ? Colors.red.withValues(alpha: 0.3)
-                          : syncState == SyncState.syncing
-                              ? Colors.blue.withValues(alpha: 0.3)
-                              : Colors.orange.withValues(alpha: 0.3),
-                    ),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Row(
-                      children: [
-                        Icon(
-                          isSyncFailed
-                              ? Icons.error_outline
-                              : syncState == SyncState.syncing
-                                  ? Icons.sync
-                                  : Icons.warning_amber,
-                          color: isSyncFailed
-                              ? Colors.red
-                              : syncState == SyncState.syncing
-                                  ? Colors.blue
-                                  : Colors.orange,
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            isSyncFailed
-                                ? '有 $count 条同步失败，请先处理后再提交'
-                                : syncState == SyncState.syncing
-                                    ? '正在自动同步 $count 条记录，请稍候再提交'
-                                    : '有 $count 条记录待同步，系统将在后台自动处理',
-                            style: TextStyle(
-                              color: isSyncFailed
-                                  ? Colors.red.shade800
-                                  : syncState == SyncState.syncing
-                                      ? Colors.blue.shade800
-                                      : Colors.orange.shade800,
-                              fontWeight: FontWeight.w500,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                            maxLines: 2,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
+                child: SyncStatusBanner(state: state, title: title),
               );
             },
             loading: () => const SizedBox.shrink(),
@@ -689,55 +676,12 @@ class _SubmitTaskTab extends ConsumerWidget {
                 return EmptyStateCard.noTask();
               }
 
-              return Card(
-                child: ListView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: tasks.length,
-                  itemBuilder: (context, index) {
-                    final task = tasks[index] as Map<String, dynamic>;
-                    final taskId = task['id'] as String;
-                    final isSelected = selectedTaskIds.contains(taskId);
-
-                    return CheckboxListTile(
-                      value: isSelected,
-                      onChanged: (checked) {
-                        if (checked == true) {
-                          onSelectionChanged([...selectedTaskIds, taskId]);
-                        } else {
-                          onSelectionChanged(
-                            selectedTaskIds
-                                .where((id) => id != taskId)
-                                .toList(),
-                          );
-                        }
-                      },
-                      title: Text(
-                        (task['class_names'] as List?)?.join(', ') ?? '未知班级',
-                      ),
-                      subtitle: Text(
-                        '${task['record_count']} 条记录 · ${DateFormat('yyyy-MM-dd HH:mm').format(DateTime.parse(task['created_at'] as String))}',
-                      ),
-                    );
-                  },
-                ),
+              return Column(
+                children: [
+                  for (final taskRaw in tasks) _buildTaskCard(context, taskRaw),
+                ],
               );
             },
-          ),
-          const SizedBox(height: 16),
-          if (selectedTaskIds.isNotEmpty)
-            Text(
-              '已选择 ${selectedTaskIds.length} 个任务',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Theme.of(context).colorScheme.primary,
-              ),
-            ),
-          const SizedBox(height: 16),
-          _SubmitButton(
-            loading: loading,
-            issueCount: issueCount,
-            syncState: syncState,
-            onSubmit: onSubmit,
           ),
           const SizedBox(height: 24),
           Text('说明', style: Theme.of(context).textTheme.titleSmall),
@@ -751,6 +695,64 @@ class _SubmitTaskTab extends ConsumerWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildTaskCard(BuildContext context, Map<String, dynamic> task) {
+    final c = context.colors;
+    final taskId = task['id'] as String;
+    final isSelected = selectedTaskIds.contains(taskId);
+    final classNames = (task['class_names'] as List?)?.join('、') ?? '未知班级';
+    final recordCount = task['record_count'] as int? ?? 0;
+    final created = DateTime.parse(task['created_at'] as String);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: AppCard(
+        selected: isSelected,
+        onTap: () {
+          if (isSelected) {
+            onSelectionChanged(
+              selectedTaskIds.where((id) => id != taskId).toList(),
+            );
+          } else {
+            onSelectionChanged([...selectedTaskIds, taskId]);
+          }
+        },
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Icon(
+                isSelected
+                    ? Icons.check_box_rounded
+                    : Icons.check_box_outline_blank_rounded,
+                color: isSelected ? c.brandPrimary : c.borderStrong,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    classNames,
+                    style: AppTextStyles.bodyMedium.copyWith(color: c.textPrimary),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${DateFormat('MM-dd HH:mm').format(created)} · $recordCount 条记录',
+                    style: AppTextStyles.sm.copyWith(color: c.textSecondary),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
