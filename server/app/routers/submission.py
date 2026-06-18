@@ -34,6 +34,24 @@ from app.routers.week import get_current_week_config, calculate_week_number
 router = APIRouter(prefix="/submissions", tags=["submissions"])
 
 
+def _filter_valid_submission_records(records, tasks, students_by_id: Dict[int, Student]):
+    task_class_ids_by_task = {
+        task.id: {tc.class_id for tc in task.task_classes}
+        for task in tasks
+    }
+    valid_records = []
+    for record in records:
+        student = students_by_id.get(record.student_id)
+        if not student:
+            continue
+        if record.class_id not in task_class_ids_by_task.get(record.task_id, set()):
+            continue
+        if student.class_id != record.class_id:
+            continue
+        valid_records.append(record)
+    return valid_records
+
+
 def _build_snapshot_data(db: Session, submission: Submission) -> dict:
     """为 approved submission 构建快照数据"""
     user = db.query(User).filter(User.id == submission.user_id).first()
@@ -231,6 +249,19 @@ async def create_submission(
     records = db.query(AttendanceRecord).filter(
         AttendanceRecord.task_id.in_(body.task_ids)
     ).all()
+
+    students_by_id = {
+        student.id: student
+        for student in db.query(Student)
+        .filter(Student.id.in_({r.student_id for r in records}))
+        .all()
+    }
+    records = _filter_valid_submission_records(records, tasks, students_by_id)
+    if not records:
+        raise HTTPException(
+            status_code=400,
+            detail="没有可提交的有效记录，请刷新名单后重新记名",
+        )
 
     # 按 task_id + student_id 去重，保留最新的一条
     deduped = {}

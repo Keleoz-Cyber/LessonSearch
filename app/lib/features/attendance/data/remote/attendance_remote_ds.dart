@@ -1,7 +1,30 @@
 import '../../../../core/network/api_client.dart';
 import '../../domain/models.dart';
 
-/// 封装 ApiClient 调用，负责 JSON ↔ 领域模型的转换
+Map<String, dynamic> recordToRequestBody(AttendanceRecord record) {
+  final body = {
+    'student_id': record.studentId,
+    'class_id': record.classId,
+    'status': record.status.value,
+  };
+  final remark = record.remark;
+  if (remark != null) {
+    body['remark'] = remark;
+  }
+  return body;
+}
+
+Map<String, dynamic> recordUpdateRequestBody(
+  AttendanceStatus status, {
+  String? remark,
+}) {
+  final body = {'status': status.value};
+  if (remark != null) {
+    body['remark'] = remark;
+  }
+  return body;
+}
+
 class AttendanceRemoteDataSource {
   final ApiClient _api;
 
@@ -36,10 +59,12 @@ class AttendanceRemoteDataSource {
     final body = <String, dynamic>{};
     if (status != null) body['status'] = status.value;
     if (phase != null) body['phase'] = phase.value;
-    if (currentClassIndex != null)
+    if (currentClassIndex != null) {
       body['current_class_index'] = currentClassIndex;
-    if (currentStudentIndex != null)
+    }
+    if (currentStudentIndex != null) {
       body['current_student_index'] = currentStudentIndex;
+    }
     return await _api.updateTask(taskId, body);
   }
 
@@ -55,33 +80,32 @@ class AttendanceRemoteDataSource {
     String taskId,
     List<AttendanceRecord> records,
   ) async {
-    final body = records
-        .map(
-          (r) => {
-            'student_id': r.studentId,
-            'class_id': r.classId,
-            'status': r.status.value,
-          },
-        )
-        .toList();
+    final body = records.map(recordToRequestBody).toList();
     return await _api.createRecords(taskId, body);
   }
 
   Future<Map<String, dynamic>> updateRecord(
     int recordId,
-    AttendanceStatus status,
-  ) async {
-    return await _api.updateRecord(recordId, {'status': status.value});
+    AttendanceStatus status, {
+    String? remark,
+  }) async {
+    return await _api.updateRecord(
+      recordId,
+      recordUpdateRequestBody(status, remark: remark),
+    );
   }
 
   Future<Map<String, dynamic>> updateRecordByTaskStudent(
     String taskId,
     int studentId,
-    AttendanceStatus status,
-  ) async {
-    return await _api.updateRecordByTaskStudent(taskId, studentId, {
-      'status': status.value,
-    });
+    AttendanceStatus status, {
+    String? remark,
+  }) async {
+    return await _api.updateRecordByTaskStudent(
+      taskId,
+      studentId,
+      recordUpdateRequestBody(status, remark: remark),
+    );
   }
 
   Future<Map<String, dynamic>> batchUpdateRecords(

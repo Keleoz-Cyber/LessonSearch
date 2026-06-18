@@ -29,6 +29,10 @@ class _RecordDetailPageState extends ConsumerState<RecordDetailPage> {
   bool _editing = false;
   bool _isSubmitted = false; // 是否已提交审核
   bool _isAbandoned = false; // 是否已放弃
+  // 提交状态是否为"未知"（网络异常未能从服务端确认）：
+  // 此时为避免本地编辑后被服务端 403 拒绝、造成本地与服务端不一致，
+  // 默认禁止编辑并在 UI 显示重试入口。
+  bool _submitStatusUnknown = false;
 
   bool get _isRollCall => _taskType == TaskType.rollCall;
 
@@ -52,6 +56,7 @@ class _RecordDetailPageState extends ConsumerState<RecordDetailPage> {
 
     // 检查该任务是否已提交审核（pending/approved）
     bool isSubmitted = false;
+    bool submitStatusUnknown = false;
     if (task != null && !isRollCall) {
       try {
         final api = ref.read(apiClientProvider);
@@ -59,7 +64,8 @@ class _RecordDetailPageState extends ConsumerState<RecordDetailPage> {
         final ids = (res.data['task_ids'] as List).map((e) => e.toString()).toSet();
         isSubmitted = ids.contains(task.id);
       } catch (e) {
-        // 网络错误时默认为未提交，允许编辑
+        // 网络异常时无法确认提交状态：默认禁止编辑，避免本地编辑后被服务端拒绝。
+        submitStatusUnknown = true;
         LoggerService.sync('检查提交状态失败: $e', isError: true);
       }
     }
@@ -71,6 +77,7 @@ class _RecordDetailPageState extends ConsumerState<RecordDetailPage> {
           ? task.createdAt.toString().substring(0, 16)
           : DateTime.now().toString().substring(0, 16);
       _isSubmitted = isSubmitted;
+      _submitStatusUnknown = submitStatusUnknown;
       _isAbandoned = task?.status == TaskStatus.abandoned;
       _loading = false;
     });
@@ -99,6 +106,18 @@ class _RecordDetailPageState extends ConsumerState<RecordDetailPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('该记录已提交审核，不可修改。如需修改，请先撤回提交或联系管理员。'),
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+      return;
+    }
+
+    if (_submitStatusUnknown) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('无法确认提交状态，请检查网络后点击页面顶部"重试"。'),
             duration: Duration(seconds: 3),
           ),
         );
@@ -325,7 +344,10 @@ class _RecordDetailPageState extends ConsumerState<RecordDetailPage> {
       appBar: AppBar(
         title: const Text('记名详情'),
         actions: [
-          if (!_isSubmitted && !_isAbandoned && !isSyncFailed)
+          if (!_isSubmitted &&
+              !_isAbandoned &&
+              !_submitStatusUnknown &&
+              !isSyncFailed)
             TextButton.icon(
               icon: Icon(_editing ? Icons.check : Icons.edit),
               label: Text(_editing ? '完成' : '编辑'),
@@ -357,6 +379,31 @@ class _RecordDetailPageState extends ConsumerState<RecordDetailPage> {
                         fontSize: 13,
                       ),
                     ),
+                  ),
+                ],
+              ),
+            ),
+          if (_submitStatusUnknown && !_isAbandoned)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              color: Colors.red.withValues(alpha: 0.1),
+              child: Row(
+                children: [
+                  const Icon(Icons.cloud_off, color: Colors.red, size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      '无法确认提交状态，编辑已锁定。请检查网络后重试。',
+                      style: TextStyle(
+                        color: Colors.red.shade800,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: _loading ? null : _load,
+                    child: const Text('重试'),
                   ),
                 ],
               ),
@@ -429,7 +476,11 @@ class _RecordDetailPageState extends ConsumerState<RecordDetailPage> {
                            ...entry.value.map((record) {
                             return _RecordRow(
                               entry: record,
-                              editing: _editing && !_isSubmitted && !_isAbandoned && !isSyncFailed,
+                              editing: _editing &&
+                                  !_isSubmitted &&
+                                  !_isAbandoned &&
+                                  !_submitStatusUnknown &&
+                                  !isSyncFailed,
                               onStatusChanged: (status, {remark}) => _updateStatus(
                                 record.recordId,
                                 status,

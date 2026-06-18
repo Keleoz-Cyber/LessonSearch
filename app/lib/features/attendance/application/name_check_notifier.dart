@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/logger/logger_service.dart';
 import '../domain/models.dart';
 import '../data/attendance_repository.dart';
 import '../../student/data/student_repository.dart';
@@ -111,6 +112,29 @@ class StudentWithStatus {
       recordId: recordId ?? this.recordId,
     );
   }
+}
+
+/// 按学生 ID 将当前标记状态合并到最新名单。
+List<StudentWithStatus> reconcileStudentsWithRoster(
+  List<StudentWithStatus> current,
+  List<StudentInfo> activeRoster,
+) {
+  final currentByStudentId = {
+    for (final item in current) item.student.id: item,
+  };
+
+  return activeRoster.map((student) {
+    final existing = currentByStudentId[student.id];
+    if (existing == null) {
+      return StudentWithStatus(student: student);
+    }
+    return StudentWithStatus(
+      student: student,
+      status: existing.status,
+      remark: existing.remark,
+      recordId: existing.recordId,
+    );
+  }).toList();
 }
 
 /// 记名流程控制器
@@ -260,6 +284,22 @@ class NameCheckNotifier extends StateNotifier<NameCheckState> {
     }
   }
 
+  /// 按稳定学生 ID 标记状态
+  Future<void> markStudentById(
+    int classId,
+    int studentId,
+    AttendanceStatus status, {
+    String? remark,
+  }) async {
+    final students = state.studentsByClass[classId];
+    if (students == null) return;
+
+    final studentIndex = students.indexWhere((s) => s.student.id == studentId);
+    if (studentIndex < 0) return;
+
+    await markStudent(classId, studentIndex, status, remark: remark);
+  }
+
   /// 标记学生状态
   Future<void> markStudent(
     int classId,
@@ -274,6 +314,7 @@ class NameCheckNotifier extends StateNotifier<NameCheckState> {
     if (students == null || studentIndex >= students.length) return;
 
     final student = students[studentIndex];
+    final previousStudent = student; // 保留旧值用于真实回滚
 
     // 先更新 UI（乐观更新）
     final updatedStudents = List<StudentWithStatus>.from(students);
@@ -320,77 +361,156 @@ class NameCheckNotifier extends StateNotifier<NameCheckState> {
           state = state.copyWith(studentsByClass: finalMap);
         }
       }
-
     } catch (e) {
-      // 保存失败时回滚
-      final rollbackStudents = List<StudentWithStatus>.from(students);
-      final rollbackMap = Map<int, List<StudentWithStatus>>.from(
-        state.studentsByClass,
+      // 真实回滚：基于"当前 state"的最新副本，把目标项恢复为旧值，
+      // 而不是丢弃后续的并发修改
+      LoggerService.error(
+        'markStudent 失败，已回滚: classId=$classId, studentId=${student.student.id}, status=${status.value}, error=$e',
       );
-      rollbackMap[classId] = rollbackStudents;
-      state = state.copyWith(studentsByClass: rollbackMap);
+      final latest = state.studentsByClass[classId];
+      if (latest != null &&
+          studentIndex < latest.length &&
+          latest[studentIndex].student.id == previousStudent.student.id) {
+        final rollbackStudents = List<StudentWithStatus>.from(latest);
+        rollbackStudents[studentIndex] = previousStudent;
+        final rollbackMap = Map<int, List<StudentWithStatus>>.from(
+          state.studentsByClass,
+        );
+        rollbackMap[classId] = rollbackStudents;
+        state = state.copyWith(studentsByClass: rollbackMap);
+      }
+      // 抛出由调用方（UI）捕获并提示
+      rethrow;
     }
   }
 
   /// 结束记名（批量标记未处理学生为已到）
-  Future<void> finishNameCheck() async {
+  ///
+  /// 返回值：
+  /// - [FinishNameCheckResult.success]：完成并进入确认阶段
+  /// - [FinishNameCheckResult.newStudents]：reconcile 后名单变化，新增了未标记学生，
+  ///   要求 UI 弹窗，由用户决定是返回标记还是确认全部为"已到"
+  /// - [FinishNameCheckResult.failed]：数据库/同步队列写入异常，state.error 已设置
+  Future<FinishNameCheckResult> finishNameCheck({
+    bool forceMarkPending = false,
+  }) async {
     final task = state.task;
-    if (task == null) return;
+    if (task == null) {
+      return const FinishNameCheckResult.failed('无任务数据');
+    }
 
-    // 收集所有未处理的学生，批量写入
-    final pendingItems =
-        <({int studentId, int classId, AttendanceStatus status})>[];
+    try {
+      // 记录 reconcile 前的学生 id 集合，用于识别新增学生
+      final beforeIdsByClass = <int, Set<int>>{
+        for (final e in state.studentsByClass.entries)
+          e.key: {for (final s in e.value) s.student.id},
+      };
 
-    for (final entry in state.studentsByClass.entries) {
-      final classId = entry.key;
-      final students = entry.value;
-      for (final student in students) {
-        if (student.status == AttendanceStatus.pending) {
-          pendingItems.add((
-            studentId: student.student.id,
-            classId: classId,
-            status: AttendanceStatus.present,
-          ));
+      await _reconcileWithLatestRoster(task);
+
+      // 检测新增学生（reconcile 后存在但 reconcile 前不存在）
+      final newStudentsByClass = <int, List<StudentInfo>>{};
+      for (final entry in state.studentsByClass.entries) {
+        final beforeIds = beforeIdsByClass[entry.key] ?? const <int>{};
+        final added = <StudentInfo>[];
+        for (final s in entry.value) {
+          if (!beforeIds.contains(s.student.id) &&
+              s.status == AttendanceStatus.pending) {
+            added.add(s.student);
+          }
+        }
+        if (added.isNotEmpty) newStudentsByClass[entry.key] = added;
+      }
+
+      // 如果存在新增学生，且未强制结束，返回让 UI 决策
+      if (newStudentsByClass.isNotEmpty && !forceMarkPending) {
+        return FinishNameCheckResult.newStudents(newStudentsByClass);
+      }
+
+      // 收集所有未处理的学生，批量写入
+      final pendingItems =
+          <({int studentId, int classId, AttendanceStatus status})>[];
+
+      for (final entry in state.studentsByClass.entries) {
+        final classId = entry.key;
+        final students = entry.value;
+        for (final student in students) {
+          if (student.status == AttendanceStatus.pending) {
+            pendingItems.add((
+              studentId: student.student.id,
+              classId: classId,
+              status: AttendanceStatus.present,
+            ));
+          }
         }
       }
-    }
 
-    // 批量写入 DB + SyncQueue（一个事务），返回 studentId→recordId
-    Map<int, int>? recordIdMap;
-    if (pendingItems.isNotEmpty) {
-      recordIdMap = await _attendanceRepo.createRecordsBatch(
-        taskId: task.id,
-        items: pendingItems,
+      // 批量写入 DB + SyncQueue（一个事务），返回 studentId→recordId
+      Map<int, int>? recordIdMap;
+      if (pendingItems.isNotEmpty) {
+        recordIdMap = await _attendanceRepo.createRecordsBatch(
+          taskId: task.id,
+          items: pendingItems,
+        );
+      }
+
+      await _attendanceRepo.updateTaskStatus(
+        task,
+        status: TaskStatus.completed,
+        phase: TaskPhase.confirming,
       );
+
+      // 数据库操作成功后，更新 UI 状态（含 recordId 回填）
+      final updatedMap = Map<int, List<StudentWithStatus>>.from(
+        state.studentsByClass,
+      );
+      for (final entry in updatedMap.entries) {
+        final classId = entry.key;
+        final students = List<StudentWithStatus>.from(entry.value);
+        for (var i = 0; i < students.length; i++) {
+          if (students[i].status == AttendanceStatus.pending) {
+            final rid =
+                recordIdMap?[students[i].student.id] ?? students[i].recordId;
+            students[i] = students[i].copyWith(
+              status: AttendanceStatus.present,
+              recordId: rid,
+            );
+          }
+        }
+        updatedMap[classId] = students;
+      }
+
+      state = state.copyWith(studentsByClass: updatedMap, isFinished: true);
+      return const FinishNameCheckResult.success();
+    } catch (e, st) {
+      LoggerService.error('finishNameCheck 失败: $e\n$st');
+      // 任务保持 inProgress/executing，避免用户数据丢失
+      state = state.copyWith(error: '结束记名失败: ${_formatError(e)}');
+      return FinishNameCheckResult.failed(_formatError(e));
     }
+  }
 
-    await _attendanceRepo.updateTaskStatus(
-      task,
-      status: TaskStatus.completed,
-      phase: TaskPhase.confirming,
-    );
-
-    // 数据库操作成功后，更新 UI 状态（含 recordId 回填）
-    final updatedMap = Map<int, List<StudentWithStatus>>.from(
+  Future<void> _reconcileWithLatestRoster(AttendanceTask task) async {
+    await _studentRepo.ensureStudentsBatch(task.classIds);
+    final studentsMap = await _studentRepo.getStudentsByClasses(task.classIds);
+    final reconciledMap = Map<int, List<StudentWithStatus>>.from(
       state.studentsByClass,
     );
-    for (final entry in updatedMap.entries) {
-      final classId = entry.key;
-      final students = List<StudentWithStatus>.from(entry.value);
-      for (var i = 0; i < students.length; i++) {
-        if (students[i].status == AttendanceStatus.pending) {
-          final rid = recordIdMap?[students[i].student.id] ??
-              students[i].recordId;
-          students[i] = students[i].copyWith(
-            status: AttendanceStatus.present,
-            recordId: rid,
-          );
+
+    for (final classId in task.classIds) {
+      final activeRoster = studentsMap[classId] ?? const <StudentInfo>[];
+      final current = state.studentsByClass[classId] ?? const [];
+      final reconciled = reconcileStudentsWithRoster(current, activeRoster);
+      final activeIds = activeRoster.map((s) => s.id).toSet();
+      for (final item in current) {
+        if (!activeIds.contains(item.student.id) && item.recordId != null) {
+          await _attendanceRepo.deleteRecord(item.recordId!);
         }
       }
-      updatedMap[classId] = students;
+      reconciledMap[classId] = reconciled;
     }
 
-    state = state.copyWith(studentsByClass: updatedMap, isFinished: true);
+    state = state.copyWith(studentsByClass: reconciledMap);
   }
 
   /// 放弃任务（删除任务和记录）
@@ -407,4 +527,34 @@ class NameCheckNotifier extends StateNotifier<NameCheckState> {
   void resumeEditing() {
     state = state.copyWith(isFinished: false, isEditing: true);
   }
+}
+
+/// finishNameCheck 的结果
+class FinishNameCheckResult {
+  /// 成功完成
+  final bool success;
+
+  /// 因名单变化（新增学生）需要 UI 介入决策；为 null 表示无新增
+  final Map<int, List<StudentInfo>>? newStudents;
+
+  /// 失败原因；为 null 表示未失败
+  final String? errorMessage;
+
+  const FinishNameCheckResult._({
+    required this.success,
+    this.newStudents,
+    this.errorMessage,
+  });
+
+  const FinishNameCheckResult.success() : this._(success: true);
+
+  const FinishNameCheckResult.newStudents(Map<int, List<StudentInfo>> students)
+      : this._(success: false, newStudents: students);
+
+  const FinishNameCheckResult.failed(String message)
+      : this._(success: false, errorMessage: message);
+
+  bool get hasNewStudents =>
+      newStudents != null && newStudents!.isNotEmpty;
+  bool get isFailed => errorMessage != null;
 }

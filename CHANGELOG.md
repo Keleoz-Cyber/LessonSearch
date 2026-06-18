@@ -4,6 +4,52 @@
 
 ---
 
+## v0.7.0 [进行中]
+
+### 记名流程稳定性修复
+
+- **markStudent 回滚修复** - 失败恢复时不再使用过时的局部变量，基于最新 state 副本回滚目标项；失败时 LoggerService 记录详细错误日志，前端弹 Toast 提示
+- **finishNameCheck 异常保护** - 整个方法包裹 try/catch，失败后 task 维持 inProgress 状态避免数据丢失；前端弹 Toast 并记录详细日志
+- **finishNameCheck 名单变化提示** - reconcile 检测到学生名单新增时，不再静默标已到；弹窗让用户选择"返回标记"或"全部按已到处理"
+- **finishNameCheck 新增 FinishNameCheckResult** - 返回结构化结果，UI 层根据 success/newStudents/errorMessage 分别处理
+
+### 提交流程增强
+
+- **提交确认后再校验** - 用户点"确认提交"后，再做一次 getSyncIssueCount + 任务存在性校验，防止确认对话框期间状态变化
+- **提交失败聚合展示** - 多任务提交时，不再只显示第一个错误；改为弹详情对话框，逐条显示班级名 + 错误原因
+- **周任务边界修复** - 任务过滤从 `isAfter` 改为 `!isBefore`，避免周一 00:00 整点创建的任务被重复识别
+- **服务端提交通过滤** - (新增 `_filter_valid_submission_records`) 提交时过滤学生已转班/不在任务班级的记录，无有效记录时返回 400
+
+### 同步服务稳定性
+
+- **syncNow 竞态修复** - 等待中同步结束时不再返回伪 (0,0,0)，改为缓存最近一次 `_lastResult`；若队列仍有项则触发新同步，只剩已放弃/认证过期项时正确计入 failed 计数
+- **SyncService remark 同步** - 批量/逐条 record/update 同步时传递 remark 字段，不再丢失备注内容
+
+### 本地记录编辑防护
+
+- **isSubmitted 网络异常禁止编辑** - 确认提交状态时网络失败，不再默认放行编辑；新增 `_submitStatusUnknown` 状态，禁用编辑按钮，顶部显示红色横幅 + 重试按钮
+
+### 服务端记录校验
+
+- **记录写入 membership 校验** - create_records 和 batch_update_records 新增 `_validate_student_record_membership`，校验学生存在、属于提交的班级、班级属于任务；不匹配时返回 400
+- **客户端 student 数据主动刷新** - ensureStudentsBatch 改为每次都 checkClassesUpdate，确保 reconcile 时拿到最新名单
+- **服务端活跃学生过滤** - getStudentsByClass 本地查询时参考服务端返回的 active_ids，过滤已被删除的学生
+
+### 测试新增
+
+- **记名 reconcile 测试** - `name_check_reconcile_test.dart`：验证按 studentId 保留状态、新增学生为 pending、已删除学生移除
+- **remark 同步测试** - `attendance_remote_ds_test.dart`：验证 create 和 update payload 正确携带 remark
+- **服务端记录校验测试** - `test_record_validation.py`：验证学生不属于班级/班级不属于任务时 400
+- **服务端提交通过滤测试** - `test_submission_record_filter.py`：验证学生转班后提交自动过滤脏记录
+
+### 技术债务（尚未修复）
+
+- **Bug 3** - reconcile 删除记录与 SyncQueue 中未消费的 create 项撞车（需在 LocalDS 加"取消队列项"逻辑）
+- **Bug 9** - updateRecord 底层未做已提交/已放弃防护（当前仅 UI 层拦截）
+- **Bug 11** - UI 同步状态判断口径不统一（代码味道，不影响功能）
+
+---
+
 ## v0.6.5
 
 ### 记名重复记录修复

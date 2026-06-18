@@ -35,13 +35,21 @@ class SyncService {
   static const _interval = Duration(seconds: 10);
 
   final ValueNotifier<SyncState> state = ValueNotifier(SyncState.idle);
-  
+
   // 同步进度：current=当前处理到第几个, total=总共需要同步几个
-  final ValueNotifier<({int current, int total})?> progress = ValueNotifier(null);
-  
+  final ValueNotifier<({int current, int total})?> progress = ValueNotifier(
+    null,
+  );
+
   // 使用 StreamController 确保每次同步完成都发送事件（即使结果相同）
-  final _syncCompleteController = StreamController<SyncCompleteEvent>.broadcast();
-  Stream<SyncCompleteEvent> get onSyncComplete => _syncCompleteController.stream;
+  final _syncCompleteController =
+      StreamController<SyncCompleteEvent>.broadcast();
+  Stream<SyncCompleteEvent> get onSyncComplete =>
+      _syncCompleteController.stream;
+
+  // 最近一次 processQueueWithStats 的统计结果，用于 syncNow 在"等待中"
+  // 路径下能拿到真实的成功/失败计数，而不是错误返回 (0,0,0)。
+  ({int success, int failed, int skipped})? _lastResult;
 
   SyncService(this._local, this._remote);
 
@@ -58,18 +66,32 @@ class SyncService {
 
   Future<({int success, int failed, int skipped})> syncNow() async {
     if (_isSyncing) {
-      // 如果正在同步，等待当前同步完成
+      // 已有同步在进行中，等待其完成
       LoggerService.sync('已有同步在进行，等待完成后再同步');
       while (_isSyncing) {
         await Future.delayed(const Duration(milliseconds: 100));
       }
-      // 等待完成后，检查是否还有未同步项（可能已被自动同步处理完）
-      final items = await _local.getPendingSyncItems();
-      if (items.isEmpty) {
-        return (success: 0, failed: 0, skipped: 0);
+      // 等待结束后：
+      // 1. 若队列已干净（无 pending/failed），可安全返回上一次的真实结果，
+      //    或在没有上一次结果时返回 (0,0,0)。
+      // 2. 若仍存在 pending/failed，触发一次同步并返回其真实结果。
+      //    这样能避免"提交前 syncNow 返回 (0,0,0) 让 failed=0 校验通过"的竞态。
+      final issueCount = await _local.getSyncIssueCount();
+      if (issueCount == 0) {
+        return _lastResult ?? (success: 0, failed: 0, skipped: 0);
       }
-      // 还有未同步项，继续同步（不递归调用 syncNow）
-      return processQueueWithStats();
+      // 还有未处理的同步项 → 实际处理一次
+      final result = await processQueueWithStats();
+      // 如果队列里只剩"已放弃(retry>=5)/认证过期(retry==999)"项，
+      // processQueueWithStats 不会处理它们，而是返回 (0,0,0)；
+      // 但此时仍存在同步问题，必须把这部分计入 failed，让调用方拒绝放行。
+      if (result.success == 0 && result.failed == 0) {
+        final remaining = await _local.getSyncIssueCount();
+        if (remaining > 0) {
+          return (success: 0, failed: remaining, skipped: 0);
+        }
+      }
+      return result;
     }
     return processQueueWithStats();
   }
@@ -114,24 +136,25 @@ class SyncService {
           final batchItems = <db.SyncQueueData>[];
           final batchPayloads = <Map<String, dynamic>>[];
           var j = i;
-          
+
           // 收集连续的 record update（最多 50 条一批）
           while (j < items.length &&
-                 items[j].entityType == 'record' &&
-                 items[j].action == 'update' &&
-                 batchItems.length < 50) {
+              items[j].entityType == 'record' &&
+              items[j].action == 'update' &&
+              batchItems.length < 50) {
             final batchItem = items[j];
             final payload = _parsePayload(batchItem.payload);
             final taskId = payload['task_id'] as String?;
             final studentId = payload['student_id'] as int?;
             final status = payload['status'] as String?;
-            
+
             if (taskId != null && studentId != null && status != null) {
               batchItems.add(batchItem);
               batchPayloads.add({
                 'task_id': taskId,
                 'student_id': studentId,
                 'status': status,
+                if (payload['remark'] != null) 'remark': payload['remark'],
               });
             }
             j++;
@@ -143,12 +166,16 @@ class SyncService {
               final result = await _remote.batchUpdateRecords(batchPayloads);
               final successList = (result['success'] as List<dynamic>?) ?? [];
               final failedList = (result['failed'] as List<dynamic>?) ?? [];
-              
+
               // 成功的标记为已同步
               for (final s in successList) {
                 final taskId = s['task_id'] as String;
                 final studentId = s['student_id'] as int;
-                final matchedItem = _findBatchItem(batchItems, taskId, studentId);
+                final matchedItem = _findBatchItem(
+                  batchItems,
+                  taskId,
+                  studentId,
+                );
                 if (matchedItem == null) {
                   LoggerService.sync(
                     '批量返回项找不到匹配: $taskId/$studentId',
@@ -159,13 +186,17 @@ class SyncService {
                 await _local.markSynced(matchedItem.id);
                 successCount++;
               }
-              
+
               // 失败的根据原因处理
               for (final f in failedList) {
                 final taskId = f['task_id'] as String;
                 final studentId = f['student_id'] as int;
                 final reason = f['reason'] as String;
-                final matchedItem = _findBatchItem(batchItems, taskId, studentId);
+                final matchedItem = _findBatchItem(
+                  batchItems,
+                  taskId,
+                  studentId,
+                );
                 if (matchedItem == null) {
                   LoggerService.sync(
                     '批量返回失败项找不到匹配: $taskId/$studentId',
@@ -173,7 +204,7 @@ class SyncService {
                   );
                   continue;
                 }
-                
+
                 if (reason.contains('记录不存在') ||
                     reason.contains('已提交审核') ||
                     reason.contains('该任务已放弃') ||
@@ -186,7 +217,10 @@ class SyncService {
                   );
                 } else {
                   final newRetry = matchedItem.retryCount + 1;
-                  await _local.markSyncFailed(matchedItem.id, retryCount: newRetry);
+                  await _local.markSyncFailed(
+                    matchedItem.id,
+                    retryCount: newRetry,
+                  );
                   failCount++;
                   if (newRetry >= _maxRetries) {
                     LoggerService.sync(
@@ -201,7 +235,7 @@ class SyncService {
                   }
                 }
               }
-              
+
               LoggerService.sync(
                 'BATCH OK: ${successList.length} 成功, ${failedList.length} 失败',
               );
@@ -215,14 +249,14 @@ class SyncService {
               final isNetwork =
                   e is DioException &&
                   (e.type == DioExceptionType.connectionTimeout ||
-                   e.type == DioExceptionType.sendTimeout ||
-                   e.type == DioExceptionType.receiveTimeout ||
-                   e.type == DioExceptionType.connectionError);
+                      e.type == DioExceptionType.sendTimeout ||
+                      e.type == DioExceptionType.receiveTimeout ||
+                      e.type == DioExceptionType.connectionError);
               final is401 =
                   combinedError.contains('401') ||
                   combinedError.contains('未登录') ||
                   combinedError.contains('Unauthorized');
-              
+
               if (is401) {
                 // 认证过期，整批标记为失败（需要重新登录）
                 for (final batchItem in batchItems) {
@@ -238,7 +272,10 @@ class SyncService {
                 // 网络错误，全部标记为失败并重试
                 for (final batchItem in batchItems) {
                   final newRetry = batchItem.retryCount + 1;
-                  await _local.markSyncFailed(batchItem.id, retryCount: newRetry);
+                  await _local.markSyncFailed(
+                    batchItem.id,
+                    retryCount: newRetry,
+                  );
                   failCount++;
                 }
                 LoggerService.sync(
@@ -279,9 +316,9 @@ class SyncService {
           final isNetwork =
               e is DioException &&
               (e.type == DioExceptionType.connectionTimeout ||
-               e.type == DioExceptionType.sendTimeout ||
-               e.type == DioExceptionType.receiveTimeout ||
-               e.type == DioExceptionType.connectionError);
+                  e.type == DioExceptionType.sendTimeout ||
+                  e.type == DioExceptionType.receiveTimeout ||
+                  e.type == DioExceptionType.connectionError);
           final is401 =
               combinedError.contains('401') ||
               combinedError.contains('未登录') ||
@@ -334,20 +371,19 @@ class SyncService {
             }
           }
         }
-        
+
         i++;
       }
 
       state.value = failCount > 0 ? SyncState.error : SyncState.idle;
       final result = (success: successCount, failed: failCount, skipped: 0);
-      
+      _lastResult = result;
+
       // 发送同步完成事件（使用 Stream 确保每次都会触发，即使结果相同）
-      _syncCompleteController.add(SyncCompleteEvent(
-        success: successCount,
-        failed: failCount,
-        skipped: 0,
-      ));
-      
+      _syncCompleteController.add(
+        SyncCompleteEvent(success: successCount, failed: failCount, skipped: 0),
+      );
+
       LoggerService.sync('完成: 成功=$successCount 失败=$failCount');
       return result;
     } finally {
@@ -442,7 +478,10 @@ class SyncService {
           ? jsonDecode(payloadJson) as Map<String, dynamic>
           : <String, dynamic>{};
     } catch (e) {
-      LoggerService.sync('JSON 解析失败: $entityType/$entityId - $e', isError: true);
+      LoggerService.sync(
+        'JSON 解析失败: $entityType/$entityId - $e',
+        isError: true,
+      );
       rethrow;
     }
 
@@ -494,6 +533,7 @@ class SyncService {
           studentId: payload['student_id'] as int,
           classId: payload['class_id'] as int,
           status: AttendanceStatus.fromString(payload['status'] as String),
+          remark: payload['remark'] as String?,
           createdAt: DateTime.now(),
           updatedAt: DateTime.now(),
         );
@@ -502,12 +542,18 @@ class SyncService {
         final taskId = payload['task_id'] as String?;
         final studentId = payload['student_id'] as int?;
         final status = AttendanceStatus.fromString(payload['status'] as String);
+        final remark = payload['remark'] as String?;
 
         if (taskId != null && studentId != null) {
-          await _remote.updateRecordByTaskStudent(taskId, studentId, status);
+          await _remote.updateRecordByTaskStudent(
+            taskId,
+            studentId,
+            status,
+            remark: remark,
+          );
         } else {
           final id = int.parse(recordId);
-          await _remote.updateRecord(id, status);
+          await _remote.updateRecord(id, status, remark: remark);
         }
     }
   }

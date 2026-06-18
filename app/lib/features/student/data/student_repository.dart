@@ -14,6 +14,7 @@ class StudentRepository {
 
   static const _keyBaseVersion = 'sync_base_version';
   static const _keyClassVersionPrefix = 'sync_class_version_';
+  static const _keyClassStudentIdsPrefix = 'sync_class_student_ids_';
   static const _keyDataVersion = 'data_version';
 
   StudentRepository(this._db, this._api, this._prefs);
@@ -78,6 +79,7 @@ class StudentRepository {
   Future<void> syncStudentsByClass(int classId) async {
     try {
       final studentsJson = await _api.getStudentsByClass(classId);
+      final serverIds = studentsJson.map((s) => s['id'] as int).toSet();
       await _db.transaction(() async {
         for (final s in studentsJson) {
           await _db
@@ -94,6 +96,10 @@ class StudentRepository {
               );
         }
       });
+      await _prefs.setStringList(
+        '$_keyClassStudentIdsPrefix$classId',
+        serverIds.map((id) => id.toString()).toList(),
+      );
     } catch (e) {
       throw Exception('syncStudentsByClass($classId) 失败: $e');
     }
@@ -162,7 +168,7 @@ class StudentRepository {
       for (final classId in classIds) {
         final serverVersion = classVersions[classId.toString()] as String?;
         final localVersion =
-            _prefs.getString('${_keyClassVersionPrefix}$classId') ?? '';
+            _prefs.getString('$_keyClassVersionPrefix$classId') ?? '';
 
         if (serverVersion != null && serverVersion != localVersion) {
           needUpdate.add(classId);
@@ -174,7 +180,7 @@ class StudentRepository {
         for (final classId in needUpdate) {
           final serverVersion = classVersions[classId.toString()] as String;
           await _prefs.setString(
-            '${_keyClassVersionPrefix}$classId',
+            '$_keyClassVersionPrefix$classId',
             serverVersion,
           );
         }
@@ -197,7 +203,7 @@ class StudentRepository {
         final serverVersion = classVersions[classId.toString()] as String?;
         if (serverVersion != null) {
           await _prefs.setString(
-            '${_keyClassVersionPrefix}$classId',
+            '$_keyClassVersionPrefix$classId',
             serverVersion,
           );
         }
@@ -206,6 +212,9 @@ class StudentRepository {
   }
 
   Future<void> ensureStudentsBatch(List<int> classIds) async {
+    await checkDataVersion();
+    await checkClassesUpdate(classIds);
+
     final missing = <int>[];
     for (final classId in classIds) {
       final count = await (_db.select(
@@ -226,7 +235,7 @@ class StudentRepository {
             final serverVersion = classVersions[classId.toString()] as String?;
             if (serverVersion != null) {
               await _prefs.setString(
-                '${_keyClassVersionPrefix}$classId',
+                '$_keyClassVersionPrefix$classId',
                 serverVersion,
               );
             }
@@ -307,7 +316,14 @@ class StudentRepository {
               ..where((s) => s.classId.equals(classId))
               ..orderBy([(s) => OrderingTerm.asc(s.studentNo)]))
             .get();
-    return rows
+    final activeIds = _prefs
+        .getStringList('$_keyClassStudentIdsPrefix$classId')
+        ?.map(int.parse)
+        .toSet();
+    final activeRows = activeIds == null
+        ? rows
+        : rows.where((r) => activeIds.contains(r.id));
+    return activeRows
         .map(
           (r) => StudentInfo(
             id: r.id,

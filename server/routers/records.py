@@ -2,11 +2,25 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.models import AttendanceTask, AttendanceRecord, Submission, SubmissionRecord, User
+from app.models import AttendanceTask, AttendanceRecord, Submission, SubmissionRecord, User, Student
 from app.schemas import RecordCreate, RecordUpdate, RecordOut, RecordBatchUpdateItem, RecordBatchUpdateResult
 from routers.auth import get_current_user
 
 router = APIRouter(prefix="/tasks/{task_id}/records", tags=["考勤记录"])
+
+
+def _validate_student_record_membership(
+    task_class_ids: set[int],
+    student: Student | None,
+    payload_class_id: int,
+) -> None:
+    """Validate that a record payload still matches the authoritative roster."""
+    if student is None:
+        raise HTTPException(status_code=400, detail="学生不存在")
+    if payload_class_id not in task_class_ids:
+        raise HTTPException(status_code=400, detail="班级不属于该任务")
+    if student.class_id != payload_class_id:
+        raise HTTPException(status_code=400, detail="学生不属于提交的班级")
 
 
 def _check_record_editable(record_id: int, current_user: User, db: Session) -> AttendanceRecord:
@@ -53,8 +67,13 @@ def create_records(task_id: str, body: list[RecordCreate], db: Session = Depends
     if task.user_id is not None and task.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="无权操作此任务")
 
+    task_class_ids = {tc.class_id for tc in task.task_classes}
+
     created = []
     for item in body:
+        student = db.query(Student).filter(Student.id == item.student_id).first()
+        _validate_student_record_membership(task_class_ids, student, item.class_id)
+
         existing = db.query(AttendanceRecord).filter(
             AttendanceRecord.task_id == task_id,
             AttendanceRecord.student_id == item.student_id,
@@ -80,7 +99,7 @@ def create_records(task_id: str, body: list[RecordCreate], db: Session = Depends
         record = AttendanceRecord(
             task_id=task_id,
             student_id=item.student_id,
-            class_id=item.class_id,
+            class_id=student.class_id,
             status=item.status,
             remark=item.remark,
         )
@@ -186,6 +205,31 @@ def batch_update_records(
             task = db.query(AttendanceTask).filter(
                 AttendanceTask.id == item.task_id
             ).first()
+            if not task:
+                failed.append({
+                    "task_id": item.task_id,
+                    "student_id": item.student_id,
+                    "reason": "任务不存在"
+                })
+                continue
+
+            student = db.query(Student).filter(
+                Student.id == item.student_id
+            ).first()
+            try:
+                _validate_student_record_membership(
+                    {tc.class_id for tc in task.task_classes},
+                    student,
+                    record.class_id,
+                )
+            except HTTPException as e:
+                failed.append({
+                    "task_id": item.task_id,
+                    "student_id": item.student_id,
+                    "reason": str(e.detail)
+                })
+                continue
+
             if task and task.status == "abandoned":
                 failed.append({
                     "task_id": item.task_id,

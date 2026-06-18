@@ -60,16 +60,20 @@ final weekNameCheckTasksProvider =
       final submittedIds = await ref.watch(submittedTaskIdsProvider.future);
       final weekData = await ref.watch(currentWeekProvider.future);
 
+      // 服务端返回的是纯日期（YYYY-MM-DD），DateTime.parse 解析后是
+      // 本地时间 00:00。包含整周（周一 00:00 起，含周一到周日全部时间）。
       final startDate = DateTime.parse(weekData['start_date'] as String);
       final endDate = DateTime.parse(weekData['end_date'] as String);
       final weekEnd = endDate.add(const Duration(days: 1));
 
       final tasks = await repo.getCompletedNameCheckTasks();
 
+      // 用 !isBefore(startDate) 避免边界遗漏：周一 00:00:00.000 创建的任务
+      // 应当属于本周（原代码 isAfter 是严格大于会漏掉这个边界）。
       final weekTasks = tasks
           .where(
             (t) =>
-                t.createdAt.isAfter(startDate) &&
+                !t.createdAt.isBefore(startDate) &&
                 t.createdAt.isBefore(weekEnd) &&
                 !submittedIds.contains(t.id),
           )
@@ -292,12 +296,53 @@ class _SubmissionPageState extends ConsumerState<SubmissionPage>
       return;
     }
 
+    // 用户确认后再做一次轻量校验：避免在确认对话框停留期间，
+    // 后台同步又失败、或被其他设备改坏数据导致绕过前面的校验。
+    {
+      final localDS = ref.read(attendanceLocalDSProvider);
+      final issueCount = await localDS.getSyncIssueCount();
+      if (issueCount > 0) {
+        if (mounted) {
+          Toast.show(context, '检测到 $issueCount 条同步问题，请处理后再提交');
+        }
+        return;
+      }
+      final repo = ref.read(attendanceRepositoryProvider);
+      final invalid = <String>[];
+      for (final taskId in _selectedTaskIds) {
+        final task = await repo.getTask(taskId);
+        if (task == null || task.status != TaskStatus.completed) {
+          invalid.add(taskId);
+        }
+      }
+      if (invalid.isNotEmpty) {
+        if (mounted) {
+          Toast.show(
+            context,
+            '${invalid.length} 个任务状态已变化，请重新选择后提交',
+          );
+          setState(() {
+            _selectedTaskIds.removeWhere((id) => invalid.contains(id));
+          });
+          ref.invalidate(weekNameCheckTasksProvider(weekNumber));
+        }
+        return;
+      }
+    }
+
     // 用户确认后执行提交
     setState(() => _loading = true);
 
     int successCount = 0;
     int failCount = 0;
-    final errors = <String>[];
+    // 用任务 id → 错误详情映射，便于后续聚合展示
+    final errors = <String, String>{};
+    // 任务 id → 班级名（用于在错误详情中显示更友好的标识）
+    final taskLabels = <String, String>{
+      for (final t in tasksConfirmData)
+        t['task_id'] as String:
+            (t['class_names'] as List?)?.join('、') ?? (t['task_id'] as String),
+    };
 
     for (final taskId in _selectedTaskIds) {
       try {
@@ -309,22 +354,68 @@ class _SubmissionPageState extends ConsumerState<SubmissionPage>
         successCount++;
       } catch (e) {
         failCount++;
-        final errorMsg = e.toString();
-        errors.add('$taskId: $errorMsg');
-        LoggerService.error('提交失败 [$taskId]: $errorMsg');
+        // 优先取 Exception("提交失败: detail") 的 detail 部分
+        final raw = e.toString();
+        final detail = raw.startsWith('Exception: ')
+            ? raw.substring('Exception: '.length)
+            : raw;
+        errors[taskId] = detail;
+        LoggerService.error('提交失败 [$taskId]: $detail');
       }
     }
 
     if (mounted) {
       if (failCount == 0) {
         Toast.show(context, '成功提交 $successCount 个任务');
+      } else if (successCount == 0 && errors.length == 1) {
+        // 只有一个失败：直接 toast，避免无谓弹窗
+        Toast.show(context, '提交失败: ${errors.values.first}');
       } else {
-        // 显示第一个错误的详细信息
-        final firstError = errors.isNotEmpty ? errors.first : '';
-        final detail = firstError.contains(': ') 
-            ? firstError.split(': ').skip(1).join(': ') 
-            : firstError;
-        Toast.show(context, '提交完成: $successCount 成功, $failCount 失败\n$detail');
+        // 多项混合结果：展示聚合详情，避免吞掉除第一条以外的错误
+        await showDialog<void>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            icon: Icon(
+              failCount > 0 ? Icons.error_outline : Icons.check_circle_outline,
+              color: failCount > 0 ? Colors.red : Colors.green,
+              size: 40,
+            ),
+            title: Text('提交完成: $successCount 成功 / $failCount 失败'),
+            content: SizedBox(
+              width: double.maxFinite,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: errors.entries.map((entry) {
+                    final label = taskLabels[entry.key] ?? entry.key;
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            label,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(entry.value),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('知道了'),
+              ),
+            ],
+          ),
+        );
       }
       _selectedTaskIds = [];
       ref.invalidate(submittedTaskIdsProvider);

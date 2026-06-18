@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../shared/providers.dart';
 import '../../../../shared/widgets/loading_overlay.dart';
+import '../../../../shared/widgets/toast.dart';
 import '../../../attendance/application/name_check_notifier.dart';
 import '../../../attendance/domain/models.dart';
 
@@ -29,6 +30,7 @@ class NameCheckPage extends ConsumerStatefulWidget {
 
 class _NameCheckPageState extends ConsumerState<NameCheckPage> {
   int? _focusedIndex = 0; // 默认选中第一个
+  bool _isMarking = false;
   final PageController _pageController = PageController();
 
   @override
@@ -64,7 +66,7 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
     final isSyncFailed = hasSyncFailed.when(
       data: (failed) => failed,
       loading: () => false,
-      error: (_, __) => false,
+      error: (error, stackTrace) => false,
     );
 
     if (state.isLoading) {
@@ -137,7 +139,11 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
     return _buildExecutingView(context, state, isSyncFailed);
   }
 
-  Widget _buildExecutingView(BuildContext context, NameCheckState state, bool isSyncFailed) {
+  Widget _buildExecutingView(
+    BuildContext context,
+    NameCheckState state,
+    bool isSyncFailed,
+  ) {
     final currentClass = state.currentClass;
     final students = state.currentStudents;
 
@@ -167,7 +173,9 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
             IconButton(
               icon: const Icon(Icons.check_circle_outline),
               tooltip: '确认名单',
-              onPressed: () => _showFinishDialog(context, state),
+              onPressed: _isMarking
+                  ? null
+                  : () => _showFinishDialog(context, state),
             ),
           ],
         ),
@@ -214,15 +222,16 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
                 color: Colors.red.withValues(alpha: 0.1),
                 child: Row(
                   children: [
-                    const Icon(Icons.error_outline, color: Colors.red, size: 18),
+                    const Icon(
+                      Icons.error_outline,
+                      color: Colors.red,
+                      size: 18,
+                    ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         '存在同步失败数据，为避免数据不一致，暂时禁止编辑。请先到同步问题详情处理。',
-                        style: TextStyle(
-                          color: Colors.red,
-                          fontSize: 13,
-                        ),
+                        style: TextStyle(color: Colors.red, fontSize: 13),
                       ),
                     ),
                   ],
@@ -359,33 +368,59 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
       setState(() => _focusedIndex = _focusedIndex);
     }
 
-    void mark(AttendanceStatus status, {String? remark}) {
-      if (_focusedIndex == null || _focusedIndex! >= students.length) return;
-      ref.read(feedbackServiceProvider).feedback();
-      ref
-          .read(nameCheckProvider.notifier)
-          .markStudent(classId, _focusedIndex!, status, remark: remark);
+    Future<void> mark(AttendanceStatus status, {String? remark}) async {
+      if (_isMarking ||
+          _focusedIndex == null ||
+          _focusedIndex! >= students.length) {
+        return;
+      }
+      final studentId = students[_focusedIndex!].student.id;
+      setState(() => _isMarking = true);
+      try {
+        ref.read(feedbackServiceProvider).feedback();
+        await ref
+            .read(nameCheckProvider.notifier)
+            .markStudentById(classId, studentId, status, remark: remark);
+        if (!mounted) return;
 
-      // 有pending时自动跳转，无pending时焦点不动
-      if (hasPendingInAllClasses) {
-        jumpToNextPending();
-      } else {
-        setState(() => _focusedIndex = _focusedIndex);
+        // 有pending时自动跳转，无pending时焦点不动
+        if (hasPendingInAllClasses) {
+          jumpToNextPending();
+        } else {
+          setState(() => _focusedIndex = _focusedIndex);
+        }
+      } catch (_) {
+        if (context.mounted) Toast.show(context, '标记失败，请重试');
+      } finally {
+        if (mounted) setState(() => _isMarking = false);
       }
     }
 
-    void markPresent() {
-      if (_focusedIndex == null || _focusedIndex! >= students.length) return;
-      ref.read(feedbackServiceProvider).feedback();
-      ref
-          .read(nameCheckProvider.notifier)
-          .markStudent(classId, _focusedIndex!, AttendanceStatus.present);
+    Future<void> markPresent() async {
+      if (_isMarking ||
+          _focusedIndex == null ||
+          _focusedIndex! >= students.length) {
+        return;
+      }
+      final studentId = students[_focusedIndex!].student.id;
+      setState(() => _isMarking = true);
+      try {
+        ref.read(feedbackServiceProvider).feedback();
+        await ref
+            .read(nameCheckProvider.notifier)
+            .markStudentById(classId, studentId, AttendanceStatus.present);
+        if (!mounted) return;
 
-      // 有pending时自动跳转，无pending时焦点不动
-      if (hasPendingInAllClasses) {
-        jumpToNextPending();
-      } else {
-        setState(() => _focusedIndex = _focusedIndex);
+        // 有pending时自动跳转，无pending时焦点不动
+        if (hasPendingInAllClasses) {
+          jumpToNextPending();
+        } else {
+          setState(() => _focusedIndex = _focusedIndex);
+        }
+      } catch (_) {
+        if (context.mounted) Toast.show(context, '标记失败，请重试');
+      } finally {
+        if (mounted) setState(() => _isMarking = false);
       }
     }
 
@@ -417,7 +452,7 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
         ),
       );
       if (result != null && result.isNotEmpty) {
-        mark(AttendanceStatus.other, remark: result);
+        await mark(AttendanceStatus.other, remark: result);
       }
     }
 
@@ -426,7 +461,7 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
     final isSyncFailed = hasSyncFailed.when(
       data: (failed) => failed,
       loading: () => false,
-      error: (_, __) => false,
+      error: (error, stackTrace) => false,
     );
 
     return Container(
@@ -452,7 +487,8 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
                   child: _ActionButton(
                     label: '缺勤',
                     color: Colors.red,
-                    onPressed: (!isSyncFailed && _focusedIndex != null)
+                    onPressed:
+                        (!isSyncFailed && !_isMarking && _focusedIndex != null)
                         ? () => mark(AttendanceStatus.absent)
                         : null,
                   ),
@@ -462,7 +498,8 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
                   child: _ActionButton(
                     label: '迟到',
                     color: Colors.amber.shade700,
-                    onPressed: (!isSyncFailed && _focusedIndex != null)
+                    onPressed:
+                        (!isSyncFailed && !_isMarking && _focusedIndex != null)
                         ? () => mark(AttendanceStatus.late_)
                         : null,
                   ),
@@ -472,7 +509,8 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
                   child: _ActionButton(
                     label: '请假',
                     color: Colors.blue,
-                    onPressed: (!isSyncFailed && _focusedIndex != null)
+                    onPressed:
+                        (!isSyncFailed && !_isMarking && _focusedIndex != null)
                         ? () => mark(AttendanceStatus.leave)
                         : null,
                   ),
@@ -482,7 +520,8 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
                   child: _ActionButton(
                     label: '其他',
                     color: Colors.grey,
-                    onPressed: (!isSyncFailed && _focusedIndex != null)
+                    onPressed:
+                        (!isSyncFailed && !_isMarking && _focusedIndex != null)
                         ? () => markOther()
                         : null,
                   ),
@@ -493,7 +532,8 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
             SizedBox(
               width: double.infinity,
               child: FilledButton(
-                onPressed: (!isSyncFailed && _focusedIndex != null)
+                onPressed:
+                    (!isSyncFailed && !_isMarking && _focusedIndex != null)
                     ? () => markPresent()
                     : null,
                 style: FilledButton.styleFrom(
@@ -530,13 +570,13 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
         ],
       ),
     );
-    if (!mounted) return;
+    if (!context.mounted) return;
     switch (result) {
       case 'save':
         context.pop();
       case 'abandon':
         await ref.read(nameCheckProvider.notifier).abandonTask();
-        if (mounted) context.pop();
+        if (context.mounted) context.pop();
       default:
         break;
     }
@@ -568,9 +608,111 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
         ],
       ),
     );
-    if (confirm == true) {
-      await ref.read(nameCheckProvider.notifier).finishNameCheck();
-      if (mounted) context.push('/confirmation');
+    if (confirm != true) return;
+    await _runFinish(forceMarkPending: false);
+  }
+
+  /// 执行 finishNameCheck，并按返回结果处理：成功跳转 / 名单变化弹窗 / 失败提示
+  Future<void> _runFinish({required bool forceMarkPending}) async {
+    final result = await ref
+        .read(nameCheckProvider.notifier)
+        .finishNameCheck(forceMarkPending: forceMarkPending);
+    if (!mounted) return;
+
+    if (result.success) {
+      context.push('/confirmation');
+      return;
+    }
+
+    if (result.isFailed) {
+      Toast.show(context, result.errorMessage ?? '结束记名失败，请重试');
+      return;
+    }
+
+    // 名单发生变化：新增了学生（reconcile 后），交由用户决定
+    if (result.hasNewStudents) {
+      await _showNewStudentsDialog(result.newStudents!);
+    }
+  }
+
+  /// 名单变化提示：发现新增学生，让用户选择"返回标记"或"全部按已到处理"
+  Future<void> _showNewStudentsDialog(
+    Map<int, List<StudentInfo>> newByClass,
+  ) async {
+    final state = ref.read(nameCheckProvider);
+    // 班级 id → 班级名（用于提示）
+    final classNameMap = {
+      for (final c in state.classes) c.id: c.displayName,
+    };
+    final totalNew = newByClass.values.fold<int>(0, (s, l) => s + l.length);
+
+    final action = await showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        return AlertDialog(
+          title: const Text('名单已更新'),
+          content: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('检测到名单新增 $totalNew 名学生（未标记），请选择处理方式：'),
+                const SizedBox(height: 12),
+                ...newByClass.entries.map((e) {
+                  final cls = classNameMap[e.key] ?? '未知班级';
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          cls,
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        ...e.value.map(
+                          (s) => Text('· ${s.name} (${s.studentNo})'),
+                        ),
+                      ],
+                    ),
+                  );
+                }),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, 'mark'),
+              child: const Text('返回标记'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, 'force'),
+              child: const Text('全部按已到处理'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (!mounted) return;
+    if (action == 'force') {
+      await _runFinish(forceMarkPending: true);
+    } else {
+      // 返回标记：跳到第一个新增学生所在班级，让用户继续处理
+      final firstClassId = newByClass.keys.first;
+      final classIndex =
+          state.classes.indexWhere((c) => c.id == firstClassId);
+      if (classIndex >= 0) {
+        ref.read(nameCheckProvider.notifier).switchClass(classIndex);
+        if (state.classes.length > 1) {
+          _pageController.animateToPage(
+            classIndex,
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeInOut,
+          );
+        }
+        setState(() => _focusedIndex = 0);
+      }
     }
   }
 }
