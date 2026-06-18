@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import 'core/router/app_router.dart';
 import 'core/logger/logger_service.dart';
+import 'shared/design_system/theme.dart';
 import 'shared/providers.dart';
 
 class App extends ConsumerStatefulWidget {
@@ -170,16 +171,8 @@ class _AppState extends ConsumerState<App> {
     return MaterialApp.router(
       title: '查课',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorSchemeSeed: Colors.blue,
-        useMaterial3: true,
-        brightness: Brightness.light,
-      ),
-      darkTheme: ThemeData(
-        colorSchemeSeed: Colors.blue,
-        useMaterial3: true,
-        brightness: Brightness.dark,
-      ),
+      theme: buildLightTheme(),
+      darkTheme: buildDarkTheme(),
       themeMode: themeMode,
       routerConfig: appRouter,
       builder: (context, child) {
