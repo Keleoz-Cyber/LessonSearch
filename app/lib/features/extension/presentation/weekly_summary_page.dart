@@ -541,8 +541,16 @@ class _CurrentWeekTab extends ConsumerWidget {
             color: statusColor,
           ),
           const SizedBox(width: 8),
-          Expanded(child: Text(userName)),
-          Text(statusText, style: TextStyle(color: statusColor, fontSize: 12)),
+          Expanded(child: Text(userName, overflow: TextOverflow.ellipsis)),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Text(
+              statusText,
+              style: TextStyle(color: statusColor, fontSize: 12),
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.end,
+            ),
+          ),
         ],
       ),
     );
@@ -1730,10 +1738,13 @@ class _ReviewedSubmissionCard extends ConsumerWidget {
                 children: [
                   Icon(Icons.person_outline, size: 16, color: Colors.grey),
                   const SizedBox(width: 4),
-                  Text(
-                    '审核人: $reviewerName',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  Flexible(
+                    child: Text(
+                      '审核人: $reviewerName',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                   const SizedBox(width: 12),

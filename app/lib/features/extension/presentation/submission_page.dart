@@ -819,7 +819,12 @@ class _SubmitButton extends ConsumerWidget {
           children: [
             const Icon(Icons.error_outline, size: 18),
             const SizedBox(width: 8),
-            Text('有 $count 条同步失败，请先处理'),
+            Flexible(
+              child: Text(
+                '有 $count 条同步失败，请先处理',
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
           ],
         ),
       );
@@ -848,10 +853,13 @@ class _SubmitButton extends ConsumerWidget {
               ),
               const SizedBox(width: 8),
             ],
-            Text(
-              isSyncing
-                  ? '正在同步 $count 条记录...'
-                  : '有 $count 条记录待同步，请等待',
+            Flexible(
+              child: Text(
+                isSyncing
+                    ? '正在同步 $count 条记录...'
+                    : '有 $count 条记录待同步，请等待',
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
           ],
         ),
