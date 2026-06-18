@@ -6,8 +6,13 @@ import 'package:go_router/go_router.dart';
 import '../../../core/announcement/announcement_service.dart';
 import '../../../core/resume/task_resume_checker.dart';
 import '../../../core/sync/sync_service.dart';
+import '../../../shared/design_system/colors.dart';
+import '../../../shared/design_system/tokens.dart';
+import '../../../shared/design_system/typography.dart';
+import '../../../shared/design_system/widgets/app_button.dart';
+import '../../../shared/design_system/widgets/app_card.dart';
+import '../../../shared/design_system/widgets/sync_status_banner.dart';
 import '../../../shared/providers.dart';
-import '../../../shared/widgets/entry_card.dart';
 
 class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
@@ -117,239 +122,264 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    final syncState = ref.watch(syncStateProvider);
-    final issueCount = ref.watch(syncIssueCountProvider);
-
+    final c = context.colors;
     return Scaffold(
-      appBar: AppBar(
-        title: GestureDetector(
-          onLongPress: () => context.push('/debug/sync'),
-          child: const Text('查课'),
-        ),
-        centerTitle: true,
-        actions: [
-          // 同步状态指示器（带数量徽章）
-          issueCount.when(
-            data: (count) {
-              if (count == 0 && syncState != SyncState.syncing) {
-                return const SizedBox.shrink();
-              }
-              return Stack(
-                alignment: Alignment.center,
-                children: [
-                  if (syncState == SyncState.syncing)
-                    const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  else if (syncState == SyncState.error)
-                    IconButton(
-                      icon: const Icon(Icons.sync_problem, color: Colors.red),
-                      tooltip: '同步异常，点击重试',
-                      onPressed: () => ref.read(syncServiceProvider).syncNow(),
-                    )
-                  else
-                    IconButton(
-                      icon: const Icon(Icons.sync),
-                      tooltip: '同步记录',
-                      onPressed: () => ref.read(syncServiceProvider).syncNow(),
-                    ),
-                  // 数量徽章
-                  if (count > 0 && syncState != SyncState.syncing)
-                    Positioned(
-                      right: 4,
-                      top: 4,
-                      child: Container(
-                        padding: const EdgeInsets.all(2),
-                        decoration: BoxDecoration(
-                          color: Colors.red,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        constraints: const BoxConstraints(
-                          minWidth: 16,
-                          minHeight: 16,
-                        ),
-                        child: Text(
-                          count > 99 ? '99+' : '$count',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    ),
-                ],
-              );
-            },
-            loading: () => const SizedBox.shrink(),
-            error: (_, __) => const SizedBox.shrink(),
-          ),
-          IconButton(
-            icon: const Icon(Icons.settings_outlined),
-            tooltip: '设置',
-            onPressed: () => context.push('/settings'),
-          ),
-        ],
-      ),
+      backgroundColor: c.bgCanvas,
       body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // 未同步记录警告卡片
-                _buildSyncWarningCard(),
-                EntryCard(
-                  icon: Icons.record_voice_over,
-                  title: '点名',
-                  subtitle: '按学号依次点名',
-                  color: Colors.blue,
-                  onTap: () => _checkLoginAndNavigate('/roll-call/select'),
-                ),
-                const SizedBox(height: 16),
-                EntryCard(
-                  icon: Icons.checklist,
-                  title: '记名',
-                  subtitle: '逐人记录考勤状态',
-                  color: Colors.green,
-                  onTap: () => _checkLoginAndNavigate('/name-check/select'),
-                ),
-                const SizedBox(height: 16),
-                EntryCard(
-                  icon: Icons.history,
-                  title: '查课记录',
-                  subtitle: '查看与编辑历史记录',
-                  color: Colors.orange,
-                  onTap: () => _checkLoginAndNavigate('/records'),
-                ),
-                const SizedBox(height: 16),
-                EntryCard(
-                  icon: Icons.extension,
-                  title: '扩展功能',
-                  subtitle: '导入、提交、汇总、排行',
-                  color: Colors.purple,
-                  onTap: () => _checkLoginAndNavigate('/extension'),
-                ),
-              ],
+        child: CustomScrollView(
+          slivers: [
+            SliverToBoxAdapter(child: _buildHero()),
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+              sliver: SliverList.list(
+                children: [
+                  _buildSyncWarningCard(),
+                  const SizedBox(height: AppSpacing.lg),
+                  _buildPrimaryActions(),
+                  const SizedBox(height: AppSpacing.lg),
+                  _buildSecondaryActions(),
+                  const SizedBox(height: AppSpacing.xl),
+                ],
+              ),
             ),
-          ),
+          ],
         ),
       ),
     );
   }
 
-  /// 未同步记录警告卡片
+  Widget _buildHero() {
+    final c = context.colors;
+    final syncState = ref.watch(syncStateProvider);
+    final issueCount = ref.watch(syncIssueCountProvider);
+    final count = issueCount.valueOrNull ?? 0;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.lg,
+        AppSpacing.lg,
+        AppSpacing.lg,
+        AppSpacing.md,
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                GestureDetector(
+                  onLongPress: () => context.push('/debug/sync'),
+                  child: Text(
+                    '考勤助手',
+                    style: AppTextStyles.display.copyWith(color: c.textPrimary),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '高效记录课堂考勤',
+                  style: AppTextStyles.sm.copyWith(color: c.textSecondary),
+                ),
+              ],
+            ),
+          ),
+          _buildSyncIndicator(syncState, count),
+          IconButton(
+            icon: Icon(Icons.settings_outlined, color: c.textSecondary),
+            tooltip: '设置',
+            onPressed: () => context.push('/settings'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSyncIndicator(SyncState state, int count) {
+    final c = context.colors;
+    if (count == 0 && state != SyncState.syncing) return const SizedBox.shrink();
+
+    IconData icon;
+    Color color;
+    if (state == SyncState.syncing) {
+      icon = Icons.sync;
+      color = c.stateInfo;
+    } else if (state == SyncState.error) {
+      icon = Icons.sync_problem;
+      color = c.stateDanger;
+    } else {
+      icon = Icons.sync;
+      color = c.stateWarning;
+    }
+
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        IconButton(
+          icon: Icon(icon, color: color),
+          tooltip: state == SyncState.error ? '同步异常，点击重试' : '同步记录',
+          onPressed: () => ref.read(syncServiceProvider).syncNow(),
+        ),
+        if (count > 0 && state != SyncState.syncing)
+          Positioned(
+            right: 4,
+            top: 4,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+              decoration: BoxDecoration(
+                color: c.stateDanger,
+                borderRadius: BorderRadius.circular(AppRadius.full),
+              ),
+              constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+              child: Text(
+                count > 99 ? '99+' : '$count',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildPrimaryActions() {
+    return Row(
+      children: [
+        Expanded(
+          flex: 7,
+          child: SizedBox(
+            height: 88,
+            child: AppButton.gradient(
+              label: '开始记名',
+              onPressed: () => _checkLoginAndNavigate('/name-check/select'),
+              leadingIcon: Icons.checklist,
+              fullWidth: true,
+            ),
+          ),
+        ),
+        const SizedBox(width: AppSpacing.md),
+        Expanded(
+          flex: 3,
+          child: SizedBox(
+            height: 88,
+            child: AppButton.secondary(
+              label: '点名',
+              onPressed: () => _checkLoginAndNavigate('/roll-call/select'),
+              leadingIcon: Icons.record_voice_over,
+              fullWidth: true,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSecondaryActions() {
+    return GridView.count(
+      crossAxisCount: 2,
+      crossAxisSpacing: AppSpacing.md,
+      mainAxisSpacing: AppSpacing.md,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      childAspectRatio: 1.5,
+      children: [
+        _buildEntryCard(
+          icon: Icons.history,
+          title: '查课记录',
+          subtitle: '查看与编辑历史',
+          onTap: () => _checkLoginAndNavigate('/records'),
+        ),
+        _buildEntryCard(
+          icon: Icons.extension,
+          title: '扩展功能',
+          subtitle: '提交、汇总、排行',
+          onTap: () => _checkLoginAndNavigate('/extension'),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildEntryCard({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    final c = context.colors;
+    return AppCard(
+      onTap: onTap,
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: c.brandSubtle,
+              borderRadius: BorderRadius.circular(AppRadius.normal),
+            ),
+            child: Icon(icon, size: 18, color: c.brandPrimary),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(title, style: AppTextStyles.h3.copyWith(color: c.textPrimary)),
+              const SizedBox(height: 2),
+              Text(
+                subtitle,
+                style: AppTextStyles.sm.copyWith(color: c.textSecondary),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildSyncWarningCard() {
     final issueCount = ref.watch(syncIssueCountProvider);
     final syncState = ref.watch(syncStateProvider);
     final hasSyncFailed = ref.watch(hasSyncFailedProvider);
-    final isSyncFailed = hasSyncFailed.when(
-      data: (failed) => failed,
-      loading: () => false,
-      error: (_, __) => false,
-    );
+    final isSyncFailed = hasSyncFailed.valueOrNull ?? false;
 
     return issueCount.when(
       data: (count) {
         if (count == 0) return const SizedBox.shrink();
 
-        // 如果有未同步记录且当前不在同步中，自动触发同步
         if (syncState != SyncState.syncing && count > 0) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             ref.read(syncServiceProvider).syncNow();
           });
         }
 
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 16),
-          child: Card(
-            color: isSyncFailed
-                ? Colors.red.withValues(alpha: 0.1)
-                : syncState == SyncState.syncing
-                    ? Colors.blue.withValues(alpha: 0.1)
-                    : Colors.orange.withValues(alpha: 0.1),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-              side: BorderSide(
-                color: isSyncFailed
-                    ? Colors.red.withValues(alpha: 0.3)
-                    : syncState == SyncState.syncing
-                        ? Colors.blue.withValues(alpha: 0.3)
-                        : Colors.orange.withValues(alpha: 0.3),
-              ),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: isSyncFailed
-                          ? Colors.red.withValues(alpha: 0.2)
-                          : syncState == SyncState.syncing
-                              ? Colors.blue.withValues(alpha: 0.2)
-                              : Colors.orange.withValues(alpha: 0.2),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      isSyncFailed
-                          ? Icons.error_outline
-                          : syncState == SyncState.syncing
-                              ? Icons.sync
-                              : Icons.warning_amber,
-                      color: isSyncFailed
-                          ? Colors.red
-                          : syncState == SyncState.syncing
-                              ? Colors.blue
-                              : Colors.orange,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          isSyncFailed
-                              ? '有 $count 条数据同步失败，请先处理后再继续编辑或提交'
-                              : syncState == SyncState.syncing
-                                  ? '正在自动同步 $count 条记录...'
-                                  : '有 $count 条记录未同步',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 15,
-                            color: isSyncFailed ? Colors.red : null,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                          maxLines: 1,
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          isSyncFailed
-                              ? '存在同步失败数据，请点击右上角同步图标查看详情'
-                              : syncState == SyncState.syncing
-                                  ? '同步期间请避免编辑记录或提交审核，以防数据冲突'
-                                  : '系统将在后台自动同步，请避免重复编辑同一条记录',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: isSyncFailed ? Colors.red[600] : Colors.grey[600],
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                          maxLines: 2,
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
+        final state = isSyncFailed
+            ? SyncBannerState.failed
+            : syncState == SyncState.syncing
+                ? SyncBannerState.syncing
+                : SyncBannerState.unknown;
+
+        final title = isSyncFailed
+            ? '$count 条数据同步失败'
+            : syncState == SyncState.syncing
+                ? '正在自动同步 $count 条记录'
+                : '$count 条记录待同步';
+
+        final desc = isSyncFailed
+            ? '请先处理后再继续编辑或提交'
+            : syncState == SyncState.syncing
+                ? '请避免同时编辑或提交，防止冲突'
+                : '系统将在后台自动同步';
+
+        return SyncStatusBanner(
+          state: state,
+          title: title,
+          description: desc,
         );
       },
       loading: () => const SizedBox.shrink(),
