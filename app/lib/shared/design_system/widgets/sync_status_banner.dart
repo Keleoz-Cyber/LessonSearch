@@ -43,7 +43,7 @@ class SyncStatusBanner extends StatelessWidget {
       child: Row(
         children: [
           Icon(icon, color: color, size: 18),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -64,7 +64,7 @@ class SyncStatusBanner extends StatelessWidget {
             ),
           ),
           if (actionLabel != null && onAction != null) ...[
-            const SizedBox(width: 8),
+            const SizedBox(width: AppSpacing.sm),
             AppButton.ghost(
               label: actionLabel!,
               onPressed: onAction,
