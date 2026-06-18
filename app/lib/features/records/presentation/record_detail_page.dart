@@ -429,7 +429,7 @@ class _RecordDetailPageState extends ConsumerState<RecordDetailPage> {
       return const Padding(
         padding: EdgeInsets.fromLTRB(16, 12, 16, 0),
         child: SyncStatusBanner(
-          state: SyncBannerState.unknown,
+          state: SyncBannerState.ready,
           title: '该记录已放弃',
           description: '仅可查看，不可编辑或提交',
         ),
