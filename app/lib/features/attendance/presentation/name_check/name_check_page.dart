@@ -295,7 +295,9 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
       },
       child: Scaffold(
         appBar: PreferredSize(
-          preferredSize: const Size.fromHeight(72),
+          preferredSize: Size.fromHeight(
+            72 + MediaQuery.paddingOf(context).top,
+          ),
           child: _buildTopBar(context, state),
         ),
         body: Column(
