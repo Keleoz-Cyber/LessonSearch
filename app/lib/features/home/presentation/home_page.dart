@@ -134,7 +134,6 @@ class _HomePageState extends ConsumerState<HomePage> {
               sliver: SliverList.list(
                 children: [
                   _buildSyncWarningCard(),
-                  const SizedBox(height: AppSpacing.lg),
                   _buildPrimaryActions(),
                   const SizedBox(height: AppSpacing.lg),
                   _buildSecondaryActions(),
@@ -216,7 +215,16 @@ class _HomePageState extends ConsumerState<HomePage> {
       alignment: Alignment.center,
       children: [
         IconButton(
-          icon: Icon(icon, color: color),
+          icon: state == SyncState.syncing
+              ? SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation(color),
+                  ),
+                )
+              : Icon(icon, color: color),
           tooltip: state == SyncState.error ? '同步异常，点击重试' : '同步记录',
           onPressed: () => ref.read(syncServiceProvider).syncNow(),
         ),
@@ -376,10 +384,13 @@ class _HomePageState extends ConsumerState<HomePage> {
                 ? '请避免同时编辑或提交，防止冲突'
                 : '系统将在后台自动同步';
 
-        return SyncStatusBanner(
-          state: state,
-          title: title,
-          description: desc,
+        return Padding(
+          padding: const EdgeInsets.only(bottom: AppSpacing.lg),
+          child: SyncStatusBanner(
+            state: state,
+            title: title,
+            description: desc,
+          ),
         );
       },
       loading: () => const SizedBox.shrink(),
