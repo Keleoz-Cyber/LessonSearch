@@ -32,29 +32,35 @@ class AppSegmentedControl<T> extends StatelessWidget {
         children: items.map((item) {
           final selected = item.value == value;
           return Expanded(
-            child: GestureDetector(
-              onTap: () => onChanged(item.value),
-              child: AnimatedContainer(
-                duration: AppDuration.fast,
-                curve: AppCurves.fast,
-                decoration: BoxDecoration(
-                  color: selected ? c.bgSurface : Colors.transparent,
-                  borderRadius: BorderRadius.circular(AppRadius.sm),
-                  boxShadow: selected
-                      ? const [
-                          BoxShadow(
-                            color: Color(0x0D000000),
-                            blurRadius: 2,
-                            offset: Offset(0, 1),
-                          ),
-                        ]
-                      : null,
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  item.label,
-                  style: AppTextStyles.bodyMedium.copyWith(
-                    color: selected ? c.textPrimary : c.textSecondary,
+            child: Semantics(
+              button: true,
+              selected: selected,
+              label: item.label,
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () => onChanged(item.value),
+                child: AnimatedContainer(
+                  duration: AppDuration.fast,
+                  curve: AppCurves.fast,
+                  decoration: BoxDecoration(
+                    color: selected ? c.bgSurface : Colors.transparent,
+                    borderRadius: BorderRadius.circular(AppRadius.sm),
+                    boxShadow: selected
+                        ? const [
+                            BoxShadow(
+                              color: Color(0x0D000000),
+                              blurRadius: 2,
+                              offset: Offset(0, 1),
+                            ),
+                          ]
+                        : null,
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    item.label,
+                    style: AppTextStyles.bodyMedium.copyWith(
+                      color: selected ? c.textPrimary : c.textSecondary,
+                    ),
                   ),
                 ),
               ),
