@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../colors.dart';
-import '../tokens.dart';
 import '../typography.dart';
 
 class AppInput extends StatelessWidget {
@@ -63,11 +62,6 @@ class AppInput extends StatelessWidget {
             suffix: suffix,
             errorText: errorText,
             errorStyle: AppTextStyles.sm.copyWith(color: c.stateDanger),
-            isDense: true,
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.md,
-              vertical: AppSpacing.sm + 2,
-            ),
           ),
         ),
       ],
