@@ -93,7 +93,7 @@ class _ToastWidgetState extends State<_ToastWidget>
                   decoration: BoxDecoration(
                     color: c.bgElevated,
                     borderRadius: BorderRadius.circular(AppRadius.md),
-                    border: Border.all(color: c.borderSubtle),
+                    border: Border.all(color: c.borderDefault),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withValues(alpha: 0.15),
