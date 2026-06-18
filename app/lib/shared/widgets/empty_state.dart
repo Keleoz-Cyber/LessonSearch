@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
 
+import '../design_system/colors.dart';
+import '../design_system/tokens.dart';
+import '../design_system/typography.dart';
+import '../design_system/widgets/app_card.dart';
+
 class EmptyState extends StatelessWidget {
   final IconData icon;
   final String message;
@@ -76,28 +81,35 @@ class EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final effectiveColor = color ?? Colors.grey;
+    final c = context.colors;
+    final iconColor = color ?? c.textTertiary;
+    final textColor = color ?? c.textPrimary;
 
     return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 48, color: effectiveColor.withValues(alpha: 0.6)),
-            const SizedBox(height: 16),
-            Text(
-              message,
-              style: TextStyle(fontSize: 14, color: effectiveColor),
-            ),
-            if (hint != null) ...[
-              const SizedBox(height: 8),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 320),
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.xl),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 32, color: iconColor),
+              const SizedBox(height: AppSpacing.lg),
               Text(
-                hint!,
-                style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                message,
+                textAlign: TextAlign.center,
+                style: AppTextStyles.h3.copyWith(color: textColor),
               ),
+              if (hint != null) ...[
+                const SizedBox(height: AppSpacing.sm),
+                Text(
+                  hint!,
+                  textAlign: TextAlign.center,
+                  style: AppTextStyles.sm.copyWith(color: c.textSecondary),
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );
@@ -144,17 +156,13 @@ class EmptyStateCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final effectiveColor = color ?? Colors.grey;
-
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: EmptyState(
-          icon: icon,
-          message: message,
-          hint: hint,
-          color: effectiveColor,
-        ),
+    return AppCard(
+      padding: const EdgeInsets.all(AppSpacing.xl),
+      child: EmptyState(
+        icon: icon,
+        message: message,
+        hint: hint,
+        color: color,
       ),
     );
   }

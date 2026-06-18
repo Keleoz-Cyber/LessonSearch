@@ -2,6 +2,10 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../design_system/colors.dart';
+import '../design_system/tokens.dart';
+import '../design_system/typography.dart';
+
 class Toast {
   static void show(BuildContext context, String message) {
     final overlay = Overlay.of(context);
@@ -66,9 +70,7 @@ class _ToastWidgetState extends State<_ToastWidget>
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bgColor = isDark ? Colors.grey.shade800 : Colors.grey.shade700;
-    final textColor = Colors.white;
+    final c = context.colors;
 
     return Positioned(
       bottom: 80,
@@ -83,14 +85,15 @@ class _ToastWidgetState extends State<_ToastWidget>
               child: Material(
                 color: Colors.transparent,
                 child: Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 24),
+                  margin: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 12,
+                    horizontal: AppSpacing.lg,
+                    vertical: AppSpacing.md,
                   ),
                   decoration: BoxDecoration(
-                    color: bgColor,
-                    borderRadius: BorderRadius.circular(24),
+                    color: c.bgElevated,
+                    borderRadius: BorderRadius.circular(AppRadius.md),
+                    border: Border.all(color: c.borderSubtle),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withValues(alpha: 0.15),
@@ -101,10 +104,8 @@ class _ToastWidgetState extends State<_ToastWidget>
                   ),
                   child: Text(
                     widget.message,
-                    style: TextStyle(
-                      color: textColor,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w500,
+                    style: AppTextStyles.bodyMedium.copyWith(
+                      color: c.textPrimary,
                     ),
                     textAlign: TextAlign.center,
                   ),
