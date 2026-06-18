@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../colors.dart';
 import '../tokens.dart';
+import '../typography.dart';
 
 class BottomActionBar extends StatelessWidget {
   /// 顶部可选信息文字（如"已选 3 个任务，共 90 条记录"）
@@ -49,22 +50,20 @@ class BottomActionBar extends StatelessWidget {
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               if (hintText != null) ...[
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    hintText!,
-                    style: TextStyle(fontSize: 13, color: c.textSecondary),
-                  ),
+                Text(
+                  hintText!,
+                  style: AppTextStyles.sm.copyWith(color: c.textSecondary),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: AppSpacing.sm),
               ],
               Row(
                 children: [
                   if (secondary != null) ...[
                     secondary!,
-                    const SizedBox(width: 12),
+                    const SizedBox(width: AppSpacing.md),
                   ],
                   Expanded(child: primary),
                 ],
