@@ -4,7 +4,7 @@
 
 ---
 
-## v0.7.0 [进行中]
+## v0.7.0
 
 ### 记名流程稳定性修复
 
@@ -42,11 +42,33 @@
 - **服务端记录校验测试** - `test_record_validation.py`：验证学生不属于班级/班级不属于任务时 400
 - **服务端提交通过滤测试** - `test_submission_record_filter.py`：验证学生转班后提交自动过滤脏记录
 
+### UI 重设计（设计系统 + 4 核心页）
+
+- **全新 Design System** - tokens（间距/圆角/动效）+ AppColors 双主题色板（中性灰 + sky→blue 渐变）+ AppTextStyles 字号阶梯 + buildLightTheme/buildDarkTheme
+- **9 个核心组件** - AppButton（4 variant × 3 size）/ AppCard / StatusPill / AppInput / AppTopBar / BottomActionBar / AppSegmentedControl / SyncStatusBanner / SegmentedProgressBar，含针对性单元/Widget 测试
+- **首页重做** - hero 区 + 渐变主 CTA "开始记名" + 次入口紧凑网格 + 整合后的同步状态卡，syncing 状态恢复进度条动画反馈
+- **记名页重做** - 顶部 5 段彩色进度条（绿/红/黄/蓝/紫/灰）+ segmented 班级切换 + 紧凑学生卡片（焦点品牌色边框 + 状态胶囊）+ 当前学生姓名预览 + 顶栏高度自适配状态栏
+- **提交页重做** - SegmentedControl 替代 TabBar（保留 controller 监听器）+ 单一 SyncStatusBanner + 紧凑可选任务卡片 + 固定 BottomActionBar，swipe 切换 tab 与 segmented 同步
+- **记录详情页重做** - 顶部信息卡（班级 + 状态胶囊 + 5 段进度条 + 数字统计）+ 4 种状态横幅整合 + StatusPill 替代纯背景色变化
+- **旧组件 API 兼容** - EntryCard / StatusBadge / EmptyState / LoadingOverlay / Toast 保留，未改造页面继续可用
+
+### 视觉细节
+
+- 字号阶梯采用 8 档（display 28 / h1 22 / h2 18 / h3 16 / body 14 / bodyMedium 14/500 / sm 13 / xs 11）
+- 学号、数字栏、时间戳统一使用等宽数字（FontFeature.tabularFigures）
+- 圆角默认 6 px（按钮/输入框）+ 8 px（卡片）+ 4 px（标签胶囊），比 M3 默认 12 px 更锐利
+- 暗模式弃用阴影，改用 1 px 边框区分层级；Toast/LoadingOverlay 暗模式边框升级为 borderDefault 提升可见性
+- 触摸操作 < 200 ms easeOut，元素位移 < 200 ms easeInOut
+- AppCard 改用 Material > Ink > InkWell 模式，确保点击涟漪在彩色背景上可见
+- AppSegmentedControl 修复透明段点击死区，并增加 a11y 语义
+- SegmentedProgressBar 增加输入断言与契约文档，避免 flex < 0 运行时崩溃
+
 ### 技术债务（尚未修复）
 
 - **Bug 3** - reconcile 删除记录与 SyncQueue 中未消费的 create 项撞车（需在 LocalDS 加"取消队列项"逻辑）
 - **Bug 9** - updateRecord 底层未做已提交/已放弃防护（当前仅 UI 层拦截）
 - **Bug 11** - UI 同步状态判断口径不统一（代码味道，不影响功能）
+- **UI 跟进** - AppCard 可点击变体改用 AnimatedContainer 让 selected 切换有过渡；新增 AppButtonSize.xl 让首页 88px 高度从 caller 端 SizedBox hack 迁移到设计系统；首页 hero 标题加 maxLines=1+ellipsis；首页同步指示器 IconButton 缩小内边距让角标更贴近图标；_buildSyncWarningCard 自动 syncNow 触发改用 initState 监听器
 
 ---
 
