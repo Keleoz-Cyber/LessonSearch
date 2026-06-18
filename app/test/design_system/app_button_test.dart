@@ -34,4 +34,25 @@ void main() {
     )));
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
   });
+
+  testWidgets('loading 时不可点击', (tester) async {
+    var tapped = false;
+    await tester.pumpWidget(wrap(AppButton.primary(
+      label: '确认',
+      onPressed: () => tapped = true,
+      loading: true,
+    )));
+    await tester.tap(find.text('确认'));
+    expect(tapped, isFalse);
+  });
+
+  testWidgets('gradient 变体应用渐变', (tester) async {
+    await tester.pumpWidget(wrap(AppButton.gradient(
+      label: '开始',
+      onPressed: () {},
+    )));
+    final container = tester.widget<AnimatedContainer>(find.byType(AnimatedContainer));
+    final decoration = container.decoration as BoxDecoration;
+    expect(decoration.gradient, isNotNull);
+  });
 }
