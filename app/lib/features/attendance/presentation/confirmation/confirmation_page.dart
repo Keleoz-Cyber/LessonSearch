@@ -2,8 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../shared/design_system/colors.dart';
+import '../../../../shared/design_system/tokens.dart';
+import '../../../../shared/design_system/typography.dart';
+import '../../../../shared/design_system/widgets/app_button.dart';
+import '../../../../shared/design_system/widgets/app_card.dart';
+import '../../../../shared/design_system/widgets/bottom_action_bar.dart';
+import '../../../../shared/design_system/widgets/status_pill.dart';
 import '../../../../shared/providers.dart';
-import '../../../../shared/widgets/status_badge.dart';
 import '../../../../shared/widgets/empty_state.dart';
 import '../../../attendance/domain/models.dart';
 
@@ -18,8 +24,16 @@ class ConfirmationPage extends ConsumerWidget {
 
     if (task == null) {
       return Scaffold(
+        backgroundColor: context.colors.bgCanvas,
         appBar: AppBar(title: const Text('确认名单')),
-        body: const Center(child: Text('无任务数据')),
+        body: Center(
+          child: Text(
+            '无任务数据',
+            style: AppTextStyles.body.copyWith(
+              color: context.colors.textSecondary,
+            ),
+          ),
+        ),
       );
     }
 
@@ -53,6 +67,8 @@ class ConfirmationPage extends ConsumerWidget {
       (sum, list) => sum + list.length,
     );
 
+    final c = context.colors;
+
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, result) {
@@ -61,85 +77,133 @@ class ConfirmationPage extends ConsumerWidget {
         context.pop();
       },
       child: Scaffold(
+        backgroundColor: c.bgCanvas,
         appBar: AppBar(title: const Text('确认名单')),
         body: Column(
           children: [
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              color: Theme.of(
-                context,
-              ).colorScheme.primaryContainer.withValues(alpha: 0.3),
-              child: Text(
-                '共 $totalStudents 人，异常 $abnormalCount 人'
-                '${abnormalCount == 0 ? "（全部到齐）" : ""}',
-                style: Theme.of(context).textTheme.titleMedium,
-                textAlign: TextAlign.center,
-              ),
+            _SummaryHeader(
+              totalStudents: totalStudents,
+              abnormalCount: abnormalCount,
             ),
-
             Expanded(
               child: abnormalByClass.isEmpty
-                  ? EmptyStateCard.noAbnormal()
+                  ? Padding(
+                      padding: const EdgeInsets.all(AppSpacing.lg),
+                      child: EmptyStateCard.noAbnormal(),
+                    )
                   : ListView(
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.all(AppSpacing.lg),
                       children: abnormalByClass.entries.map((entry) {
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Padding(
-                              padding: const EdgeInsets.only(top: 8, bottom: 8),
-                              child: Text(
-                                entry.key,
-                                style: Theme.of(context).textTheme.titleSmall
-                                    ?.copyWith(fontWeight: FontWeight.bold),
-                              ),
+                        return Padding(
+                          padding: const EdgeInsets.only(
+                            bottom: AppSpacing.md,
+                          ),
+                          child: AppCard(
+                            padding: const EdgeInsets.all(AppSpacing.lg),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        entry.key,
+                                        style: AppTextStyles.h3.copyWith(
+                                          color: c.textPrimary,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                    const SizedBox(width: AppSpacing.sm),
+                                    Text(
+                                      '${entry.value.length} 人异常',
+                                      style: AppTextStyles.sm.copyWith(
+                                        color: c.textSecondary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: AppSpacing.sm),
+                                ...entry.value.map(
+                                  (e) => _AbnormalRow(entry: e),
+                                ),
+                              ],
                             ),
-                            ...entry.value.map((e) => _AbnormalRow(entry: e)),
-                            const Divider(),
-                          ],
+                          ),
                         );
                       }).toList(),
                     ),
             ),
-
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: SafeArea(
-                top: false,
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () {
-                          ref.read(nameCheckProvider.notifier).resumeEditing();
-                          context.pop();
-                        },
-                        style: OutlinedButton.styleFrom(
-                          minimumSize: const Size.fromHeight(48),
-                        ),
-                        child: const Text('重新编辑'),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      flex: 2,
-                      child: FilledButton(
-                        onPressed: () {
-                          context.push('/text-gen', extra: {'taskId': task.id});
-                        },
-                        style: FilledButton.styleFrom(
-                          minimumSize: const Size.fromHeight(48),
-                        ),
-                        child: const Text('确认名单'),
-                      ),
-                    ),
-                  ],
-                ),
+            BottomActionBar(
+              primary: AppButton.gradient(
+                label: '确认名单',
+                onPressed: () {
+                  context.push('/text-gen', extra: {'taskId': task.id});
+                },
+                size: AppButtonSize.lg,
+                fullWidth: true,
+              ),
+              secondary: AppButton.secondary(
+                label: '重新编辑',
+                onPressed: () {
+                  ref.read(nameCheckProvider.notifier).resumeEditing();
+                  context.pop();
+                },
+                size: AppButtonSize.lg,
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// 顶部摘要信息条：总人数 + 异常人数
+class _SummaryHeader extends StatelessWidget {
+  final int totalStudents;
+  final int abnormalCount;
+
+  const _SummaryHeader({
+    required this.totalStudents,
+    required this.abnormalCount,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final allOk = abnormalCount == 0;
+    final tintColor = allOk ? c.stateSuccess : c.stateWarning;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.lg,
+        vertical: AppSpacing.md,
+      ),
+      decoration: BoxDecoration(
+        color: tintColor.withValues(alpha: 0.08),
+        border: Border(
+          bottom: BorderSide(color: tintColor.withValues(alpha: 0.16)),
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            allOk ? Icons.check_circle_outline : Icons.warning_amber_outlined,
+            color: tintColor,
+            size: 20,
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Text(
+              allOk
+                  ? '共 $totalStudents 人，全部到齐'
+                  : '共 $totalStudents 人，异常 $abnormalCount 人',
+              style: AppTextStyles.bodyMedium.copyWith(color: c.textPrimary),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -166,12 +230,12 @@ class _AbnormalEntry {
     _ => '',
   };
 
-  Color get statusColor => switch (status) {
-    AttendanceStatus.absent => Colors.red,
-    AttendanceStatus.late_ => Colors.amber.shade700,
-    AttendanceStatus.leave => Colors.blue,
-    AttendanceStatus.other => Colors.purple,
-    _ => Colors.grey,
+  StatusPillVariant get pillVariant => switch (status) {
+    AttendanceStatus.absent => StatusPillVariant.danger,
+    AttendanceStatus.late_ => StatusPillVariant.warning,
+    AttendanceStatus.leave => StatusPillVariant.info,
+    AttendanceStatus.other => StatusPillVariant.neutral,
+    _ => StatusPillVariant.neutral,
   };
 }
 
@@ -182,34 +246,32 @@ class _AbnormalRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs + 2),
       child: Row(
         children: [
           Expanded(
-            flex: 2,
-            child: Text(entry.name, overflow: TextOverflow.ellipsis),
-          ),
-          Expanded(
             flex: 3,
+            child: Text(
+              entry.name,
+              overflow: TextOverflow.ellipsis,
+              style: AppTextStyles.bodyMedium.copyWith(color: c.textPrimary),
+            ),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            flex: 4,
             child: Text(
               entry.studentNo,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(color: Colors.grey[600], fontSize: 13),
+              style: AppTextStyles.withTabular(
+                AppTextStyles.sm,
+              ).copyWith(color: c.textSecondary),
             ),
           ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-            decoration: BoxDecoration(
-              color: entry.statusColor.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: Text(
-              entry.statusLabel,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(color: entry.statusColor, fontSize: 13),
-            ),
-          ),
+          const SizedBox(width: AppSpacing.sm),
+          StatusPill(label: entry.statusLabel, variant: entry.pillVariant),
         ],
       ),
     );

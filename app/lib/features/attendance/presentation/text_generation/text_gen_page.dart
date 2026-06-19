@@ -4,6 +4,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../../shared/design_system/colors.dart';
+import '../../../../shared/design_system/tokens.dart';
+import '../../../../shared/design_system/typography.dart';
+import '../../../../shared/design_system/widgets/app_button.dart';
+import '../../../../shared/design_system/widgets/app_card.dart';
+import '../../../../shared/design_system/widgets/bottom_action_bar.dart';
+import '../../../../shared/design_system/widgets/segmented_control.dart';
 import '../../../../shared/providers.dart';
 import '../../../../shared/widgets/toast.dart';
 import '../../../attendance/domain/models.dart';
@@ -30,11 +37,17 @@ class _TextGenPageState extends ConsumerState<TextGenPage>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(_onTabChanged);
     _generateTexts();
+  }
+
+  void _onTabChanged() {
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
+    _tabController.removeListener(_onTabChanged);
     _tabController.dispose();
     super.dispose();
   }
@@ -134,17 +147,17 @@ class _TextGenPageState extends ConsumerState<TextGenPage>
   }
 
   void _copyAndOpenApp(String text, bool isWechat, {bool confirm = false}) async {
+    final c = context.colors;
     if (confirm) {
       final result = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
-          icon: const Icon(Icons.info_outline, color: Colors.blue, size: 48),
+          icon: Icon(Icons.info_outline, color: c.brandPrimary, size: 40),
           title: const Text('复制汇报文本'),
           content: const Text(
             '确认复制最终汇报文本？\n\n'
             '复制后请前往"扩展功能 → 名单提交"完成提交审核。\n'
             '提交后如需修改，请先撤回。',
-            style: TextStyle(fontSize: 15),
           ),
           actions: [
             TextButton(
@@ -153,7 +166,6 @@ class _TextGenPageState extends ConsumerState<TextGenPage>
             ),
             FilledButton(
               onPressed: () => Navigator.pop(ctx, true),
-              style: FilledButton.styleFrom(backgroundColor: Colors.blue),
               child: const Text('确认复制'),
             ),
           ],
@@ -163,7 +175,7 @@ class _TextGenPageState extends ConsumerState<TextGenPage>
     }
 
     Clipboard.setData(ClipboardData(text: text));
-    Toast.show(context, '已复制到剪贴板');
+    if (mounted) Toast.show(context, '已复制到剪贴板');
 
     await Future.delayed(const Duration(milliseconds: 300));
 
@@ -209,6 +221,7 @@ class _TextGenPageState extends ConsumerState<TextGenPage>
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) async {
@@ -223,31 +236,45 @@ class _TextGenPageState extends ConsumerState<TextGenPage>
         }
       },
       child: Scaffold(
-        appBar: AppBar(
-          title: const Text('生成汇报文本'),
-          bottom: TabBar(
-            controller: _tabController,
-            tabs: const [
-              Tab(text: '学委汇报'),
-              Tab(text: '总群汇报'),
-            ],
-          ),
-        ),
-        body: TabBarView(
-          controller: _tabController,
-          children: [_buildCommitteeReportView(), _buildGroupReportView()],
-        ),
-        bottomNavigationBar: SafeArea(
-          top: false,
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: FilledButton(
-              onPressed: _finish,
-              style: FilledButton.styleFrom(
-                minimumSize: const Size.fromHeight(48),
+        backgroundColor: c.bgCanvas,
+        appBar: AppBar(title: const Text('生成汇报文本')),
+        body: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.lg,
+                AppSpacing.md,
+                AppSpacing.lg,
+                AppSpacing.sm,
               ),
-              child: const Text('完成'),
+              child: AppSegmentedControl<int>(
+                items: const [
+                  AppSegmentedItem(value: 0, label: '学委汇报'),
+                  AppSegmentedItem(value: 1, label: '总群汇报'),
+                ],
+                value: _tabController.index,
+                onChanged: (i) {
+                  _tabController.animateTo(i);
+                },
+              ),
             ),
+            Expanded(
+              child: TabBarView(
+                controller: _tabController,
+                children: [
+                  _buildCommitteeReportView(),
+                  _buildGroupReportView(),
+                ],
+              ),
+            ),
+          ],
+        ),
+        bottomNavigationBar: BottomActionBar(
+          primary: AppButton.gradient(
+            label: '完成',
+            onPressed: _finish,
+            size: AppButtonSize.lg,
+            fullWidth: true,
           ),
         ),
       ),
@@ -255,27 +282,42 @@ class _TextGenPageState extends ConsumerState<TextGenPage>
   }
 
   Widget _buildGroupReportView() {
+    final c = context.colors;
     return Column(
       children: [
         Expanded(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: SelectableText(
-              _groupReport,
-              style: const TextStyle(fontSize: 15, height: 1.6),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.lg,
+              AppSpacing.sm,
+              AppSpacing.lg,
+              AppSpacing.lg,
+            ),
+            child: AppCard(
+              padding: const EdgeInsets.all(AppSpacing.lg),
+              child: SelectableText(
+                _groupReport,
+                style: AppTextStyles.body.copyWith(
+                  color: c.textPrimary,
+                  height: 1.6,
+                ),
+              ),
             ),
           ),
         ),
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: FilledButton.icon(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.lg,
+            0,
+            AppSpacing.lg,
+            AppSpacing.sm,
+          ),
+          child: AppButton.primary(
+            label: '复制并打开微信',
             onPressed: () => _copyAndOpenApp(_groupReport, true, confirm: true),
-            icon: const Icon(Icons.wechat),
-            label: const Text('复制并打开微信'),
-            style: FilledButton.styleFrom(
-              minimumSize: const Size.fromHeight(44),
-              backgroundColor: Colors.green,
-            ),
+            leadingIcon: Icons.wechat,
+            size: AppButtonSize.lg,
+            fullWidth: true,
           ),
         ),
       ],
@@ -283,21 +325,27 @@ class _TextGenPageState extends ConsumerState<TextGenPage>
   }
 
   Widget _buildCommitteeReportView() {
+    final c = context.colors;
     final state = ref.read(nameCheckProvider);
     final taskTime = state.task?.createdAt ?? DateTime.now();
     final date = taskTime.toString().substring(0, 16);
 
     return ListView.builder(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.lg,
+        AppSpacing.sm,
+        AppSpacing.lg,
+        AppSpacing.lg,
+      ),
       itemCount: _classStatsList.length,
       itemBuilder: (context, index) {
         final cs = _classStatsList[index];
         final text = _generateClassCommitteeReport(cs, date);
 
-        return Card(
-          margin: const EdgeInsets.only(bottom: 12),
-          child: Padding(
-            padding: const EdgeInsets.all(12),
+        return Padding(
+          padding: const EdgeInsets.only(bottom: AppSpacing.md),
+          child: AppCard(
+            padding: const EdgeInsets.all(AppSpacing.md),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -306,26 +354,28 @@ class _TextGenPageState extends ConsumerState<TextGenPage>
                     Expanded(
                       child: Text(
                         cs.className,
-                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
+                        style: AppTextStyles.h3.copyWith(
+                          color: c.textPrimary,
                         ),
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    FilledButton.icon(
+                    const SizedBox(width: AppSpacing.sm),
+                    AppButton.primary(
+                      label: '复制',
                       onPressed: () => _copyAndOpenApp(text, false),
-                      icon: const Icon(Icons.copy, size: 18),
-                      label: const Text('复制'),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: Colors.blue,
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                      ),
+                      leadingIcon: Icons.copy,
+                      size: AppButtonSize.sm,
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: AppSpacing.sm),
                 SelectableText(
                   text,
-                  style: const TextStyle(fontSize: 14, height: 1.5),
+                  style: AppTextStyles.body.copyWith(
+                    color: c.textPrimary,
+                    height: 1.5,
+                  ),
                 ),
               ],
             ),
