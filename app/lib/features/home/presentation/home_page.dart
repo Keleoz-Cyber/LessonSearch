@@ -13,6 +13,7 @@ import '../../../shared/design_system/widgets/app_button.dart';
 import '../../../shared/design_system/widgets/app_card.dart';
 import '../../../shared/design_system/widgets/sync_status_banner.dart';
 import '../../../shared/providers.dart';
+import '../../../shared/widgets/toast.dart';
 
 class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
@@ -287,6 +288,49 @@ class _HomePageState extends ConsumerState<HomePage> {
   }
 
   Widget _buildSecondaryActions() {
+    final auth = ref.watch(authServiceProvider);
+    final isAdmin = auth.isAdmin;
+
+    final entries = <_SecondaryEntry>[
+      _SecondaryEntry(
+        icon: Icons.history,
+        title: '查课记录',
+        subtitle: '查看与编辑历史',
+        onTap: () => _checkLoginAndNavigate('/records'),
+      ),
+      _SecondaryEntry(
+        icon: Icons.send_outlined,
+        title: '名单提交',
+        subtitle: isAdmin ? '查看与审核' : '提交本周记名',
+        onTap: () => _checkLoginAndNavigate('/extension/submission'),
+      ),
+      _SecondaryEntry(
+        icon: Icons.summarize_outlined,
+        title: '周名单汇总',
+        subtitle: isAdmin ? '审核与导出' : '查看本周汇总',
+        onTap: () => _checkLoginAndNavigate('/extension/weekly-summary'),
+      ),
+      _SecondaryEntry(
+        icon: Icons.leaderboard_outlined,
+        title: '排行榜',
+        subtitle: '考勤统计排名',
+        onTap: () => _checkLoginAndNavigate('/extension/ranking'),
+      ),
+      if (isAdmin)
+        _SecondaryEntry(
+          icon: Icons.search_outlined,
+          title: '提交记录查询',
+          subtitle: '查询历史提交',
+          onTap: () => _checkLoginAndNavigate('/extension/submission-search'),
+        ),
+      _SecondaryEntry(
+        icon: Icons.more_horiz,
+        title: '更多功能',
+        subtitle: '即将推出',
+        onTap: () => Toast.show(context, '敬请期待'),
+      ),
+    ];
+
     return GridView.count(
       crossAxisCount: 2,
       crossAxisSpacing: AppSpacing.md,
@@ -295,18 +339,13 @@ class _HomePageState extends ConsumerState<HomePage> {
       physics: const NeverScrollableScrollPhysics(),
       childAspectRatio: 1.5,
       children: [
-        _buildEntryCard(
-          icon: Icons.history,
-          title: '查课记录',
-          subtitle: '查看与编辑历史',
-          onTap: () => _checkLoginAndNavigate('/records'),
-        ),
-        _buildEntryCard(
-          icon: Icons.extension,
-          title: '扩展功能',
-          subtitle: '提交、汇总、排行',
-          onTap: () => _checkLoginAndNavigate('/extension'),
-        ),
+        for (final e in entries)
+          _buildEntryCard(
+            icon: e.icon,
+            title: e.title,
+            subtitle: e.subtitle,
+            onTap: e.onTap,
+          ),
       ],
     );
   }
@@ -397,4 +436,18 @@ class _HomePageState extends ConsumerState<HomePage> {
       error: (_, __) => const SizedBox.shrink(),
     );
   }
+}
+
+class _SecondaryEntry {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  const _SecondaryEntry({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
 }

@@ -11,7 +11,6 @@ import '../../features/attendance/presentation/text_generation/text_gen_page.dar
 import '../../features/auth/presentation/login_page.dart';
 import '../../features/auth/presentation/register_page.dart';
 import '../../features/auth/presentation/real_name_page.dart';
-import '../../features/extension/presentation/extension_page.dart';
 import '../../features/extension/presentation/submission_page.dart';
 import '../../features/extension/presentation/weekly_summary_page.dart';
 import '../../features/extension/presentation/submission_search_page.dart';
@@ -93,11 +92,6 @@ final appRouter = GoRouter(
       builder: (context, state) => const RealNamePage(),
     ),
 
-    GoRoute(
-      path: '/extension',
-      name: 'extension',
-      builder: (context, state) => const ExtensionPage(),
-    ),
     GoRoute(
       path: '/extension/submission',
       name: 'submission',
