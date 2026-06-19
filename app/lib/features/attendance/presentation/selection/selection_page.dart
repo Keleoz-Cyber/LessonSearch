@@ -2,6 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../shared/design_system/colors.dart';
+import '../../../../shared/design_system/tokens.dart';
+import '../../../../shared/design_system/typography.dart';
+import '../../../../shared/design_system/widgets/app_button.dart';
+import '../../../../shared/design_system/widgets/app_card.dart';
+import '../../../../shared/design_system/widgets/bottom_action_bar.dart';
 import '../../../../shared/providers.dart';
 import '../../../../shared/widgets/loading_overlay.dart';
 import '../../../attendance/domain/models.dart';
@@ -113,30 +119,33 @@ class _SelectionPageState extends ConsumerState<SelectionPage> {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     final title = _isNameCheck ? '记名' : '点名';
 
     if (_error != null) {
       return Scaffold(
+        backgroundColor: c.bgCanvas,
         appBar: AppBar(title: Text('$title - 选择班级')),
         body: Center(
           child: Padding(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(AppSpacing.xl),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(
                   Icons.error_outline,
-                  size: 48,
-                  color: Theme.of(context).colorScheme.error,
+                  size: 32,
+                  color: c.stateDanger,
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSpacing.lg),
                 Text(
                   _error!,
-                  style: Theme.of(context).textTheme.bodyLarge,
+                  style: AppTextStyles.body.copyWith(color: c.textPrimary),
                   textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 24),
-                FilledButton.icon(
+                const SizedBox(height: AppSpacing.xl),
+                AppButton.primary(
+                  label: '重试',
                   onPressed: () {
                     setState(() {
                       _loading = true;
@@ -144,8 +153,7 @@ class _SelectionPageState extends ConsumerState<SelectionPage> {
                     });
                     _loadBaseData();
                   },
-                  icon: const Icon(Icons.refresh),
-                  label: const Text('重试'),
+                  leadingIcon: Icons.refresh,
                 ),
               ],
             ),
@@ -155,6 +163,7 @@ class _SelectionPageState extends ConsumerState<SelectionPage> {
     }
 
     return Scaffold(
+      backgroundColor: c.bgCanvas,
       appBar: AppBar(title: Text('$title - 选择班级')),
       body: LoadingOverlay(
         isLoading: _loading,
@@ -163,11 +172,15 @@ class _SelectionPageState extends ConsumerState<SelectionPage> {
           children: [
             // 年级选择
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.lg,
+                AppSpacing.lg,
+                AppSpacing.lg,
+                0,
+              ),
               child: DropdownButtonFormField<GradeInfo>(
                 decoration: const InputDecoration(
                   labelText: '年级',
-                  border: OutlineInputBorder(),
                 ),
                 initialValue: _selectedGrade,
                 items: _grades
@@ -179,11 +192,15 @@ class _SelectionPageState extends ConsumerState<SelectionPage> {
 
             // 专业选择
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.lg,
+                AppSpacing.md,
+                AppSpacing.lg,
+                0,
+              ),
               child: DropdownButtonFormField<MajorInfo>(
                 decoration: const InputDecoration(
                   labelText: '专业',
-                  border: OutlineInputBorder(),
                 ),
                 initialValue: _selectedMajor,
                 items: _majors
@@ -199,41 +216,27 @@ class _SelectionPageState extends ConsumerState<SelectionPage> {
             // 班级选择
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.lg,
+                  AppSpacing.md,
+                  AppSpacing.lg,
+                  AppSpacing.md,
+                ),
                 child: _buildClassSelector(),
               ),
             ),
 
             // 底部按钮区域
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: SafeArea(
-                top: false,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (_selectedClassIds.isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: Text(
-                          '已选 ${_selectedClassIds.length} 个班级',
-                          style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(
-                                color: Theme.of(context).colorScheme.primary,
-                                fontWeight: FontWeight.w500,
-                              ),
-                        ),
-                      ),
-                    FilledButton.icon(
-                      onPressed: _canStart ? _startTask : null,
-                      icon: const Icon(Icons.play_arrow),
-                      label: Text('开始$title'),
-                      style: FilledButton.styleFrom(
-                        minimumSize: const Size.fromHeight(48),
-                      ),
-                    ),
-                  ],
-                ),
+            BottomActionBar(
+              hintText: _selectedClassIds.isEmpty
+                  ? '请选择至少一个班级'
+                  : '已选 ${_selectedClassIds.length} 个班级',
+              primary: AppButton.gradient(
+                label: '开始$title',
+                onPressed: _canStart ? _startTask : null,
+                leadingIcon: Icons.play_arrow,
+                size: AppButtonSize.lg,
+                fullWidth: true,
               ),
             ),
           ],
@@ -243,65 +246,89 @@ class _SelectionPageState extends ConsumerState<SelectionPage> {
   }
 
   Widget _buildClassSelector() {
+    final c = context.colors;
+
+    Widget header({Widget? trailing}) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+        child: Row(
+          children: [
+            Text(
+              '班级（多选）',
+              style: AppTextStyles.sm.copyWith(
+                color: c.textPrimary,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const Spacer(),
+            ?trailing,
+          ],
+        ),
+      );
+    }
+
     // 未选择专业
     if (_selectedMajor == null) {
-      return InputDecorator(
-        decoration: const InputDecoration(
-          labelText: '班级（多选）',
-          border: OutlineInputBorder(),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 24),
-          child: Center(
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          header(),
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: AppSpacing.xl2),
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: c.bgSurface,
+              border: Border.all(color: c.borderSubtle),
+              borderRadius: BorderRadius.circular(AppRadius.md),
+            ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(
-                  Icons.class_outlined,
-                  size: 40,
-                  color: Colors.grey.shade400,
-                ),
-                const SizedBox(height: 8),
+                Icon(Icons.class_outlined, size: 32, color: c.textTertiary),
+                const SizedBox(height: AppSpacing.sm),
                 Text(
                   '请先选择年级和专业',
-                  style: TextStyle(color: Colors.grey.shade500),
+                  style: AppTextStyles.sm.copyWith(color: c.textSecondary),
                 ),
               ],
             ),
           ),
-        ),
+        ],
       );
     }
 
     // 选择专业后无班级
     if (_classes.isEmpty) {
-      return InputDecorator(
-        decoration: const InputDecoration(
-          labelText: '班级（多选）',
-          border: OutlineInputBorder(),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 24),
-          child: Center(
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          header(),
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: AppSpacing.xl2),
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: c.bgSurface,
+              border: Border.all(color: c.borderSubtle),
+              borderRadius: BorderRadius.circular(AppRadius.md),
+            ),
             child: Text(
               '该专业暂无班级数据',
-              style: TextStyle(color: Colors.grey.shade500),
+              style: AppTextStyles.sm.copyWith(color: c.textSecondary),
             ),
           ),
-        ),
+        ],
       );
     }
 
     // 有班级可选
     final allSelected = _selectedClassIds.length == _classes.length;
 
-    return InputDecorator(
-      decoration: InputDecoration(
-        labelText: '班级（多选）',
-        border: const OutlineInputBorder(),
-        suffixIcon: Padding(
-          padding: const EdgeInsets.only(right: 8),
-          child: TextButton(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        header(
+          trailing: AppButton.ghost(
+            label: allSelected ? '取消全选' : '全选',
             onPressed: () {
               setState(() {
                 if (allSelected) {
@@ -311,67 +338,52 @@ class _SelectionPageState extends ConsumerState<SelectionPage> {
                 }
               });
             },
-            child: Text(allSelected ? '取消全选' : '全选'),
+            size: AppButtonSize.sm,
           ),
         ),
-      ),
-      child: Column(
-        children: _classes.map((c) {
-          final selected = _selectedClassIds.contains(c.id);
+        ..._classes.map((cls) {
+          final selected = _selectedClassIds.contains(cls.id);
           return Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: Material(
-              color: selected
-                  ? Theme.of(context).colorScheme.primaryContainer
-                  : Theme.of(context).colorScheme.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(8),
-              child: InkWell(
-                onTap: () {
-                  setState(() {
-                    if (selected) {
-                      _selectedClassIds.remove(c.id);
-                    } else {
-                      _selectedClassIds.add(c.id);
-                    }
-                  });
-                },
-                borderRadius: BorderRadius.circular(8),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
+            padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+            child: AppCard(
+              selected: selected,
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.lg,
+                vertical: AppSpacing.md,
+              ),
+              onTap: () {
+                setState(() {
+                  if (selected) {
+                    _selectedClassIds.remove(cls.id);
+                  } else {
+                    _selectedClassIds.add(cls.id);
+                  }
+                });
+              },
+              child: Row(
+                children: [
+                  Icon(
+                    selected
+                        ? Icons.check_circle
+                        : Icons.radio_button_unchecked,
+                    size: 20,
+                    color: selected ? c.brandPrimary : c.borderStrong,
                   ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        selected ? Icons.check_circle : Icons.circle_outlined,
-                        size: 20,
-                        color: selected
-                            ? Theme.of(context).colorScheme.primary
-                            : Theme.of(context).colorScheme.outline,
+                  const SizedBox(width: AppSpacing.md),
+                  Expanded(
+                    child: Text(
+                      cls.displayName,
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        color: c.textPrimary,
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          c.displayName,
-                          style: TextStyle(
-                            fontSize: 15,
-                            color: selected
-                                ? Theme.of(
-                                    context,
-                                  ).colorScheme.onPrimaryContainer
-                                : Theme.of(context).colorScheme.onSurface,
-                          ),
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
-                ),
+                ],
               ),
             ),
           );
-        }).toList(),
-      ),
+        }),
+      ],
     );
   }
 }
