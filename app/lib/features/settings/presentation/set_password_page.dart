@@ -2,6 +2,10 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../shared/design_system/colors.dart';
+import '../../../shared/design_system/tokens.dart';
+import '../../../shared/design_system/typography.dart';
+import '../../../shared/design_system/widgets/app_button.dart';
 import '../../../shared/providers.dart';
 import '../../../shared/widgets/toast.dart';
 
@@ -109,9 +113,11 @@ class _SetPasswordPageState extends ConsumerState<SetPasswordPage> {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     final hasPasswordAsync = ref.watch(hasPasswordProvider);
 
     return Scaffold(
+      backgroundColor: c.bgCanvas,
       appBar: AppBar(
         title: hasPasswordAsync.when(
           data: (hasPassword) => Text(hasPassword ? '修改密码' : '设置密码'),
@@ -120,19 +126,35 @@ class _SetPasswordPageState extends ConsumerState<SetPasswordPage> {
         ),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(AppSpacing.xl),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+              child: Text(
+                '新密码',
+                style: AppTextStyles.sm.copyWith(
+                  color: c.textPrimary,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
             TextField(
               controller: _passwordController,
               decoration: InputDecoration(
-                labelText: '新密码',
-                hintText: '至少6位',
-                prefixIcon: const Icon(Icons.password_outlined),
+                hintText: '至少 6 位',
+                prefixIcon: Icon(
+                  Icons.lock_outline,
+                  size: 18,
+                  color: c.textSecondary,
+                ),
                 suffixIcon: IconButton(
                   icon: Icon(
-                    _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                    _obscurePassword
+                        ? Icons.visibility_off_outlined
+                        : Icons.visibility_outlined,
+                    color: c.textSecondary,
                   ),
                   onPressed: () {
                     setState(() => _obscurePassword = !_obscurePassword);
@@ -140,17 +162,34 @@ class _SetPasswordPageState extends ConsumerState<SetPasswordPage> {
                 ),
               ),
               obscureText: _obscurePassword,
+              style: AppTextStyles.body.copyWith(color: c.textPrimary),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.lg),
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+              child: Text(
+                '确认密码',
+                style: AppTextStyles.sm.copyWith(
+                  color: c.textPrimary,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
             TextField(
               controller: _confirmController,
               decoration: InputDecoration(
-                labelText: '确认密码',
                 hintText: '再次输入密码',
-                prefixIcon: const Icon(Icons.password_outlined),
+                prefixIcon: Icon(
+                  Icons.lock_outline,
+                  size: 18,
+                  color: c.textSecondary,
+                ),
                 suffixIcon: IconButton(
                   icon: Icon(
-                    _obscureConfirm ? Icons.visibility_off : Icons.visibility,
+                    _obscureConfirm
+                        ? Icons.visibility_off_outlined
+                        : Icons.visibility_outlined,
+                    color: c.textSecondary,
                   ),
                   onPressed: () {
                     setState(() => _obscureConfirm = !_obscureConfirm);
@@ -158,17 +197,15 @@ class _SetPasswordPageState extends ConsumerState<SetPasswordPage> {
                 ),
               ),
               obscureText: _obscureConfirm,
+              style: AppTextStyles.body.copyWith(color: c.textPrimary),
             ),
-            const SizedBox(height: 32),
-            FilledButton(
+            const SizedBox(height: AppSpacing.xl2),
+            AppButton.primary(
+              label: '保存',
               onPressed: _isLoading ? null : _submit,
-              child: _isLoading
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Text('保存'),
+              loading: _isLoading,
+              size: AppButtonSize.lg,
+              fullWidth: true,
             ),
           ],
         ),
