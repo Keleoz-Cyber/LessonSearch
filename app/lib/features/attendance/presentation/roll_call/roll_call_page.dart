@@ -2,6 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../shared/design_system/colors.dart';
+import '../../../../shared/design_system/tokens.dart';
+import '../../../../shared/design_system/typography.dart';
+import '../../../../shared/design_system/widgets/app_button.dart';
+import '../../../../shared/design_system/widgets/app_card.dart';
+import '../../../../shared/design_system/widgets/bottom_action_bar.dart';
+import '../../../../shared/design_system/widgets/status_pill.dart';
 import '../../../../shared/providers.dart';
 import '../../../../shared/widgets/loading_overlay.dart';
 import '../../../../shared/widgets/toast.dart';
@@ -50,10 +57,12 @@ class _RollCallPageState extends ConsumerState<RollCallPage> {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     final state = ref.watch(rollCallProvider);
 
     if (state.isLoading) {
       return Scaffold(
+        backgroundColor: c.bgCanvas,
         appBar: AppBar(title: const Text('点名')),
         body: const LoadingOverlay(
           isLoading: true,
@@ -65,34 +74,32 @@ class _RollCallPageState extends ConsumerState<RollCallPage> {
 
     if (state.error != null) {
       return Scaffold(
+        backgroundColor: c.bgCanvas,
         appBar: AppBar(title: const Text('点名')),
         body: Center(
           child: Padding(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(AppSpacing.xl),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(
-                  Icons.error_outline,
-                  size: 48,
-                  color: Theme.of(context).colorScheme.error,
-                ),
-                const SizedBox(height: 16),
+                Icon(Icons.error_outline, size: 32, color: c.stateDanger),
+                const SizedBox(height: AppSpacing.lg),
                 Text(
                   state.error!,
-                  style: Theme.of(context).textTheme.bodyLarge,
+                  style: AppTextStyles.body.copyWith(color: c.textPrimary),
                   textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: AppSpacing.xl),
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    OutlinedButton(
+                    AppButton.secondary(
+                      label: '返回',
                       onPressed: () => context.pop(),
-                      child: const Text('返回'),
                     ),
-                    const SizedBox(width: 12),
-                    FilledButton.icon(
+                    const SizedBox(width: AppSpacing.md),
+                    AppButton.primary(
+                      label: '重试',
                       onPressed: () {
                         final authService = ref.read(authServiceProvider);
                         if (widget.resumeTaskId != null) {
@@ -110,8 +117,7 @@ class _RollCallPageState extends ConsumerState<RollCallPage> {
                               );
                         }
                       },
-                      icon: const Icon(Icons.refresh),
-                      label: const Text('重试'),
+                      leadingIcon: Icons.refresh,
                     ),
                   ],
                 ),
@@ -124,27 +130,45 @@ class _RollCallPageState extends ConsumerState<RollCallPage> {
 
     if (state.isFinished) {
       return Scaffold(
+        backgroundColor: c.bgCanvas,
         appBar: AppBar(title: const Text('点名完成')),
         body: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.check_circle, size: 80, color: Colors.green),
-              const SizedBox(height: 24),
-              Text('点名完成', style: Theme.of(context).textTheme.headlineMedium),
-              const SizedBox(height: 8),
-              Text(
-                '已点名 ${state.processedCount} / ${state.totalCount} 人',
-                style: Theme.of(
-                  context,
-                ).textTheme.bodyLarge?.copyWith(color: Colors.grey[600]),
-              ),
-              const SizedBox(height: 32),
-              FilledButton(
-                onPressed: () => context.go('/'),
-                child: const Text('返回首页'),
-              ),
-            ],
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.xl),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 64,
+                  height: 64,
+                  decoration: BoxDecoration(
+                    color: c.stateSuccess.withValues(alpha: 0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.check_circle,
+                    size: 36,
+                    color: c.stateSuccess,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                Text(
+                  '点名完成',
+                  style: AppTextStyles.h1.copyWith(color: c.textPrimary),
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  '已点名 ${state.processedCount} / ${state.totalCount} 人',
+                  style: AppTextStyles.body.copyWith(color: c.textSecondary),
+                ),
+                const SizedBox(height: AppSpacing.xl2),
+                AppButton.gradient(
+                  label: '返回首页',
+                  onPressed: () => context.go('/'),
+                  size: AppButtonSize.lg,
+                ),
+              ],
+            ),
           ),
         ),
       );
@@ -160,6 +184,7 @@ class _RollCallPageState extends ConsumerState<RollCallPage> {
         await _showExitDialog();
       },
       child: Scaffold(
+        backgroundColor: c.bgCanvas,
         appBar: AppBar(
           title: Text(state.currentClassName),
           leading: IconButton(
@@ -169,10 +194,12 @@ class _RollCallPageState extends ConsumerState<RollCallPage> {
           actions: [
             Center(
               child: Padding(
-                padding: EdgeInsets.only(right: 16),
+                padding: const EdgeInsets.only(right: AppSpacing.lg),
                 child: Text(
                   '${state.processedCount + 1} / ${state.totalCount}',
-                  style: Theme.of(context).textTheme.titleMedium,
+                  style: AppTextStyles.withTabular(
+                    AppTextStyles.bodyMedium,
+                  ).copyWith(color: c.textSecondary),
                 ),
               ),
             ),
@@ -180,102 +207,109 @@ class _RollCallPageState extends ConsumerState<RollCallPage> {
         ),
         body: SafeArea(
           child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.xl,
+              vertical: AppSpacing.lg,
+            ),
             child: Column(
               children: [
-                // 预览区：上三位 + 下一位
                 _buildPreviewArea(context, state),
-
-                Spacer(flex: 2),
-
-                // 学生姓名
+                const Spacer(flex: 2),
                 FittedBox(
                   fit: BoxFit.scaleDown,
                   child: Text(
                     student.name,
-                    style: Theme.of(context).textTheme.displayMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
+                    style: AppTextStyles.display.copyWith(
+                      color: c.textPrimary,
+                      fontSize: 40,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ),
-                SizedBox(height: 12),
-
-                // 拼音
+                const SizedBox(height: AppSpacing.md),
                 FittedBox(
                   fit: BoxFit.scaleDown,
                   child: Text(
                     student.pinyin ?? '',
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      color: Colors.grey[500],
+                    style: AppTextStyles.h2.copyWith(
+                      color: c.textTertiary,
                       letterSpacing: 2,
                     ),
                   ),
                 ),
-                SizedBox(height: 24),
-
-                // 班级 + 学号
+                const SizedBox(height: AppSpacing.lg),
                 Text(
                   '${state.currentClassName} · ${student.studentNo}',
-                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: Colors.grey[400],
-                    fontFamily: 'monospace',
-                  ),
+                  style: AppTextStyles.withTabular(
+                    AppTextStyles.sm,
+                  ).copyWith(color: c.textTertiary),
                   textAlign: TextAlign.center,
                 ),
-
-                Spacer(flex: 3),
-
-                // 操作按钮
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: state.hasPrev
-                            ? () {
-                                ref.read(feedbackServiceProvider).feedback();
-                                ref
-                                    .read(rollCallProvider.notifier)
-                                    .prevStudent();
-                              }
-                            : null,
-                        icon: const Icon(Icons.navigate_before),
-                        label: const Text('上一个'),
-                        style: OutlinedButton.styleFrom(
-                          minimumSize: const Size.fromHeight(52),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () => _showFinishDialog(),
-                        icon: const Icon(Icons.stop),
-                        label: const Text('结束'),
-                        style: OutlinedButton.styleFrom(
-                          minimumSize: const Size.fromHeight(52),
-                          foregroundColor: Colors.red,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      flex: 2,
-                      child: FilledButton.icon(
-                        onPressed: () {
-                          ref.read(feedbackServiceProvider).feedback();
-                          ref.read(rollCallProvider.notifier).nextStudent();
-                        },
-                        icon: const Icon(Icons.navigate_next),
-                        label: Text(state.hasNext ? '下一位' : '完成'),
-                        style: FilledButton.styleFrom(
-                          minimumSize: const Size.fromHeight(52),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+                const Spacer(flex: 3),
               ],
             ),
+          ),
+        ),
+        bottomNavigationBar: BottomActionBar(
+          primary: AppButton.gradient(
+            label: state.hasNext ? '下一位' : '完成',
+            onPressed: () {
+              ref.read(feedbackServiceProvider).feedback();
+              ref.read(rollCallProvider.notifier).nextStudent();
+            },
+            trailingIcon: state.hasNext ? Icons.navigate_next : Icons.check,
+            size: AppButtonSize.lg,
+            fullWidth: true,
+          ),
+          secondary: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                width: 44,
+                height: 48,
+                child: OutlinedButton(
+                  onPressed: state.hasPrev
+                      ? () {
+                          ref.read(feedbackServiceProvider).feedback();
+                          ref.read(rollCallProvider.notifier).prevStudent();
+                        }
+                      : null,
+                  style: OutlinedButton.styleFrom(
+                    padding: EdgeInsets.zero,
+                    foregroundColor: c.textSecondary,
+                    side: BorderSide(color: c.borderDefault),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppRadius.normal),
+                    ),
+                  ),
+                  child: const Icon(Icons.navigate_before, size: 20),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.xs + 2),
+              SizedBox(
+                width: 56,
+                height: 48,
+                child: OutlinedButton(
+                  onPressed: () => _showFinishDialog(),
+                  style: OutlinedButton.styleFrom(
+                    padding: EdgeInsets.zero,
+                    foregroundColor: c.stateDanger,
+                    side: BorderSide(
+                      color: c.stateDanger.withValues(alpha: 0.4),
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppRadius.normal),
+                    ),
+                  ),
+                  child: Text(
+                    '结束',
+                    style: AppTextStyles.bodyMedium.copyWith(
+                      color: c.stateDanger,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -283,97 +317,64 @@ class _RollCallPageState extends ConsumerState<RollCallPage> {
   }
 
   Widget _buildPreviewArea(BuildContext context, RollCallState state) {
+    final c = context.colors;
     final prevThree = state.prevThreeStudents;
     final nextOne = state.nextStudent;
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(12),
-      ),
+    return AppCard(
+      padding: const EdgeInsets.all(AppSpacing.md),
       child: Column(
         children: [
-          // 上三位
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.green.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  '已点',
-                  style: TextStyle(
-                    color: Colors.green[700],
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-              SizedBox(width: 12),
+              const StatusPill.success(label: '已点'),
+              const SizedBox(width: AppSpacing.md),
               Expanded(
                 child: prevThree.isEmpty
                     ? Text(
                         '暂无',
-                        style: TextStyle(color: Colors.grey[500], fontSize: 14),
+                        style: AppTextStyles.sm.copyWith(
+                          color: c.textTertiary,
+                        ),
                       )
-                    : Row(
-                        children: prevThree.asMap().entries.map((entry) {
-                          final idx = entry.key;
-                          final s = entry.value;
-                          return Padding(
-                            padding: EdgeInsets.only(
-                              right: idx < prevThree.length - 1 ? 16 : 0,
-                            ),
-                            child: Text(
-                              s.name,
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.green[700],
-                                fontWeight: FontWeight.w500,
+                    : Wrap(
+                        spacing: AppSpacing.md,
+                        runSpacing: AppSpacing.xs,
+                        children: prevThree
+                            .map(
+                              (s) => Text(
+                                s.name,
+                                style: AppTextStyles.sm.copyWith(
+                                  color: c.stateSuccess,
+                                  fontWeight: FontWeight.w500,
+                                ),
                               ),
-                            ),
-                          );
-                        }).toList(),
+                            )
+                            .toList(),
                       ),
               ),
             ],
           ),
-          SizedBox(height: 12),
-          // 分隔线
-          Divider(height: 1, color: Colors.grey[300]),
-          SizedBox(height: 12),
-          // 下一位
+          const SizedBox(height: AppSpacing.md),
+          Divider(height: 1, color: c.borderSubtle),
+          const SizedBox(height: AppSpacing.md),
           Row(
             children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.blue.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  '下一位',
-                  style: TextStyle(
-                    color: Colors.blue[700],
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-              SizedBox(width: 12),
+              const StatusPill.info(label: '下一位'),
+              const SizedBox(width: AppSpacing.md),
               Expanded(
                 child: nextOne == null
                     ? Text(
                         '已是最后',
-                        style: TextStyle(color: Colors.grey[500], fontSize: 14),
+                        style: AppTextStyles.sm.copyWith(
+                          color: c.textTertiary,
+                        ),
                       )
                     : Text(
                         nextOne.name,
-                        style: TextStyle(
-                          fontSize: 14,
+                        style: AppTextStyles.bodyMedium.copyWith(
+                          color: c.textPrimary,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -386,6 +387,7 @@ class _RollCallPageState extends ConsumerState<RollCallPage> {
   }
 
   Future<void> _showExitDialog() async {
+    final c = context.colors;
     final result = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -398,7 +400,8 @@ class _RollCallPageState extends ConsumerState<RollCallPage> {
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, 'abandon'),
-            child: const Text('放弃', style: TextStyle(color: Colors.red)),
+            style: TextButton.styleFrom(foregroundColor: c.stateDanger),
+            child: const Text('放弃'),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, 'save'),
