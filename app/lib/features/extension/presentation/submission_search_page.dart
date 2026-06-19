@@ -2,6 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../../shared/design_system/colors.dart';
+import '../../../shared/design_system/tokens.dart';
+import '../../../shared/design_system/typography.dart';
+import '../../../shared/design_system/widgets/app_card.dart';
+import '../../../shared/design_system/widgets/status_pill.dart';
 import '../../../shared/providers.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/toast.dart';
@@ -141,12 +146,15 @@ class _SubmissionSearchPageState extends ConsumerState<SubmissionSearchPage> {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     return Scaffold(
+      backgroundColor: c.bgCanvas,
       appBar: AppBar(
         title: const Text('提交记录查询'),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
+            tooltip: '刷新',
             onPressed: _loadData,
           ),
         ],
@@ -156,49 +164,82 @@ class _SubmissionSearchPageState extends ConsumerState<SubmissionSearchPage> {
           _buildFilterBar(),
           if (_total > 0)
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.lg,
+                vertical: AppSpacing.sm,
+              ),
               child: Row(
                 children: [
                   Text(
                     '共 $_total 条记录',
-                    style: Theme.of(context).textTheme.bodySmall,
+                    style: AppTextStyles.sm.copyWith(color: c.textSecondary),
                   ),
                   const Spacer(),
                   Text(
                     '第 $_page 页',
-                    style: Theme.of(context).textTheme.bodySmall,
+                    style: AppTextStyles.withTabular(AppTextStyles.sm)
+                        .copyWith(color: c.textTertiary),
                   ),
                 ],
               ),
             ),
           Expanded(
             child: _items.isEmpty && !_loading
-                ? const Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.search_off, size: 48, color: Colors.grey),
-                        SizedBox(height: 16),
-                        Text('没有找到记录'),
-                      ],
+                ? Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(AppSpacing.xl),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.search_off,
+                            size: 32,
+                            color: c.textTertiary,
+                          ),
+                          const SizedBox(height: AppSpacing.md),
+                          Text(
+                            '没有找到记录',
+                            style: AppTextStyles.body.copyWith(
+                              color: c.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   )
                 : ListView.builder(
                     controller: _scrollController,
-                    padding: const EdgeInsets.all(12),
+                    padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.lg,
+                      AppSpacing.sm,
+                      AppSpacing.lg,
+                      AppSpacing.lg,
+                    ),
                     itemCount: _items.length + (_hasMore ? 1 : 0),
                     itemBuilder: (context, index) {
                       if (index >= _items.length) {
-                        return const Center(
+                        return Center(
                           child: Padding(
-                            padding: EdgeInsets.all(16),
-                            child: CircularProgressIndicator(),
+                            padding: const EdgeInsets.all(AppSpacing.lg),
+                            child: SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation(
+                                  c.brandPrimary,
+                                ),
+                              ),
+                            ),
                           ),
                         );
                       }
-                      return _SubmissionCard(
-                        item: _items[index],
-                        onTap: () => _showDetail(_items[index]),
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                        child: _SubmissionCard(
+                          item: _items[index],
+                          onTap: () => _showDetail(_items[index]),
+                        ),
                       );
                     },
                   ),
@@ -209,14 +250,18 @@ class _SubmissionSearchPageState extends ConsumerState<SubmissionSearchPage> {
   }
 
   Widget _buildFilterBar() {
+    final c = context.colors;
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.lg,
+        AppSpacing.md,
+        AppSpacing.lg,
+        AppSpacing.md,
+      ),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        color: c.bgSurface,
         border: Border(
-          bottom: BorderSide(
-            color: Theme.of(context).dividerColor,
-          ),
+          bottom: BorderSide(color: c.borderSubtle),
         ),
       ),
       child: Column(
@@ -226,56 +271,55 @@ class _SubmissionSearchPageState extends ConsumerState<SubmissionSearchPage> {
             controller: _keywordController,
             decoration: InputDecoration(
               hintText: '搜索提交人、班级...',
-              prefixIcon: const Icon(Icons.search),
+              prefixIcon: Icon(
+                Icons.search,
+                size: 18,
+                color: c.textSecondary,
+              ),
               suffixIcon: IconButton(
-                icon: const Icon(Icons.clear),
+                icon: Icon(Icons.close, size: 18, color: c.textTertiary),
+                tooltip: '清除',
                 onPressed: () {
                   _keywordController.clear();
                   _loadData();
                 },
               ),
-              filled: true,
-              fillColor: Theme.of(context).colorScheme.surface,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide.none,
-              ),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 12),
             ),
+            style: AppTextStyles.body.copyWith(color: c.textPrimary),
             onSubmitted: (_) => _loadData(),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.sm),
           // 筛选条件
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(
               children: [
-                // 状态筛选
                 _buildFilterChip(
                   label: _statusOptions.firstWhere(
                     (o) => o['value'] == (_status ?? ''),
                     orElse: () => _statusOptions.first,
                   )['label']!,
+                  active: _status != null,
                   onTap: () => _showStatusPicker(),
                 ),
-                const SizedBox(width: 8),
-                // 周次筛选
+                const SizedBox(width: AppSpacing.sm),
                 _buildFilterChip(
-                  label: _weekNumber != null ? '第 $_weekNumber 周' : '全部周次',
+                  label: _weekNumber != null
+                      ? '第 $_weekNumber 周'
+                      : '全部周次',
+                  active: _weekNumber != null,
                   onTap: () => _showWeekPicker(),
                 ),
-                const SizedBox(width: 8),
-                // 日期范围
+                const SizedBox(width: AppSpacing.sm),
                 _buildFilterChip(
                   label: (_startDate != null || _endDate != null)
                       ? _formatDateRangeLabel()
                       : '全部日期',
+                  active: _startDate != null || _endDate != null,
                   onTap: () => _showDateRangePicker(),
                 ),
-                const SizedBox(width: 8),
-                // 重置按钮
-                ActionChip(
-                  label: const Text('重置'),
+                const SizedBox(width: AppSpacing.sm),
+                _ResetChip(
                   onPressed: () {
                     setState(() {
                       _status = null;
@@ -295,38 +339,49 @@ class _SubmissionSearchPageState extends ConsumerState<SubmissionSearchPage> {
     );
   }
 
-  Widget _buildFilterChip({required String label, required VoidCallback onTap}) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.primaryContainer,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 160),
-              child: Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 13,
-                  color: Theme.of(context).colorScheme.onPrimaryContainer,
+  Widget _buildFilterChip({
+    required String label,
+    required bool active,
+    required VoidCallback onTap,
+  }) {
+    final c = context.colors;
+    final bg = active ? c.brandSubtle : c.bgMuted;
+    final fg = active ? c.brandPrimary : c.textSecondary;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppRadius.full),
+        child: Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: AppSpacing.xs + 2,
+          ),
+          decoration: BoxDecoration(
+            color: bg,
+            borderRadius: BorderRadius.circular(AppRadius.full),
+            border: Border.all(
+              color: active
+                  ? c.brandPrimary.withValues(alpha: 0.3)
+                  : c.borderSubtle,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 160),
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.sm.copyWith(color: fg),
                 ),
               ),
-            ),
-            const SizedBox(width: 4),
-            Icon(
-              Icons.arrow_drop_down,
-              size: 18,
-              color: Theme.of(context).colorScheme.onPrimaryContainer,
-            ),
-          ],
+              const SizedBox(width: 4),
+              Icon(Icons.arrow_drop_down, size: 16, color: fg),
+            ],
+          ),
         ),
       ),
     );
@@ -462,6 +517,7 @@ class _SubmissionSearchPageState extends ConsumerState<SubmissionSearchPage> {
   }
 
   void _showDetail(Map<String, dynamic> item) {
+    final c = context.colors;
     final userName = item['user_name'] ?? item['user_email'] ?? '未知';
     final status = item['status'] as String;
     final submittedAt = DateTime.parse(item['submitted_at'] as String);
@@ -472,25 +528,7 @@ class _SubmissionSearchPageState extends ConsumerState<SubmissionSearchPage> {
     final recordCount = item['record_count'] as int? ?? 0;
     final classNames = item['class_names'] as String? ?? '';
 
-    Color statusColor;
-    String statusLabel;
-    switch (status) {
-      case 'pending':
-        statusColor = Colors.orange;
-        statusLabel = '待审核';
-      case 'approved':
-        statusColor = Colors.green;
-        statusLabel = '已通过';
-      case 'rejected':
-        statusColor = Colors.red;
-        statusLabel = '已拒绝';
-      case 'cancelled':
-        statusColor = Colors.grey;
-        statusLabel = '已撤回';
-      default:
-        statusColor = Colors.grey;
-        statusLabel = status;
-    }
+    final (variant, statusLabel) = _statusVariant(status);
 
     showDialog(
       context: context,
@@ -502,109 +540,55 @@ class _SubmissionSearchPageState extends ConsumerState<SubmissionSearchPage> {
             mainAxisSize: MainAxisSize.min,
             children: [
               _buildDetailRow('提交人', userName),
-              _buildDetailRow('提交时间', DateFormat('yyyy-MM-dd HH:mm').format(submittedAt)),
+              _buildDetailRow(
+                '提交时间',
+                DateFormat('yyyy-MM-dd HH:mm').format(submittedAt),
+              ),
               _buildDetailRow('周次', '第 ${item['week_number']} 周'),
               if (classNames.isNotEmpty)
                 _buildDetailRow('班级', classNames),
               _buildDetailRow('记录数量', '$recordCount 条'),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpacing.sm),
               Row(
                 children: [
-                  const Text('状态: ', style: TextStyle(color: Colors.grey)),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: statusColor.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      statusLabel,
-                      style: TextStyle(color: statusColor, fontSize: 12),
-                    ),
+                  Text(
+                    '状态: ',
+                    style: AppTextStyles.sm.copyWith(color: c.textSecondary),
                   ),
+                  StatusPill(label: statusLabel, variant: variant),
                 ],
               ),
               if (reviewerName != null) ...[
-                const SizedBox(height: 8),
+                const SizedBox(height: AppSpacing.sm),
                 _buildDetailRow('审核人', reviewerName),
               ],
-              if (reviewTime != null) ...[
-                _buildDetailRow('审核时间', DateFormat('yyyy-MM-dd HH:mm').format(reviewTime)),
-              ],
+              if (reviewTime != null)
+                _buildDetailRow(
+                  '审核时间',
+                  DateFormat('yyyy-MM-dd HH:mm').format(reviewTime),
+                ),
               if (item['review_note'] != null) ...[
-                const SizedBox(height: 8),
+                const SizedBox(height: AppSpacing.sm),
                 _buildDetailRow('审核备注', item['review_note'] as String),
               ],
-              // rejected 状态提示
               if (status == 'rejected') ...[
-                const SizedBox(height: 12),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.red.withValues(alpha: 0.05),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.red.withValues(alpha: 0.2)),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          const Icon(Icons.cancel, color: Colors.red, size: 18),
-                          const SizedBox(width: 8),
-                          const Text(
-                            '已拒绝',
-                            style: TextStyle(
-                              color: Colors.red,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                      if (item['review_note'] != null) ...[
-                        const SizedBox(height: 4),
-                        Text(
-                          '拒绝原因: ${item['review_note']}',
-                          style: const TextStyle(color: Colors.red, fontSize: 12),
-                        ),
-                      ],
-                    ],
-                  ),
+                const SizedBox(height: AppSpacing.md),
+                _NoticeBox(
+                  color: c.stateDanger,
+                  icon: Icons.cancel,
+                  title: '已拒绝',
+                  body: item['review_note'] != null
+                      ? '拒绝原因: ${item['review_note']}'
+                      : null,
                 ),
               ],
-              // record_count == 0 提示
               if (recordCount == 0) ...[
-                const SizedBox(height: 12),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.orange.withValues(alpha: 0.05),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.orange.withValues(alpha: 0.2)),
-                  ),
-                  child: const Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(Icons.warning_amber, color: Colors.orange, size: 18),
-                          SizedBox(width: 8),
-                          Text(
-                            '无关联学生记录',
-                            style: TextStyle(
-                              color: Colors.orange,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: 4),
-                      Text(
-                        '可能是旧版本或同步异常产生的记录。建议重新提交一份正常记录，或联系管理员确认。',
-                        style: TextStyle(color: Colors.orange, fontSize: 12),
-                      ),
-                    ],
-                  ),
+                const SizedBox(height: AppSpacing.md),
+                _NoticeBox(
+                  color: c.stateWarning,
+                  icon: Icons.warning_amber_outlined,
+                  title: '无关联学生记录',
+                  body: '可能是旧版本或同步异常产生的记录。建议重新提交一份正常记录，或联系管理员确认。',
                 ),
               ],
             ],
@@ -629,6 +613,7 @@ class _SubmissionSearchPageState extends ConsumerState<SubmissionSearchPage> {
   }
 
   Widget _buildDetailRow(String label, String value) {
+    final c = context.colors;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
       child: Row(
@@ -638,11 +623,14 @@ class _SubmissionSearchPageState extends ConsumerState<SubmissionSearchPage> {
             width: 64,
             child: Text(
               label,
-              style: const TextStyle(color: Colors.grey, fontSize: 13),
+              style: AppTextStyles.sm.copyWith(color: c.textTertiary),
             ),
           ),
           Expanded(
-            child: Text(value, style: const TextStyle(fontSize: 13)),
+            child: Text(
+              value,
+              style: AppTextStyles.sm.copyWith(color: c.textPrimary),
+            ),
           ),
         ],
       ),
@@ -651,6 +639,7 @@ class _SubmissionSearchPageState extends ConsumerState<SubmissionSearchPage> {
 
   /// 查看学生明细，复用已有 /submissions/{id}/records 接口
   Future<void> _showStudentDetail(Map<String, dynamic> item) async {
+    final c = context.colors;
     final submissionId = item['id'] as int;
 
     showDialog(
@@ -702,47 +691,20 @@ class _SubmissionSearchPageState extends ConsumerState<SubmissionSearchPage> {
                 children: [
                   // rejected 状态提示（独立于空状态始终显示）
                   if (isRejected) ...[
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.red.withValues(alpha: 0.05),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.red.withValues(alpha: 0.2)),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              const Icon(Icons.cancel, color: Colors.red, size: 18),
-                              const SizedBox(width: 8),
-                              const Text(
-                                '已拒绝',
-                                style: TextStyle(
-                                  color: Colors.red,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                          if (item['reviewer_name'] != null) ...[
-                            const SizedBox(height: 4),
-                            Text(
-                              '审核人: ${item['reviewer_name']}',
-                              style: const TextStyle(color: Colors.red, fontSize: 12),
-                            ),
-                          ],
-                          if (item['review_note'] != null) ...[
-                            const SizedBox(height: 4),
-                            Text(
-                              '拒绝原因: ${item['review_note']}',
-                              style: const TextStyle(color: Colors.red, fontSize: 12),
-                            ),
-                          ],
-                        ],
-                      ),
+                    _NoticeBox(
+                      color: c.stateDanger,
+                      icon: Icons.cancel,
+                      title: '已拒绝',
+                      body: '审核人: ${item['reviewer_name']}',
                     ),
-                    const SizedBox(height: 16),
+                    if (item['review_note'] != null) ...[
+                      const SizedBox(height: AppSpacing.sm),
+                      Text(
+                        '拒绝原因: ${item['review_note']}',
+                        style: AppTextStyles.sm.copyWith(color: c.stateDanger),
+                      ),
+                    ],
+                    const SizedBox(height: AppSpacing.lg),
                   ],
                   if (recordCount == 0)
                     EmptyState.noLinkedRecords()
@@ -848,6 +810,7 @@ class _SubmissionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     final userName = item['user_name'] ?? item['user_email'] ?? '未知';
     final status = item['status'] as String;
     final submittedAt = DateTime.parse(item['submitted_at'] as String);
@@ -855,89 +818,171 @@ class _SubmissionCard extends StatelessWidget {
     final classNames = item['class_names'] as String? ?? '';
     final reviewerName = item['reviewer_name'];
 
-    Color statusColor;
-    String statusLabel;
-    switch (status) {
-      case 'pending':
-        statusColor = Colors.orange;
-        statusLabel = '待审核';
-      case 'approved':
-        statusColor = Colors.green;
-        statusLabel = '已通过';
-      case 'rejected':
-        statusColor = Colors.red;
-        statusLabel = '已拒绝';
-      case 'cancelled':
-        statusColor = Colors.grey;
-        statusLabel = '已撤回';
-      default:
-        statusColor = Colors.grey;
-        statusLabel = status;
-    }
+    final (variant, label) = _statusVariant(status);
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    return AppCard(
+      onTap: onTap,
+      padding: const EdgeInsets.all(AppSpacing.md),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      userName,
-                      style: Theme.of(context).textTheme.titleSmall,
-                    ),
+              Expanded(
+                child: Text(
+                  userName,
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    color: c.textPrimary,
                   ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: statusColor.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      statusLabel,
-                      style: TextStyle(color: statusColor, fontSize: 12),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 6),
-              if (classNames.isNotEmpty)
-                Text(
-                  classNames,
-                  style: TextStyle(fontSize: 13, color: Colors.grey[600]),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
-              const SizedBox(height: 4),
-              Row(
-                children: [
-                  Text(
-                    '第 ${item['week_number']} 周 · $recordCount 条记录',
-                    style: TextStyle(fontSize: 12, color: Colors.grey[500]),
-                  ),
-                  const Spacer(),
-                  Text(
-                    DateFormat('MM-dd HH:mm').format(submittedAt),
-                    style: TextStyle(fontSize: 12, color: Colors.grey[400]),
-                  ),
-                ],
               ),
-              if (reviewerName != null) ...[
-                const SizedBox(height: 4),
-                Text(
-                  '审核人: $reviewerName',
-                  style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+              const SizedBox(width: AppSpacing.sm),
+              StatusPill(label: label, variant: variant),
+            ],
+          ),
+          if (classNames.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.xs + 2),
+            Text(
+              classNames,
+              style: AppTextStyles.sm.copyWith(color: c.textSecondary),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+          const SizedBox(height: AppSpacing.xs),
+          Row(
+            children: [
+              Flexible(
+                child: Text(
+                  '第 ${item['week_number']} 周 · $recordCount 条记录',
+                  style: AppTextStyles.xs.copyWith(color: c.textTertiary),
+                  overflow: TextOverflow.ellipsis,
                 ),
-              ],
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Text(
+                DateFormat('MM-dd HH:mm').format(submittedAt),
+                style: AppTextStyles.withTabular(AppTextStyles.xs)
+                    .copyWith(color: c.textTertiary),
+              ),
+            ],
+          ),
+          if (reviewerName != null) ...[
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              '审核人: $reviewerName',
+              style: AppTextStyles.xs.copyWith(color: c.textTertiary),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _ResetChip extends StatelessWidget {
+  final VoidCallback onPressed;
+  const _ResetChip({required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(AppRadius.full),
+        child: Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: AppSpacing.xs + 2,
+          ),
+          decoration: BoxDecoration(
+            color: c.bgMuted,
+            borderRadius: BorderRadius.circular(AppRadius.full),
+            border: Border.all(color: c.borderSubtle),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.refresh, size: 14, color: c.textSecondary),
+              const SizedBox(width: 4),
+              Text(
+                '重置',
+                style: AppTextStyles.sm.copyWith(color: c.textSecondary),
+              ),
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+(StatusPillVariant, String) _statusVariant(String status) {
+  switch (status) {
+    case 'pending':
+      return (StatusPillVariant.warning, '待审核');
+    case 'approved':
+      return (StatusPillVariant.success, '已通过');
+    case 'rejected':
+      return (StatusPillVariant.danger, '已拒绝');
+    case 'cancelled':
+      return (StatusPillVariant.neutral, '已撤回');
+    default:
+      return (StatusPillVariant.neutral, status);
+  }
+}
+
+class _NoticeBox extends StatelessWidget {
+  final Color color;
+  final IconData icon;
+  final String title;
+  final String? body;
+  const _NoticeBox({
+    required this.color,
+    required this.icon,
+    required this.title,
+    this.body,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(AppRadius.normal),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: color, size: 18),
+              const SizedBox(width: AppSpacing.sm),
+              Text(
+                title,
+                style: AppTextStyles.bodyMedium.copyWith(
+                  color: color,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+          if (body != null) ...[
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              body!,
+              style: AppTextStyles.sm.copyWith(color: color),
+            ),
+          ],
+        ],
       ),
     );
   }
