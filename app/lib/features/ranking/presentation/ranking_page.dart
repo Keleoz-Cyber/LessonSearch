@@ -1,6 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../shared/design_system/colors.dart';
+import '../../../shared/design_system/tokens.dart';
+import '../../../shared/design_system/typography.dart';
+import '../../../shared/design_system/widgets/app_button.dart';
+import '../../../shared/design_system/widgets/app_card.dart';
+import '../../../shared/design_system/widgets/segmented_control.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/loading_overlay.dart';
 import '../data/ranking_service.dart';
@@ -41,177 +47,107 @@ class _RankingPageState extends ConsumerState<RankingPage>
     ref.invalidate(rankingListProvider((period: _periodType, type: _rankType)));
   }
 
-  static const Color _goldPrimary = Color(0xFFD4AF37);
-  static const Color _goldLight = Color(0xFFF5DEB3);
-  static const Color _goldDark = Color(0xFFB8860B);
-  static const Color _accentRed = Color(0xFFC41E3A);
-  static const Color _amberAccent = Color(0xFFFFB300);
-  static const Color _warmBg = Color(0xFFFFF8E7);
-  static const Color _warmBgLight = Color(0xFFFFFAF0);
+  // 前 3 名奖牌色（仅用于排名徽章；其余视觉一律 design system token）
+  static const _gold1 = Color(0xFFFFD700);
+  static const _gold2 = Color(0xFFDAA520);
+  static const _silver1 = Color(0xFFC0C0C0);
+  static const _silver2 = Color(0xFFA8A8A8);
+  static const _bronze1 = Color(0xFFCD7F32);
+  static const _bronze2 = Color(0xFFB87333);
 
-  final List<({String value, String label})> _periods = [
-    (value: '7d', label: '近7天'),
-    (value: '30d', label: '近30天'),
-    (value: 'total', label: '总榜'),
+  static const _periods = [
+    AppSegmentedItem(value: '7d', label: '近 7 天'),
+    AppSegmentedItem(value: '30d', label: '近 30 天'),
+    AppSegmentedItem(value: 'total', label: '总榜'),
   ];
 
-  final List<({String value, String label, IconData icon})> _rankTypes = [
-    (value: 'score', label: '异常分数', icon: Icons.analytics_outlined),
-    (value: 'rate', label: '缺勤率', icon: Icons.percent),
-    (value: 'count', label: '缺勤人次', icon: Icons.people_outline),
+  static const _rankTypes = [
+    AppSegmentedItem(value: 'score', label: '异常分'),
+    AppSegmentedItem(value: 'rate', label: '缺勤率'),
+    AppSegmentedItem(value: 'count', label: '缺勤'),
   ];
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     final rankingAsync = ref.watch(
       rankingListProvider((period: _periodType, type: _rankType)),
     );
 
-    return DefaultTabController(
-      length: _periods.length,
-      child: Scaffold(
-        backgroundColor: _warmBgLight,
-        appBar: AppBar(
-          title: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.emoji_events, color: _goldPrimary, size: 24),
-              const SizedBox(width: 8),
-              const Text('排行榜'),
-            ],
-          ),
-          backgroundColor: _warmBg,
-          bottom: PreferredSize(
-            preferredSize: const Size.fromHeight(52),
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [_goldLight.withValues(alpha: 0.3), _warmBg],
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                ),
-              ),
-              child: TabBar(
-                indicator: BoxDecoration(
-                  gradient: LinearGradient(colors: [_goldPrimary, _goldDark]),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                indicatorSize: TabBarIndicatorSize.tab,
-                labelColor: Colors.white,
-                unselectedLabelColor: Colors.grey.shade600,
-                tabs: _periods.map((p) => Tab(text: p.label)).toList(),
-                onTap: (index) {
-                  setState(() => _periodType = _periods[index].value);
-                },
-              ),
+    return Scaffold(
+      backgroundColor: c.bgCanvas,
+      appBar: AppBar(title: const Text('排行榜')),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.lg,
+              AppSpacing.md,
+              AppSpacing.lg,
+              AppSpacing.sm,
+            ),
+            child: AppSegmentedControl<String>(
+              items: _periods,
+              value: _periodType,
+              onChanged: (v) => setState(() => _periodType = v),
             ),
           ),
-        ),
-        body: Column(
-          children: [
-            _buildTypeSelector(),
-            Expanded(
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [_warmBgLight, _warmBg],
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                  ),
-                ),
-                child: TabBarView(
-                  children: _periods
-                      .map(
-                        (_) => rankingAsync.when(
-                          data: (data) => _buildContent(context, data),
-                          loading: () => const LoadingOverlay(
-                            isLoading: true,
-                            child: SizedBox.expand(),
-                          ),
-                          error: (err, stack) => Center(
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.error_outline,
-                                  size: 48,
-                                  color: _accentRed,
-                                ),
-                                const SizedBox(height: 16),
-                                Text('加载失败: $err'),
-                                const SizedBox(height: 16),
-                                FilledButton(
-                                  style: FilledButton.styleFrom(
-                                    backgroundColor: _goldPrimary,
-                                  ),
-                                  onPressed: () => ref.invalidate(
-                                    rankingListProvider((
-                                      period: _periodType,
-                                      type: _rankType,
-                                    )),
-                                  ),
-                                  child: const Text('重试'),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      )
-                      .toList(),
-                ),
-              ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.lg,
+              0,
+              AppSpacing.lg,
+              AppSpacing.md,
             ),
-          ],
-        ),
+            child: AppSegmentedControl<String>(
+              items: _rankTypes,
+              value: _rankType,
+              onChanged: (v) => setState(() => _rankType = v),
+            ),
+          ),
+          Expanded(
+            child: rankingAsync.when(
+              data: (data) => _buildContent(context, data),
+              loading: () => const LoadingOverlay(
+                isLoading: true,
+                child: SizedBox.expand(),
+              ),
+              error: (err, _) => _buildErrorState(err),
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildTypeSelector() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: _warmBg,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: SegmentedButton<String>(
-        showSelectedIcon: false,
-        style: ButtonStyle(
-          backgroundColor: WidgetStateProperty.resolveWith((states) {
-            if (states.contains(WidgetState.selected)) {
-              return _goldPrimary;
-            }
-            return Colors.transparent;
-          }),
-          foregroundColor: WidgetStateProperty.resolveWith((states) {
-            if (states.contains(WidgetState.selected)) {
-              return Colors.white;
-            }
-            return Colors.grey.shade700;
-          }),
-          side: WidgetStateProperty.all(
-            BorderSide(color: _goldLight.withValues(alpha: 0.5)),
-          ),
+  Widget _buildErrorState(Object err) {
+    final c = context.colors;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.xl),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.error_outline, size: 32, color: c.stateDanger),
+            const SizedBox(height: AppSpacing.lg),
+            Text(
+              '加载失败',
+              style: AppTextStyles.h3.copyWith(color: c.textPrimary),
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              '$err',
+              style: AppTextStyles.sm.copyWith(color: c.textSecondary),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            AppButton.primary(
+              label: '重试',
+              onPressed: _refresh,
+              leadingIcon: Icons.refresh,
+            ),
+          ],
         ),
-        segments: _rankTypes
-            .map(
-              (r) => ButtonSegment(
-                value: r.value,
-                label: Text(r.label),
-                icon: Icon(r.icon),
-              ),
-            )
-            .toList(),
-        selected: {_rankType},
-        onSelectionChanged: (Set<String> selection) {
-          setState(() => _rankType = selection.first);
-        },
       ),
     );
   }
@@ -222,118 +158,186 @@ class _RankingPageState extends ConsumerState<RankingPage>
     final calculatedAt = data['calculated_at'] as String?;
 
     if (items.isEmpty) {
-      return EmptyState(
+      return const EmptyState(
         icon: Icons.emoji_events_outlined,
         message: '当前周期暂无可展示数据',
-        color: _goldPrimary,
       );
     }
 
     return RefreshIndicator(
-      color: _goldPrimary,
       onRefresh: () async {
         _refresh();
-        await ref.read(rankingListProvider((period: _periodType, type: _rankType)).future);
-      },
-      child: ListView.builder(
-      physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.all(16),
-      itemCount: items.length + 2,
-      itemBuilder: (context, index) {
-        if (index == 0) {
-          return _buildSummaryCard(context, summary);
-        }
-        if (index == 1) {
-          return _buildRulesSection(context, calculatedAt);
-        }
-        final itemIndex = index - 2;
-        final item = items[itemIndex] as Map<String, dynamic>;
-        return AnimatedOpacity(
-          opacity: 1.0,
-          duration: Duration(milliseconds: 100 + itemIndex * 50),
-          child: _buildRankingItem(context, item),
+        await ref.read(
+          rankingListProvider((period: _periodType, type: _rankType)).future,
         );
       },
-    ),
+      child: ListView.builder(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.lg,
+          0,
+          AppSpacing.lg,
+          AppSpacing.lg,
+        ),
+        itemCount: items.length + 2,
+        itemBuilder: (context, index) {
+          if (index == 0) {
+            return Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.md),
+              child: _buildSummaryCard(context, summary),
+            );
+          }
+          if (index == 1) {
+            return Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.lg),
+              child: _buildRulesSection(context, calculatedAt),
+            );
+          }
+          final itemIndex = index - 2;
+          final item = items[itemIndex] as Map<String, dynamic>;
+          return Padding(
+            padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+            child: _buildRankingItem(context, item),
+          );
+        },
+      ),
     );
   }
 
-  Widget _buildRulesSection(BuildContext context, String? calculatedAt) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _goldLight.withValues(alpha: 0.5)),
+  // ============================================================
+  // 概览卡片
+  // ============================================================
+
+  Widget _buildSummaryCard(BuildContext context, Map<String, dynamic> summary) {
+    final c = context.colors;
+    final avgValue = summary['avg_value'] as num;
+    final topClass = summary['top_class_name'] as String?;
+    final topValue = summary['top_value'] as num?;
+    final totalClasses = summary['total_classes'] as int;
+
+    return AppCard(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.insights_rounded, size: 18, color: c.brandPrimary),
+              const SizedBox(width: AppSpacing.sm),
+              Text(
+                '本期概览',
+                style: AppTextStyles.bodyMedium.copyWith(color: c.textPrimary),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          IntrinsicHeight(
+            child: Row(
+              children: [
+                Expanded(
+                  child: _SummaryStat(
+                    label: _getAvgLabel(),
+                    value: _formatValue(avgValue),
+                  ),
+                ),
+                _SummaryDivider(color: c.borderSubtle),
+                Expanded(
+                  child: _SummaryStat(
+                    label: _getTopLabel(),
+                    value: topValue != null ? _formatValue(topValue) : '-',
+                    subtitle: topClass,
+                    valueColor: c.stateDanger,
+                  ),
+                ),
+                _SummaryDivider(color: c.borderSubtle),
+                Expanded(
+                  child: _SummaryStat(
+                    label: '上榜班级',
+                    value: totalClasses.toString(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
+    );
+  }
+
+  // ============================================================
+  // 规则说明（折叠卡片）
+  // ============================================================
+
+  Widget _buildRulesSection(BuildContext context, String? calculatedAt) {
+    final c = context.colors;
+    return AppCard(
+      padding: EdgeInsets.zero,
       child: Column(
         children: [
           InkWell(
             onTap: () => setState(() => _rulesExpanded = !_rulesExpanded),
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(AppRadius.md),
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.lg,
+                vertical: AppSpacing.md,
+              ),
               child: Row(
                 children: [
-                  Icon(Icons.info_outline, color: _goldPrimary, size: 20),
-                  const SizedBox(width: 8),
+                  Icon(Icons.info_outline, size: 18, color: c.brandPrimary),
+                  const SizedBox(width: AppSpacing.sm),
                   Text(
                     '统计规则说明',
-                    style: TextStyle(
-                      color: _goldDark,
-                      fontWeight: FontWeight.w500,
+                    style: AppTextStyles.bodyMedium.copyWith(
+                      color: c.textPrimary,
                     ),
                   ),
                   const Spacer(),
-                  Icon(
-                    _rulesExpanded
-                        ? Icons.keyboard_arrow_up
-                        : Icons.keyboard_arrow_down,
-                    color: _goldPrimary,
+                  AnimatedRotation(
+                    duration: AppDuration.fast,
+                    turns: _rulesExpanded ? 0.5 : 0,
+                    child: Icon(
+                      Icons.keyboard_arrow_down,
+                      color: c.textSecondary,
+                    ),
                   ),
                 ],
               ),
             ),
           ),
           if (_rulesExpanded)
-            Container(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.lg,
+                0,
+                AppSpacing.lg,
+                AppSpacing.lg,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Divider(height: 1),
-                  const SizedBox(height: 12),
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: _goldLight.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.schedule, size: 16, color: _goldDark),
-                        const SizedBox(width: 8),
-                        Text(
-                          '每日凌晨2点自动更新',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: _goldDark,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
+                  Divider(height: 1, color: c.borderSubtle),
+                  const SizedBox(height: AppSpacing.md),
+                  Row(
+                    children: [
+                      Icon(Icons.schedule, size: 16, color: c.brandPrimary),
+                      const SizedBox(width: AppSpacing.sm),
+                      Text(
+                        '每日凌晨 2 点自动更新',
+                        style: AppTextStyles.sm.copyWith(color: c.textPrimary),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.md),
                   _buildPeriodRule(context),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.md),
                   _buildRankTypeRule(context),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.md),
                   Container(
-                    padding: const EdgeInsets.all(12),
+                    padding: const EdgeInsets.all(AppSpacing.md),
                     decoration: BoxDecoration(
-                      color: _goldLight.withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(8),
+                      color: c.bgMuted,
+                      borderRadius: BorderRadius.circular(AppRadius.normal),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -342,103 +346,62 @@ class _RankingPageState extends ConsumerState<RankingPage>
                           _rankType == 'score'
                               ? '异常分数计算公式'
                               : _rankType == 'rate'
-                              ? '缺勤率计算公式'
-                              : '缺勤人次统计说明',
-                          style: TextStyle(
-                            color: _goldDark,
-                            fontWeight: FontWeight.w600,
+                                  ? '缺勤率计算公式'
+                                  : '缺勤人次统计说明',
+                          style: AppTextStyles.bodyMedium.copyWith(
+                            color: c.textPrimary,
                           ),
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: AppSpacing.sm),
                         if (_rankType == 'score') ...[
-                          Text(
-                            '分子：Σ(缺勤×1.0 + 请假×0.5 + 迟到×0.3 + 其他×0.2)',
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: Colors.grey.shade700,
-                            ),
+                          _RuleLine(
+                            text:
+                                '分子：Σ(缺勤×1.0 + 请假×0.5 + 迟到×0.3 + 其他×0.2)',
                           ),
                           const SizedBox(height: 4),
-                          Text(
-                            '分母：班级人数 × 查课次数',
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: Colors.grey.shade700,
-                            ),
-                          ),
+                          const _RuleLine(text: '分母：班级人数 × 查课次数'),
                           const SizedBox(height: 4),
-                          Text(
-                            '例：34人班级被查2次，异常加权18，分数 = 18÷68 = 0.26',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey.shade500,
-                            ),
+                          const _RuleLine(
+                            text: '例：34 人班级被查 2 次，异常加权 18，分数 = 18÷68 = 0.26',
+                            muted: true,
                           ),
                         ] else if (_rankType == 'rate') ...[
-                          Text(
-                            '分子：缺勤人次',
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: Colors.grey.shade700,
-                            ),
-                          ),
+                          const _RuleLine(text: '分子：缺勤人次'),
                           const SizedBox(height: 4),
-                          Text(
-                            '分母：班级人数 × 查课次数',
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: Colors.grey.shade700,
-                            ),
-                          ),
+                          const _RuleLine(text: '分母：班级人数 × 查课次数'),
                           const SizedBox(height: 4),
-                          Text(
-                            '例：34人班级被查2次，缺勤6次，缺勤率 = 6÷68 = 8.8%',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey.shade500,
-                            ),
+                          const _RuleLine(
+                            text: '例：34 人班级被查 2 次，缺勤 6 次，缺勤率 = 6÷68 = 8.8%',
+                            muted: true,
                           ),
                         ] else ...[
-                          Text(
-                            '统计该周期内所有已审核提交中的"缺勤"状态累计人次',
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: Colors.grey.shade700,
-                            ),
+                          const _RuleLine(
+                            text: '统计该周期内所有已审核提交中的"缺勤"状态累计人次',
                           ),
                           const SizedBox(height: 4),
-                          Text(
-                            '注：多次查课同一人多次缺勤会累计，反映该班缺勤总频次',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey.shade500,
-                            ),
+                          const _RuleLine(
+                            text: '注：多次查课同一人多次缺勤会累计，反映该班缺勤总频次',
+                            muted: true,
                           ),
                         ],
                       ],
                     ),
                   ),
-                  if (calculatedAt != null)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 12),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.update,
-                            size: 14,
-                            color: Colors.grey.shade500,
+                  if (calculatedAt != null) ...[
+                    const SizedBox(height: AppSpacing.md),
+                    Row(
+                      children: [
+                        Icon(Icons.update, size: 14, color: c.textTertiary),
+                        const SizedBox(width: 6),
+                        Text(
+                          '上次更新: ${_formatCalculatedAt(calculatedAt)}',
+                          style: AppTextStyles.xs.copyWith(
+                            color: c.textTertiary,
                           ),
-                          const SizedBox(width: 6),
-                          Text(
-                            '上次更新: ${_formatCalculatedAt(calculatedAt)}',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey.shade500,
-                            ),
-                          ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
+                  ],
                 ],
               ),
             ),
@@ -448,32 +411,35 @@ class _RankingPageState extends ConsumerState<RankingPage>
   }
 
   Widget _buildPeriodRule(BuildContext context) {
+    final c = context.colors;
     String periodText;
     if (_periodType == '7d') {
-      periodText = '统计最近7天的考勤数据。分数 = 异常加权人次 ÷ (班级人数 × 查课次数)，每日凌晨2点自动更新';
+      periodText =
+          '统计最近 7 天的考勤数据。分数 = 异常加权人次 ÷ (班级人数 × 查课次数)，每日凌晨 2 点自动更新';
     } else if (_periodType == '30d') {
-      periodText = '统计最近30天的考勤数据。分数 = 异常加权人次 ÷ (班级人数 × 查课次数)，每日凌晨2点自动更新';
+      periodText =
+          '统计最近 30 天的考勤数据。分数 = 异常加权人次 ÷ (班级人数 × 查课次数)，每日凌晨 2 点自动更新';
     } else {
-      periodText = '统计所有历史考勤数据。分数 = 异常加权人次 ÷ (班级人数 × 查课次数)，每日凌晨2点自动更新';
+      periodText =
+          '统计所有历史考勤数据。分数 = 异常加权人次 ÷ (班级人数 × 查课次数)，每日凌晨 2 点自动更新';
     }
-
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
           width: 6,
           height: 6,
-          margin: const EdgeInsets.only(top: 6),
+          margin: const EdgeInsets.only(top: 7),
           decoration: BoxDecoration(
-            color: _goldPrimary,
+            color: c.brandPrimary,
             shape: BoxShape.circle,
           ),
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: AppSpacing.sm),
         Expanded(
           child: Text(
             periodText,
-            style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
+            style: AppTextStyles.sm.copyWith(color: c.textSecondary),
           ),
         ),
       ],
@@ -481,215 +447,46 @@ class _RankingPageState extends ConsumerState<RankingPage>
   }
 
   Widget _buildRankTypeRule(BuildContext context) {
+    final c = context.colors;
     String rankText;
     if (_rankType == 'score') {
-      rankText = '异常分数：综合考量缺勤、请假、迟到、其他状态。分母 = 班级人数 × 查课次数，避免查课次数多的班级虚高';
+      rankText =
+          '异常分数：综合考量缺勤、请假、迟到、其他状态。分母 = 班级人数 × 查课次数，避免查课次数多的班级虚高';
     } else if (_rankType == 'rate') {
-      rankText = '缺勤率：仅统计"缺勤"状态人次。分母 = 班级人数 × 查课次数，体现每次查课的平均缺勤率';
+      rankText =
+          '缺勤率：仅统计"缺勤"状态人次。分母 = 班级人数 × 查课次数，体现每次查课的平均缺勤率';
     } else {
       rankText = '缺勤人次：仅统计"缺勤"状态的累计人次（原始数据，不做除法）';
     }
-
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
           width: 6,
           height: 6,
-          margin: const EdgeInsets.only(top: 6),
+          margin: const EdgeInsets.only(top: 7),
           decoration: BoxDecoration(
-            color: _goldPrimary,
+            color: c.brandPrimary,
             shape: BoxShape.circle,
           ),
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: AppSpacing.sm),
         Expanded(
           child: Text(
             rankText,
-            style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
+            style: AppTextStyles.sm.copyWith(color: c.textSecondary),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildSummaryCard(BuildContext context, Map<String, dynamic> summary) {
-    final avgValue = summary['avg_value'] as num;
-    final topClass = summary['top_class_name'] as String?;
-    final topValue = summary['top_value'] as num?;
-    final totalClasses = summary['total_classes'] as int;
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 20),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [_goldLight.withValues(alpha: 0.4), Colors.white],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: _goldLight.withValues(alpha: 0.6),
-          width: 1.5,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: _goldPrimary.withValues(alpha: 0.15),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Stack(
-        children: [
-          Positioned(
-            right: -30,
-            top: -30,
-            child: Container(
-              width: 120,
-              height: 120,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    _goldPrimary.withValues(alpha: 0.1),
-                    _goldLight.withValues(alpha: 0.02),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(colors: [_goldPrimary, _goldDark]),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(
-                        Icons.summarize_outlined,
-                        color: Colors.white,
-                        size: 18,
-                      ),
-                      const SizedBox(width: 8),
-                      const Text(
-                        '概览统计',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 20),
-                IntrinsicHeight(
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: _buildStatColumn(
-                          icon: Icons.bar_chart_rounded,
-                          label: _getAvgLabel(),
-                          value: _formatValue(avgValue),
-                        ),
-                      ),
-                      Container(
-                        width: 1,
-                        margin: const EdgeInsets.symmetric(vertical: 8),
-                        color: _goldLight.withValues(alpha: 0.5),
-                      ),
-                      Expanded(
-                        child: _buildStatColumn(
-                          icon: Icons.emoji_events_rounded,
-                          label: _getTopLabel(),
-                          value: topValue != null
-                              ? _formatValue(topValue)
-                              : '-',
-                          subtitle: topClass,
-                        ),
-                      ),
-                      Container(
-                        width: 1,
-                        margin: const EdgeInsets.symmetric(vertical: 8),
-                        color: _goldLight.withValues(alpha: 0.5),
-                      ),
-                      Expanded(
-                        child: _buildStatColumn(
-                          icon: Icons.school_rounded,
-                          label: '上榜班级',
-                          value: totalClasses.toString(),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatColumn({
-    required IconData icon,
-    required String label,
-    required String value,
-    String? subtitle,
-  }) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: _goldLight.withValues(alpha: 0.3),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(icon, color: _goldDark, size: 20),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          label,
-          style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
-            color: _accentRed,
-          ),
-        ),
-        if (subtitle != null)
-          Padding(
-            padding: const EdgeInsets.only(top: 2),
-            child: Text(
-              subtitle,
-              style: TextStyle(
-                fontSize: 11,
-                color: _amberAccent,
-                fontWeight: FontWeight.w500,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-      ],
-    );
-  }
+  // ============================================================
+  // 排名行（前 3 名奖牌 / 其余品牌色 #N）
+  // ============================================================
 
   Widget _buildRankingItem(BuildContext context, Map<String, dynamic> item) {
+    final c = context.colors;
     final rank = item['rank'] as int;
     final className = item['class_name'] as String;
     final rankValue = item['rank_value'] as num;
@@ -699,208 +496,160 @@ class _RankingPageState extends ConsumerState<RankingPage>
     final lateCount = item['late_count'] as int?;
     final otherCount = item['other_count'] as int?;
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: rank <= 3
-            ? Border.all(
-                color: _getRankBorderColor(rank),
-                width: rank == 1 ? 2 : 1.5,
-              )
-            : Border.all(color: _goldLight.withValues(alpha: 0.3)),
-        boxShadow: [
-          BoxShadow(
-            color: _goldPrimary.withValues(alpha: rank <= 3 ? 0.1 : 0.05),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            _buildRankBadge(rank),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    className,
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: rank <= 3 ? FontWeight.w600 : FontWeight.w500,
-                      color: rank == 1 ? _goldDark : null,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  if (absentCount != null ||
-                      leaveCount != null ||
-                      lateCount != null ||
-                      otherCount != null)
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 4,
-                      children: [
-                        if (absentCount != null && absentCount > 0)
-                          _buildMiniBadge('缺勤', absentCount, _accentRed),
-                        if (leaveCount != null && leaveCount > 0)
-                          _buildMiniBadge('请假', leaveCount, _amberAccent),
-                        if (lateCount != null && lateCount > 0)
-                          _buildMiniBadge('迟到', lateCount, Color(0xFFFFA000)),
-                        if (otherCount != null && otherCount > 0)
-                          _buildMiniBadge('其他', otherCount, _goldPrimary),
-                      ],
-                    ),
-                ],
-              ),
-            ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
+    return AppCard(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      child: Row(
+        children: [
+          _buildRankBadge(context, rank),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (trendRank != null && _periodType != 'total')
-                  _buildTrendBadge(trendRank),
-                const SizedBox(height: 6),
                 Text(
-                  _formatValue(rankValue),
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: _accentRed,
+                  className,
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    color: c.textPrimary,
+                    fontWeight: rank <= 3 ? FontWeight.w600 : FontWeight.w500,
                   ),
                 ),
+                if (absentCount != null ||
+                    leaveCount != null ||
+                    lateCount != null ||
+                    otherCount != null) ...[
+                  const SizedBox(height: AppSpacing.sm),
+                  Wrap(
+                    spacing: AppSpacing.xs + 2,
+                    runSpacing: 4,
+                    children: [
+                      if (absentCount != null && absentCount > 0)
+                        _MiniBadge(label: '缺', count: absentCount, color: c.stateDanger),
+                      if (lateCount != null && lateCount > 0)
+                        _MiniBadge(label: '迟', count: lateCount, color: c.stateWarning),
+                      if (leaveCount != null && leaveCount > 0)
+                        _MiniBadge(label: '假', count: leaveCount, color: c.stateInfo),
+                      if (otherCount != null && otherCount > 0)
+                        _MiniBadge(label: '他', count: otherCount, color: c.textSecondary),
+                    ],
+                  ),
+                ],
               ],
             ),
-          ],
-        ),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              if (trendRank != null && _periodType != 'total')
+                _buildTrendBadge(context, trendRank),
+              const SizedBox(height: 4),
+              Text(
+                _formatValue(rankValue),
+                style: AppTextStyles.withTabular(AppTextStyles.h2).copyWith(
+                  color: c.stateDanger,
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildRankBadge(int rank) {
+  Widget _buildRankBadge(BuildContext context, int rank) {
+    final c = context.colors;
     if (rank <= 3) {
       final colors = rank == 1
-          ? [Color(0xFFFFD700), Color(0xFFDAA520)]
+          ? [_gold1, _gold2]
           : rank == 2
-          ? [Color(0xFFC0C0C0), Color(0xFFA8A8A8)]
-          : [Color(0xFFCD7F32), Color(0xFFB87333)];
+              ? [_silver1, _silver2]
+              : [_bronze1, _bronze2];
 
       return Container(
-        width: 50,
-        height: 50,
+        width: 44,
+        height: 44,
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: colors,
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(AppRadius.md),
           boxShadow: [
             BoxShadow(
-              color: colors[1].withValues(alpha: 0.4),
-              blurRadius: 8,
-              offset: const Offset(0, 3),
+              color: colors[1].withValues(alpha: 0.3),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
             ),
           ],
         ),
         child: Center(
           child: Text(
-            rank == 1
-                ? '🥇'
-                : rank == 2
-                ? '🥈'
-                : '🥉',
-            style: const TextStyle(fontSize: 28),
+            rank == 1 ? '🥇' : rank == 2 ? '🥈' : '🥉',
+            style: const TextStyle(fontSize: 22),
           ),
         ),
       );
     }
 
     return Container(
-      width: 50,
-      height: 50,
+      width: 44,
+      height: 44,
       decoration: BoxDecoration(
-        color: _goldLight.withValues(alpha: 0.3),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: _goldLight.withValues(alpha: 0.5)),
+        color: c.brandSubtle,
+        borderRadius: BorderRadius.circular(AppRadius.md),
       ),
       child: Center(
         child: Text(
           '#$rank',
-          style: TextStyle(
-            fontSize: 16,
+          style: AppTextStyles.bodyMedium.copyWith(
+            color: c.brandPrimary,
             fontWeight: FontWeight.w600,
-            color: _goldDark.withValues(alpha: 0.8),
           ),
         ),
       ),
     );
   }
 
-  Color _getRankBorderColor(int rank) {
-    if (rank == 1) return Color(0xFFDAA520);
-    if (rank == 2) return Color(0xFFA8A8A8);
-    return Color(0xFFB87333);
-  }
-
-  Widget _buildMiniBadge(String label, int count, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: color.withValues(alpha: 0.4)),
-      ),
-      child: Text(
-        '$label $count',
-        style: TextStyle(
-          fontSize: 12,
-          color: color,
-          fontWeight: FontWeight.w500,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTrendBadge(String trendRank) {
+  Widget _buildTrendBadge(BuildContext context, String trendRank) {
+    final c = context.colors;
     Color color;
     String text;
 
     if (trendRank.startsWith('UP')) {
+      // 排名上升 = 异常分变高 = 变差，红色
       final num = trendRank.replaceAll('UP', '');
-      color = _goldPrimary;
+      color = c.stateDanger;
       text = '↑$num';
     } else if (trendRank.startsWith('DOWN')) {
+      // 排名下降 = 异常分变低 = 变好，绿色
       final num = trendRank.replaceAll('DOWN', '');
-      color = _accentRed;
+      color = c.stateSuccess;
       text = '↓$num';
     } else {
-      color = _amberAccent;
+      color = c.stateInfo;
       text = 'NEW';
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical: 2,
+      ),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [color.withValues(alpha: 0.2), color.withValues(alpha: 0.1)],
-        ),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withValues(alpha: 0.4)),
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(AppRadius.sm),
       ),
       child: Text(
         text,
-        style: TextStyle(
-          fontSize: 12,
-          color: color,
-          fontWeight: FontWeight.w600,
-        ),
+        style: AppTextStyles.xs.copyWith(color: color),
       ),
     );
   }
+
+  // ============================================================
+  // helpers
+  // ============================================================
 
   String _getAvgLabel() {
     if (_rankType == 'score') return '平均异常';
@@ -931,5 +680,115 @@ class _RankingPageState extends ConsumerState<RankingPage>
     } catch (_) {
       return calculatedAt;
     }
+  }
+}
+
+// ============================================================
+// 私有子组件
+// ============================================================
+
+class _SummaryStat extends StatelessWidget {
+  final String label;
+  final String value;
+  final String? subtitle;
+  final Color? valueColor;
+
+  const _SummaryStat({
+    required this.label,
+    required this.value,
+    this.subtitle,
+    this.valueColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Text(
+          label,
+          style: AppTextStyles.xs.copyWith(color: c.textSecondary),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          value,
+          style: AppTextStyles.withTabular(AppTextStyles.h1).copyWith(
+            color: valueColor ?? c.textPrimary,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        if (subtitle != null) ...[
+          const SizedBox(height: 2),
+          Text(
+            subtitle!,
+            style: AppTextStyles.xs.copyWith(color: c.textTertiary),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _SummaryDivider extends StatelessWidget {
+  final Color color;
+  const _SummaryDivider({required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 1,
+      margin: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+      color: color,
+    );
+  }
+}
+
+class _RuleLine extends StatelessWidget {
+  final String text;
+  final bool muted;
+  const _RuleLine({required this.text, this.muted = false});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Text(
+      text,
+      style: AppTextStyles.sm.copyWith(
+        color: muted ? c.textTertiary : c.textSecondary,
+      ),
+    );
+  }
+}
+
+class _MiniBadge extends StatelessWidget {
+  final String label;
+  final int count;
+  final Color color;
+  const _MiniBadge({
+    required this.label,
+    required this.count,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical: 2,
+      ),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(AppRadius.sm),
+      ),
+      child: Text(
+        '$label $count',
+        style: AppTextStyles.xs.copyWith(color: color),
+      ),
+    );
   }
 }
