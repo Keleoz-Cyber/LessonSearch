@@ -4,6 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/logger/logger_service.dart';
+import '../../../shared/design_system/colors.dart';
+import '../../../shared/design_system/tokens.dart';
+import '../../../shared/design_system/typography.dart';
+import '../../../shared/design_system/widgets/app_button.dart';
+import '../../../shared/design_system/widgets/segmented_control.dart';
 import '../../../shared/providers.dart';
 import '../../../shared/widgets/toast.dart';
 
@@ -210,108 +215,115 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     return Scaffold(
+      backgroundColor: c.bgCanvas,
       appBar: AppBar(title: const Text('登录')),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(AppSpacing.xl),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             // 登录方式切换
-            SegmentedButton<bool>(
-              segments: const [
-                ButtonSegment(
-                  value: false,
-                  label: Text('验证码登录'),
-                  icon: Icon(Icons.message_outlined),
-                ),
-                ButtonSegment(
-                  value: true,
-                  label: Text('密码登录'),
-                  icon: Icon(Icons.password_outlined),
-                ),
+            AppSegmentedControl<bool>(
+              items: const [
+                AppSegmentedItem(value: false, label: '验证码登录'),
+                AppSegmentedItem(value: true, label: '密码登录'),
               ],
-              selected: {_usePassword},
-              onSelectionChanged: (Set<bool> newSelection) {
-                setState(() {
-                  _usePassword = newSelection.first;
-                });
-              },
+              value: _usePassword,
+              onChanged: (val) => setState(() => _usePassword = val),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: AppSpacing.xl),
 
+            // 邮箱
+            _FieldLabel(label: '邮箱'),
             TextField(
               controller: _emailController,
-              decoration: const InputDecoration(
-                labelText: '邮箱',
+              decoration: InputDecoration(
                 hintText: '请输入邮箱地址',
-                prefixIcon: Icon(Icons.email_outlined),
+                prefixIcon: Icon(
+                  Icons.mail_outline,
+                  size: 18,
+                  color: c.textSecondary,
+                ),
               ),
               keyboardType: TextInputType.emailAddress,
+              style: AppTextStyles.body.copyWith(color: c.textPrimary),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.lg),
 
             if (!_usePassword) ...[
+              _FieldLabel(label: '验证码'),
               Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
                     child: TextField(
                       controller: _codeController,
-                      decoration: const InputDecoration(
-                        labelText: '验证码',
-                        hintText: '6位数字',
-                        prefixIcon: Icon(Icons.lock_outline),
+                      decoration: InputDecoration(
+                        hintText: '6 位数字',
+                        prefixIcon: Icon(
+                          Icons.shield_outlined,
+                          size: 18,
+                          color: c.textSecondary,
+                        ),
+                        counterText: '',
                       ),
                       keyboardType: TextInputType.number,
                       maxLength: 6,
+                      style: AppTextStyles.body.copyWith(
+                        color: c.textPrimary,
+                      ),
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Flexible(
-                    child: FilledButton(
+                  const SizedBox(width: AppSpacing.md),
+                  SizedBox(
+                    height: 48,
+                    child: AppButton.secondary(
+                      label: _countdown > 0 ? '${_countdown}s' : '发送',
                       onPressed: _countdown > 0 || _isSendingCode
                           ? null
                           : _sendCode,
-                      style: FilledButton.styleFrom(
-                        minimumSize: const Size(80, 48),
-                      ),
-                      child: Text(_countdown > 0 ? '${_countdown}s' : '发送'),
+                      loading: _isSendingCode,
+                      size: AppButtonSize.lg,
                     ),
                   ),
                 ],
               ),
             ] else ...[
+              _FieldLabel(label: '密码'),
               TextField(
                 controller: _passwordController,
-                decoration: const InputDecoration(
-                  labelText: '密码',
-                  hintText: '至少6位',
-                  prefixIcon: Icon(Icons.password_outlined),
+                decoration: InputDecoration(
+                  hintText: '至少 6 位',
+                  prefixIcon: Icon(
+                    Icons.lock_outline,
+                    size: 18,
+                    color: c.textSecondary,
+                  ),
                 ),
                 obscureText: true,
+                style: AppTextStyles.body.copyWith(color: c.textPrimary),
               ),
             ],
-            const SizedBox(height: 32),
+            const SizedBox(height: AppSpacing.xl),
 
-            FilledButton(
+            AppButton.gradient(
+              label: '登录',
               onPressed: _isLoading ? null : _login,
-              child: _isLoading
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Text('登录'),
+              loading: _isLoading,
+              size: AppButtonSize.lg,
+              fullWidth: true,
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.lg),
 
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
                   '没有账户？',
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  style: AppTextStyles.body.copyWith(
+                    color: c.textSecondary,
                   ),
                 ),
                 TextButton(
@@ -321,6 +333,26 @@ class _LoginPageState extends ConsumerState<LoginPage> {
               ],
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _FieldLabel extends StatelessWidget {
+  final String label;
+  const _FieldLabel({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+      child: Text(
+        label,
+        style: AppTextStyles.sm.copyWith(
+          color: c.textPrimary,
+          fontWeight: FontWeight.w500,
         ),
       ),
     );

@@ -3,6 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../shared/design_system/colors.dart';
+import '../../../shared/design_system/tokens.dart';
+import '../../../shared/design_system/typography.dart';
+import '../../../shared/design_system/widgets/app_button.dart';
 import '../../../shared/providers.dart';
 import '../../../shared/widgets/toast.dart';
 
@@ -132,87 +136,104 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     return Scaffold(
+      backgroundColor: c.bgCanvas,
       appBar: AppBar(title: const Text('注册')),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(AppSpacing.xl),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('创建新账户', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 24),
+            Text(
+              '创建新账户',
+              style: AppTextStyles.h2.copyWith(color: c.textPrimary),
+            ),
+            const SizedBox(height: AppSpacing.xl),
 
+            _FieldLabel(label: '邮箱'),
             TextField(
               controller: _emailController,
-              decoration: const InputDecoration(
-                labelText: '邮箱',
+              decoration: InputDecoration(
                 hintText: '请输入邮箱地址',
-                prefixIcon: Icon(Icons.email_outlined),
+                prefixIcon: Icon(
+                  Icons.mail_outline,
+                  size: 18,
+                  color: c.textSecondary,
+                ),
               ),
               keyboardType: TextInputType.emailAddress,
+              style: AppTextStyles.body.copyWith(color: c.textPrimary),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.lg),
 
+            _FieldLabel(label: '验证码'),
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
                   child: TextField(
                     controller: _codeController,
-                    decoration: const InputDecoration(
-                      labelText: '验证码',
-                      hintText: '6位数字',
-                      prefixIcon: Icon(Icons.lock_outline),
+                    decoration: InputDecoration(
+                      hintText: '6 位数字',
+                      prefixIcon: Icon(
+                        Icons.shield_outlined,
+                        size: 18,
+                        color: c.textSecondary,
+                      ),
+                      counterText: '',
                     ),
                     keyboardType: TextInputType.number,
                     maxLength: 6,
+                    style: AppTextStyles.body.copyWith(color: c.textPrimary),
                   ),
                 ),
-                const SizedBox(width: 12),
-                Flexible(
-                  child: FilledButton(
+                const SizedBox(width: AppSpacing.md),
+                SizedBox(
+                  height: 48,
+                  child: AppButton.secondary(
+                    label: _countdown > 0 ? '${_countdown}s' : '发送',
                     onPressed: _countdown > 0 || _isSendingCode
                         ? null
                         : _sendCode,
-                    style: FilledButton.styleFrom(
-                      minimumSize: const Size(80, 48),
-                    ),
-                    child: Text(_countdown > 0 ? '${_countdown}s' : '发送'),
+                    loading: _isSendingCode,
+                    size: AppButtonSize.lg,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.lg),
 
+            _FieldLabel(label: '邀请码'),
             TextField(
               controller: _invitationCodeController,
-              decoration: const InputDecoration(
-                labelText: '邀请码',
+              decoration: InputDecoration(
                 hintText: '请输入邀请码',
-                prefixIcon: Icon(Icons.vpn_key_outlined),
+                prefixIcon: Icon(
+                  Icons.vpn_key_outlined,
+                  size: 18,
+                  color: c.textSecondary,
+                ),
               ),
+              style: AppTextStyles.body.copyWith(color: c.textPrimary),
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: AppSpacing.xl),
 
-            FilledButton(
+            AppButton.gradient(
+              label: '注册',
               onPressed: _isLoading ? null : _register,
-              child: _isLoading
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Text('注册'),
+              loading: _isLoading,
+              size: AppButtonSize.lg,
+              fullWidth: true,
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.lg),
 
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
                   '已有账户？',
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
+                  style: AppTextStyles.body.copyWith(color: c.textSecondary),
                 ),
                 TextButton(
                   onPressed: () => context.push('/login'),
@@ -221,6 +242,26 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
               ],
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _FieldLabel extends StatelessWidget {
+  final String label;
+  const _FieldLabel({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+      child: Text(
+        label,
+        style: AppTextStyles.sm.copyWith(
+          color: c.textPrimary,
+          fontWeight: FontWeight.w500,
         ),
       ),
     );

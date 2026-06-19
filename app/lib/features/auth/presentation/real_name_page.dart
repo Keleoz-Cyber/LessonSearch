@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../shared/design_system/colors.dart';
+import '../../../shared/design_system/tokens.dart';
+import '../../../shared/design_system/typography.dart';
+import '../../../shared/design_system/widgets/app_button.dart';
 import '../../../shared/providers.dart';
 import '../../../shared/widgets/toast.dart';
 
@@ -31,7 +35,7 @@ class _RealNamePageState extends ConsumerState<RealNamePage> {
     }
 
     if (name.length < 2 || name.length > 20) {
-      Toast.show(context, '姓名长度应为2-20个字符');
+      Toast.show(context, '姓名长度应为 2-20 个字符');
       return;
     }
 
@@ -60,9 +64,11 @@ class _RealNamePageState extends ConsumerState<RealNamePage> {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     return PopScope(
       canPop: false,
       child: Scaffold(
+        backgroundColor: c.bgCanvas,
         appBar: AppBar(
           title: const Text('完善信息'),
           automaticallyImplyLeading: false,
@@ -71,62 +77,75 @@ class _RealNamePageState extends ConsumerState<RealNamePage> {
           children: [
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.all(24),
+                padding: const EdgeInsets.all(AppSpacing.xl),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const SizedBox(height: 32),
-                    Icon(
-                      Icons.badge_outlined,
-                      size: 64,
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.primary.withValues(alpha: 0.5),
-                    ),
-                    const SizedBox(height: 24),
-                    Text(
-                      '请输入您的真实姓名',
-                      style: Theme.of(context).textTheme.headlineSmall,
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      '姓名将用于审核和统计，请填写真实姓名',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    const SizedBox(height: AppSpacing.xl2),
+                    Container(
+                      width: 64,
+                      height: 64,
+                      decoration: BoxDecoration(
+                        color: c.brandSubtle,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.badge_outlined,
+                        size: 32,
+                        color: c.brandPrimary,
                       ),
                     ),
-                    const SizedBox(height: 32),
+                    const SizedBox(height: AppSpacing.lg),
+                    Text(
+                      '请输入您的真实姓名',
+                      style: AppTextStyles.h1.copyWith(color: c.textPrimary),
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    Text(
+                      '姓名将用于审核和统计，请填写真实姓名',
+                      style: AppTextStyles.body.copyWith(
+                        color: c.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.xl),
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                      child: Text(
+                        '真实姓名',
+                        style: AppTextStyles.sm.copyWith(
+                          color: c.textPrimary,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
                     TextField(
                       controller: _controller,
                       autofocus: true,
-                      decoration: const InputDecoration(
-                        labelText: '真实姓名',
-                        hintText: '2-20个字符',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.person_outline),
+                      decoration: InputDecoration(
+                        hintText: '2-20 个字符',
+                        prefixIcon: Icon(
+                          Icons.person_outline,
+                          size: 18,
+                          color: c.textSecondary,
+                        ),
                       ),
+                      style: AppTextStyles.body.copyWith(color: c.textPrimary),
                       onSubmitted: (_) => _submit(),
                     ),
                   ],
                 ),
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.all(24),
-              child: SafeArea(
-                top: false,
-                child: FilledButton(
+            SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpacing.xl),
+                child: AppButton.gradient(
+                  label: '保存',
                   onPressed: _loading ? null : _submit,
-                  style: FilledButton.styleFrom(
-                    minimumSize: const Size.fromHeight(48),
-                  ),
-                  child: _loading
-                      ? const SizedBox(
-                          width: 24,
-                          height: 24,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Text('保存'),
+                  loading: _loading,
+                  size: AppButtonSize.lg,
+                  fullWidth: true,
                 ),
               ),
             ),
