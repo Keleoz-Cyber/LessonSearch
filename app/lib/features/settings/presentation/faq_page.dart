@@ -2,6 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../shared/design_system/colors.dart';
+import '../../../shared/design_system/tokens.dart';
+import '../../../shared/design_system/typography.dart';
+import '../../../shared/design_system/widgets/app_card.dart';
+
 class FaqItem {
   final String question;
   final String answer;
@@ -372,10 +377,13 @@ class FaqPage extends ConsumerWidget {
     }
     final categoryNames = categories.keys.toList();
 
+    final c = context.colors;
+
     return Scaffold(
+      backgroundColor: c.bgCanvas,
       appBar: AppBar(title: const Text('常见问题与解决方案')),
       body: ListView.builder(
-        padding: const EdgeInsets.symmetric(vertical: 8),
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
         itemCount: categoryNames.length,
         itemBuilder: (context, index) {
           final category = categoryNames[index];
@@ -384,12 +392,18 @@ class FaqPage extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.lg,
+                  AppSpacing.lg,
+                  AppSpacing.lg,
+                  AppSpacing.sm,
+                ),
                 child: Text(
                   category,
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    color: Theme.of(context).colorScheme.primary,
-                    fontWeight: FontWeight.bold,
+                  style: AppTextStyles.sm.copyWith(
+                    color: c.brandPrimary,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.5,
                   ),
                 ),
               ),
@@ -415,75 +429,72 @@ class _FaqCardState extends State<_FaqCard> {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      child: InkWell(
+    final c = context.colors;
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.lg,
+        vertical: AppSpacing.xs,
+      ),
+      child: AppCard(
         onTap: () => setState(() => _expanded = !_expanded),
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      widget.item.question,
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w500,
-                        height: 1.4,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  AnimatedRotation(
-                    turns: _expanded ? 0.5 : 0,
-                    duration: const Duration(milliseconds: 200),
-                    child: Icon(
-                      Icons.expand_more,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ),
-              AnimatedCrossFade(
-                firstChild: const SizedBox.shrink(),
-                secondChild: Padding(
-                  padding: const EdgeInsets.only(top: 12),
-                  child: MarkdownBody(
-                    data: widget.item.answer,
-                    selectable: true,
-                    styleSheet: MarkdownStyleSheet(
-                      p: TextStyle(
-                        fontSize: 14,
-                        height: 1.6,
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
-                      strong: TextStyle(
-                        fontSize: 14,
-                        height: 1.6,
-                        fontWeight: FontWeight.bold,
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
-                      listBullet: TextStyle(
-                        fontSize: 14,
-                        height: 1.6,
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
-                      blockSpacing: 8,
-                      listIndent: 20,
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    widget.item.question,
+                    style: AppTextStyles.bodyMedium.copyWith(
+                      color: c.textPrimary,
+                      height: 1.4,
                     ),
                   ),
                 ),
-                crossFadeState: _expanded
-                    ? CrossFadeState.showSecond
-                    : CrossFadeState.showFirst,
-                duration: const Duration(milliseconds: 200),
+                const SizedBox(width: AppSpacing.sm),
+                AnimatedRotation(
+                  turns: _expanded ? 0.5 : 0,
+                  duration: AppDuration.fast,
+                  child: Icon(
+                    Icons.expand_more,
+                    color: c.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+            AnimatedCrossFade(
+              firstChild: const SizedBox.shrink(),
+              secondChild: Padding(
+                padding: const EdgeInsets.only(top: AppSpacing.md),
+                child: MarkdownBody(
+                  data: widget.item.answer,
+                  selectable: true,
+                  styleSheet: MarkdownStyleSheet(
+                    p: AppTextStyles.body.copyWith(
+                      color: c.textSecondary,
+                      height: 1.6,
+                    ),
+                    strong: AppTextStyles.bodyMedium.copyWith(
+                      color: c.textPrimary,
+                      height: 1.6,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    listBullet: AppTextStyles.body.copyWith(
+                      color: c.textSecondary,
+                      height: 1.6,
+                    ),
+                    blockSpacing: AppSpacing.sm,
+                    listIndent: 20,
+                  ),
+                ),
               ),
-            ],
-          ),
+              crossFadeState: _expanded
+                  ? CrossFadeState.showSecond
+                  : CrossFadeState.showFirst,
+              duration: AppDuration.fast,
+            ),
+          ],
         ),
       ),
     );
