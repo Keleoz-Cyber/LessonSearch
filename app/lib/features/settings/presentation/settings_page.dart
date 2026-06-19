@@ -8,6 +8,9 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../core/announcement/announcement_config.dart';
 import '../../../core/logger/logger_service.dart';
 import '../../../core/sync/sync_service.dart';
+import '../../../shared/design_system/colors.dart';
+import '../../../shared/design_system/tokens.dart';
+import '../../../shared/design_system/typography.dart';
 import '../../../shared/providers.dart';
 import '../../../shared/widgets/toast.dart';
 import 'markdown_document_page.dart';
@@ -18,12 +21,14 @@ class SettingsPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final c = context.colors;
     final themeMode = ref.watch(themeModeProvider);
     final isLoggedIn = ref.watch(isLoggedInProvider);
     final userEmail = ref.watch(userEmailProvider);
     final syncState = ref.watch(syncStateProvider);
 
     return Scaffold(
+      backgroundColor: c.bgCanvas,
       appBar: AppBar(title: const Text('设置')),
       body: ListView(
         children: [
@@ -56,19 +61,22 @@ class SettingsPage extends ConsumerWidget {
                             ? '登录状态已过期，请重新登录后查看'
                             : '加载失败，点击重试',
                         style: TextStyle(
-                          color: is401 ? Colors.orange : Colors.red,
+                          color: is401 ? c.stateWarning : c.stateDanger,
                         ),
                       );
                     },
                   ),
                   trailing: hasPasswordAsync.when(
                     data: (_) => const Icon(Icons.chevron_right),
-                    loading: () => const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
+                    loading: () => SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation(c.brandPrimary),
+                      ),
                     ),
-                    error: (_, __) => const Icon(Icons.refresh, color: Colors.grey),
+                    error: (_, __) => Icon(Icons.refresh, color: c.textTertiary),
                   ),
                   onTap: () {
                     // loading 状态：提示稍候
@@ -117,9 +125,9 @@ class SettingsPage extends ConsumerWidget {
                       ? Icons.sync_problem
                       : Icons.sync_outlined,
               color: syncState == SyncState.error
-                  ? Colors.orange
+                  ? c.stateWarning
                   : syncState == SyncState.syncing
-                      ? Theme.of(context).colorScheme.primary
+                      ? c.brandPrimary
                       : null,
             ),
             title: const Text('手动同步'),
@@ -131,10 +139,13 @@ class SettingsPage extends ConsumerWidget {
                       : '点击立即同步数据',
             ),
             trailing: syncState == SyncState.syncing
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
+                ? SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation(c.brandPrimary),
+                    ),
                   )
                 : const Icon(Icons.chevron_right),
             onTap: syncState == SyncState.syncing
@@ -158,13 +169,13 @@ class SettingsPage extends ConsumerWidget {
                   return ListTile(
                     leading: Icon(
                       isSyncFailed ? Icons.error_outline : Icons.warning_amber,
-                      color: isSyncFailed ? Colors.red : Colors.orange,
+                      color: isSyncFailed ? c.stateDanger : c.stateWarning,
                     ),
                     title: Text(
                       '查看同步问题详情',
                       style: TextStyle(
-                        color: isSyncFailed ? Colors.red : null,
-                        fontWeight: isSyncFailed ? FontWeight.bold : null,
+                        color: isSyncFailed ? c.stateDanger : null,
+                        fontWeight: isSyncFailed ? FontWeight.w600 : null,
                       ),
                     ),
                     subtitle: Text(
@@ -172,7 +183,7 @@ class SettingsPage extends ConsumerWidget {
                           ? '有 $count 条同步问题（含失败），请先处理'
                           : '$count 条数据未同步，点击查看详情',
                       style: TextStyle(
-                        color: isSyncFailed ? Colors.red : null,
+                        color: isSyncFailed ? c.stateDanger : null,
                       ),
                     ),
                     trailing: const Icon(Icons.chevron_right),
@@ -216,7 +227,7 @@ class SettingsPage extends ConsumerWidget {
                     icon: Icons.sync_alt,
                     title: '待同步',
                     value: '${stats['pending_sync']}',
-                    color: stats['pending_sync']! > 0 ? Colors.orange : null,
+                    color: stats['pending_sync']! > 0 ? c.stateWarning : null,
                   ),
                 ],
               );
@@ -243,7 +254,7 @@ class SettingsPage extends ConsumerWidget {
           ListTile(
             leading: const Icon(Icons.system_update),
             title: const Text('检查更新'),
-            subtitle: const Text('当前版本: 0.6.5'),
+            subtitle: const Text('当前版本: 0.7.0'),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => _checkUpdate(context, ref),
           ),
@@ -337,6 +348,7 @@ class SettingsPage extends ConsumerWidget {
   }
 
   Future<void> _showLogoutDialog(BuildContext context, WidgetRef ref) async {
+    final c = context.colors;
     final db = ref.read(databaseProvider);
     final unsyncedCount = await db.getUnsyncedCount();
     final hasUnsynced = unsyncedCount > 0;
@@ -351,52 +363,52 @@ class SettingsPage extends ConsumerWidget {
           children: [
             if (hasUnsynced) ...[
               Container(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(AppSpacing.md),
                 decoration: BoxDecoration(
-                  color: Colors.red.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+                  color: c.stateDanger.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                  border: Border.all(
+                    color: c.stateDanger.withValues(alpha: 0.24),
+                  ),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.error_outline,
-                          color: Colors.red,
-                          size: 20,
+                          color: c.stateDanger,
+                          size: 18,
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: AppSpacing.sm),
                         Expanded(
                           child: Text(
                             '无法退出登录',
-                            style: TextStyle(
-                              color: Colors.red.shade800,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 15,
+                            style: AppTextStyles.bodyMedium.copyWith(
+                              color: c.stateDanger,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: AppSpacing.sm),
                     Text(
                       '有 $unsyncedCount 条数据未同步到服务器。退出登录会清空本地所有数据，导致未同步记录永久丢失。',
-                      style: TextStyle(
-                        color: Colors.red.shade800,
-                        fontSize: 13,
+                      style: AppTextStyles.sm.copyWith(
+                        color: c.textPrimary,
                         height: 1.4,
                       ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.lg),
               const Text('请先完成同步后再退出登录。'),
             ] else ...[
               const Text('确定要退出登录吗？'),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.md),
               const Text('退出后本地数据将被清空。'),
             ],
           ],
@@ -410,7 +422,6 @@ class SettingsPage extends ConsumerWidget {
             FilledButton.icon(
               onPressed: () async {
                 Navigator.pop(ctx, false);
-                // 立即同步
                 await _syncNow(context, ref);
               },
               icon: const Icon(Icons.sync, size: 18),
@@ -568,6 +579,7 @@ class SettingsPage extends ConsumerWidget {
   }
 
   void _showAnnouncement(BuildContext context) {
+    final c = context.colors;
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -576,12 +588,15 @@ class SettingsPage extends ConsumerWidget {
           child: MarkdownBody(
             data: announcementContent.trim(),
             styleSheet: MarkdownStyleSheet(
-              h2: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: Theme.of(context).colorScheme.primary,
+              h2: AppTextStyles.h3.copyWith(color: c.brandPrimary),
+              p: AppTextStyles.body.copyWith(
+                color: c.textPrimary,
+                height: 1.6,
               ),
-              p: const TextStyle(height: 1.6),
-              listBullet: const TextStyle(height: 1.6),
+              listBullet: AppTextStyles.body.copyWith(
+                color: c.textPrimary,
+                height: 1.6,
+              ),
             ),
           ),
         ),
@@ -596,6 +611,7 @@ class SettingsPage extends ConsumerWidget {
   }
 
   void _showUpdateNotes(BuildContext context) {
+    final c = context.colors;
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -606,12 +622,15 @@ class SettingsPage extends ConsumerWidget {
             child: MarkdownBody(
               data: updateNotes.trim(),
               styleSheet: MarkdownStyleSheet(
-                h2: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: Theme.of(context).colorScheme.primary,
+                h2: AppTextStyles.h3.copyWith(color: c.brandPrimary),
+                p: AppTextStyles.sm.copyWith(
+                  color: c.textPrimary,
+                  height: 1.5,
                 ),
-                p: const TextStyle(fontSize: 13, height: 1.5),
-                listBullet: const TextStyle(fontSize: 13, height: 1.5),
+                listBullet: AppTextStyles.sm.copyWith(
+                  color: c.textPrimary,
+                  height: 1.5,
+                ),
               ),
             ),
           ),
@@ -637,7 +656,7 @@ class SettingsPage extends ConsumerWidget {
       final downloadUrl = response['download_url'] as String;
       final releaseNotes = response['release_notes'] as String;
 
-      const currentVersion = '0.6.5';
+      const currentVersion = '0.7.0';
       LoggerService.sync('当前版本: $currentVersion, 最新版本: $latestVersion');
 
       if (latestVersion == currentVersion) {
@@ -648,6 +667,7 @@ class SettingsPage extends ConsumerWidget {
       }
 
       if (context.mounted) {
+        final c = context.colors;
         showDialog(
           context: context,
           builder: (ctx) => AlertDialog(
@@ -655,7 +675,10 @@ class SettingsPage extends ConsumerWidget {
             content: SingleChildScrollView(
               child: Text(
                 releaseNotes,
-                style: const TextStyle(fontSize: 13, height: 1.6),
+                style: AppTextStyles.sm.copyWith(
+                  color: c.textPrimary,
+                  height: 1.6,
+                ),
               ),
             ),
             actions: [
@@ -704,6 +727,7 @@ class _StatTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     return ListTile(
       leading: Icon(icon, color: color),
       title: Text(title),
@@ -711,11 +735,9 @@ class _StatTile extends StatelessWidget {
       trailing: value != null && value!.isNotEmpty
           ? Text(
               value!,
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: color ?? Theme.of(context).colorScheme.primary,
-              ),
+              style: AppTextStyles.withTabular(
+                AppTextStyles.h3,
+              ).copyWith(color: color ?? c.brandPrimary),
             )
           : null,
     );
@@ -735,9 +757,10 @@ class _ThemeOption extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     return ListTile(
       title: Text(label),
-      trailing: selected ? const Icon(Icons.check) : null,
+      trailing: selected ? Icon(Icons.check, color: c.brandPrimary) : null,
       onTap: onTap,
     );
   }
@@ -749,12 +772,20 @@ class _SectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.lg,
+        AppSpacing.lg,
+        AppSpacing.lg,
+        AppSpacing.xs,
+      ),
       child: Text(
         title,
-        style: Theme.of(context).textTheme.labelLarge?.copyWith(
-          color: Theme.of(context).colorScheme.primary,
+        style: AppTextStyles.sm.copyWith(
+          color: c.brandPrimary,
+          fontWeight: FontWeight.w600,
+          letterSpacing: 0.5,
         ),
       ),
     );
@@ -859,12 +890,14 @@ class _AboutPageState extends ConsumerState<AboutPage> {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     return Stack(
       children: [
         Scaffold(
+          backgroundColor: c.bgCanvas,
           appBar: AppBar(title: const Text('致谢')),
           body: ListView(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(AppSpacing.xl),
             children: [
               _InfoSection(
                 title: '开发者',
@@ -909,42 +942,38 @@ class _AboutPageState extends ConsumerState<AboutPage> {
                 children: [
                   Text(
                     '致谢名单',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
+                    style: AppTextStyles.h3.copyWith(
+                      color: context.colors.textPrimary,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: AppSpacing.xs),
                   Text(
                     '致学习部全体成员',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    style: AppTextStyles.body.copyWith(
+                      color: context.colors.textSecondary,
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.md),
                   Card(
                     child: Padding(
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.all(AppSpacing.lg),
                       child: Wrap(
-                        spacing: 12,
-                        runSpacing: 12,
+                        spacing: AppSpacing.md,
+                        runSpacing: AppSpacing.md,
                         children: _ackList.map((name) {
                           return Container(
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 8,
+                              horizontal: AppSpacing.md,
+                              vertical: AppSpacing.sm,
                             ),
                             decoration: BoxDecoration(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .primaryContainer
-                                  .withValues(alpha: 0.5),
-                              borderRadius: BorderRadius.circular(8),
+                              color: context.colors.brandSubtle,
+                              borderRadius: BorderRadius.circular(AppRadius.md),
                             ),
                             child: Text(
                               name,
-                              style: TextStyle(
-                                color: Theme.of(context).colorScheme.onSurface,
-                                fontSize: 14,
+                              style: AppTextStyles.sm.copyWith(
+                                color: context.colors.brandPrimary,
                               ),
                             ),
                           );
@@ -952,13 +981,12 @@ class _AboutPageState extends ConsumerState<AboutPage> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.md),
                   Center(
                     child: Text(
                       '排名不分先后',
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        fontSize: 12,
+                      style: AppTextStyles.xs.copyWith(
+                        color: context.colors.textTertiary,
                       ),
                     ),
                   ),
@@ -1029,12 +1057,9 @@ class _AboutPageState extends ConsumerState<AboutPage> {
 
               Center(
                 child: Text(
-                  '考勤助手 v0.6.5',
-                  style: TextStyle(
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
-                    fontSize: 13,
+                  '考勤助手 v0.7.0',
+                  style: AppTextStyles.sm.copyWith(
+                    color: c.textTertiary,
                   ),
                 ),
               ),
@@ -1092,16 +1117,15 @@ class _InfoSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           title,
-          style: Theme.of(
-            context,
-          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+          style: AppTextStyles.h3.copyWith(color: c.textPrimary),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpacing.sm),
         Card(child: Column(children: children)),
       ],
     );
@@ -1123,6 +1147,7 @@ class _PersonTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     return ListTile(
       leading: Container(
         decoration: showGlow
@@ -1138,14 +1163,17 @@ class _PersonTile extends StatelessWidget {
               )
             : null,
         child: CircleAvatar(
-          backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-          child: Icon(icon, size: 20),
+          backgroundColor: c.brandSubtle,
+          child: Icon(icon, size: 20, color: c.brandPrimary),
         ),
       ),
       title: Text(
         name,
         style: showGlow
-            ? TextStyle(color: Colors.purple, fontWeight: FontWeight.bold)
+            ? const TextStyle(
+                color: Colors.purple,
+                fontWeight: FontWeight.bold,
+              )
             : null,
       ),
       subtitle: Text(role),
