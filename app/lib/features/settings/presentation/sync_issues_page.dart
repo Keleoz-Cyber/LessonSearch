@@ -3,6 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/database/app_database.dart';
+import '../../../shared/design_system/colors.dart';
+import '../../../shared/design_system/tokens.dart';
+import '../../../shared/design_system/typography.dart';
+import '../../../shared/design_system/widgets/app_button.dart';
+import '../../../shared/design_system/widgets/app_card.dart';
 import '../../../shared/providers.dart';
 import '../../../shared/widgets/toast.dart';
 
@@ -95,13 +100,33 @@ class SyncIssuesPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final c = context.colors;
     final issuesAsync = ref.watch(syncIssuesProvider);
 
     return Scaffold(
+      backgroundColor: c.bgCanvas,
       appBar: AppBar(title: const Text('同步问题详情')),
       body: issuesAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('加载失败: $e')),
+        loading: () => Center(
+          child: SizedBox(
+            width: 24,
+            height: 24,
+            child: CircularProgressIndicator(
+              strokeWidth: 2.5,
+              valueColor: AlwaysStoppedAnimation(c.brandPrimary),
+            ),
+          ),
+        ),
+        error: (e, _) => Center(
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.xl),
+            child: Text(
+              '加载失败: $e',
+              style: AppTextStyles.body.copyWith(color: c.stateDanger),
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
         data: (groups) {
           if (groups.isEmpty) {
             return _buildEmptyState(context);
@@ -113,26 +138,38 @@ class SyncIssuesPage extends ConsumerWidget {
   }
 
   Widget _buildEmptyState(BuildContext context) {
+    final c = context.colors;
     return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            Icons.check_circle_outline,
-            size: 64,
-            color: Colors.green.withValues(alpha: 0.5),
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            '所有数据已同步',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            '本地数据与服务器保持一致',
-            style: TextStyle(color: Colors.grey),
-          ),
-        ],
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.xl),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                color: c.stateSuccess.withValues(alpha: 0.12),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.check_circle_outline,
+                size: 36,
+                color: c.stateSuccess,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            Text(
+              '所有数据已同步',
+              style: AppTextStyles.h2.copyWith(color: c.textPrimary),
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              '本地数据与服务器保持一致',
+              style: AppTextStyles.sm.copyWith(color: c.textSecondary),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -142,98 +179,105 @@ class SyncIssuesPage extends ConsumerWidget {
     WidgetRef ref,
     List<SyncIssueGroup> groups,
   ) {
+    final c = context.colors;
     final totalItems = groups.fold<int>(0, (sum, g) => sum + g.items.length);
 
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       children: [
         // 顶部统计卡片
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(
-                      Icons.warning_amber,
-                      color: Colors.orange,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
+        AppCard(
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    Icons.warning_amber_outlined,
+                    color: c.stateWarning,
+                    size: 20,
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: Text(
                       '共有 $totalItems 条数据未同步',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
+                      style: AppTextStyles.h3.copyWith(color: c.textPrimary),
                     ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: groups.map((g) =>
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: g.color.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Text(
-                        '${g.title}: ${g.items.length}',
-                        style: TextStyle(
-                          color: g.color,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Wrap(
+                spacing: AppSpacing.sm,
+                runSpacing: AppSpacing.sm,
+                children: groups
+                    .map(
+                      (g) => Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.md,
+                          vertical: AppSpacing.xs + 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: g.color.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(AppRadius.full),
+                        ),
+                        child: Text(
+                          '${g.title}: ${g.items.length}',
+                          style: AppTextStyles.xs.copyWith(color: g.color),
                         ),
                       ),
-                    ),
-                  ).toList(),
-                ),
-              ],
-            ),
+                    )
+                    .toList(),
+              ),
+            ],
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpacing.lg),
 
         // 立即重试按钮
-        FilledButton.icon(
+        AppButton.primary(
+          label: '立即重试同步',
           onPressed: () => _retrySync(context, ref, groups),
-          icon: const Icon(Icons.sync),
-          label: const Text('立即重试同步'),
-          style: FilledButton.styleFrom(
-            minimumSize: const Size.fromHeight(48),
-          ),
+          leadingIcon: Icons.sync,
+          size: AppButtonSize.lg,
+          fullWidth: true,
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpacing.sm),
         Center(
           child: Text(
             _buildRetryHint(groups),
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Colors.grey,
-            ),
+            style: AppTextStyles.sm.copyWith(color: c.textTertiary),
+            textAlign: TextAlign.center,
           ),
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: AppSpacing.xl),
 
         // 分类详情
-        ...groups.expand((group) => [
-          _buildGroupHeader(context, group),
-          const SizedBox(height: 8),
-          ...group.items.map((item) => _buildIssueItem(context, item, group.color)),
-          const SizedBox(height: 24),
-        ]),
+        ...groups.expand(
+          (group) => [
+            _buildGroupHeader(context, group),
+            const SizedBox(height: AppSpacing.sm),
+            ...group.items.map(
+              (item) => _buildIssueItem(context, item, group.color),
+            ),
+            const SizedBox(height: AppSpacing.xl),
+          ],
+        ),
       ],
     );
   }
 
   Widget _buildGroupHeader(BuildContext context, SyncIssueGroup group) {
+    final c = context.colors;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm + 2,
+      ),
       decoration: BoxDecoration(
         color: group.color.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppRadius.md),
         border: Border.all(color: group.color.withValues(alpha: 0.2)),
       ),
       child: Column(
@@ -241,42 +285,45 @@ class SyncIssuesPage extends ConsumerWidget {
         children: [
           Row(
             children: [
-              Icon(group.icon, color: group.color, size: 20),
-              const SizedBox(width: 8),
-              Text(
-                group.title,
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: group.color,
-                  fontSize: 15,
+              Icon(group.icon, color: group.color, size: 18),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Text(
+                  group.title,
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    color: group.color,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
-              const Spacer(),
               Text(
                 '${group.items.length} 条',
-                style: TextStyle(
-                  color: group.color,
-                  fontSize: 13,
-                ),
+                style: AppTextStyles.sm.copyWith(color: group.color),
               ),
             ],
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: AppSpacing.xs + 2),
           Text(
             group.description,
-            style: const TextStyle(fontSize: 12, color: Colors.grey, height: 1.4),
+            style: AppTextStyles.sm.copyWith(
+              color: c.textSecondary,
+              height: 1.4,
+            ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: AppSpacing.xs),
           Row(
             children: [
-              Icon(Icons.lightbulb_outline, size: 14, color: group.color.withValues(alpha: 0.7)),
-              const SizedBox(width: 4),
+              Icon(
+                Icons.lightbulb_outline,
+                size: 14,
+                color: group.color.withValues(alpha: 0.7),
+              ),
+              const SizedBox(width: AppSpacing.xs),
               Expanded(
                 child: Text(
                   group.actionHint,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: group.color.withValues(alpha: 0.8),
+                  style: AppTextStyles.sm.copyWith(
+                    color: group.color.withValues(alpha: 0.85),
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -289,55 +336,65 @@ class SyncIssuesPage extends ConsumerWidget {
   }
 
   Widget _buildIssueItem(BuildContext context, SyncQueueData item, Color color) {
+    final c = context.colors;
     final entityTypeLabel = _getEntityTypeLabel(item.entityType);
     final actionLabel = item.action == 'create' ? '创建' : '更新';
     final createdAt = DateFormat('MM-dd HH:mm').format(item.createdAt);
     final retryInfo = item.retryCount > 0 && item.retryCount < 999
-        ? ' (已重试 ${item.retryCount} 次)'
+        ? '已重试 ${item.retryCount} 次'
         : '';
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 6),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.xs + 2),
+      child: AppCard(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.sm + 2,
+        ),
         child: Row(
           children: [
             Container(
               width: 8,
               height: 8,
-              decoration: BoxDecoration(
-                color: color,
-                shape: BoxShape.circle,
-              ),
+              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: AppSpacing.md),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     '$entityTypeLabel$actionLabel',
-                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                    style: AppTextStyles.bodyMedium.copyWith(
+                      color: c.textPrimary,
+                    ),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     'ID: ${item.entityId}',
-                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                    style: AppTextStyles.withTabular(
+                      AppTextStyles.xs,
+                    ).copyWith(color: c.textTertiary),
                   ),
                 ],
               ),
             ),
+            const SizedBox(width: AppSpacing.sm),
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
                   createdAt,
-                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                  style: AppTextStyles.withTabular(
+                    AppTextStyles.xs,
+                  ).copyWith(color: c.textTertiary),
                 ),
                 if (retryInfo.isNotEmpty)
                   Text(
                     retryInfo,
-                    style: TextStyle(fontSize: 11, color: color.withValues(alpha: 0.8)),
+                    style: AppTextStyles.xs.copyWith(
+                      color: color.withValues(alpha: 0.85),
+                    ),
                   ),
               ],
             ),
