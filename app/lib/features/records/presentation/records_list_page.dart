@@ -2,7 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../shared/design_system/colors.dart';
+import '../../../shared/design_system/tokens.dart';
+import '../../../shared/design_system/typography.dart';
+import '../../../shared/design_system/widgets/app_button.dart';
+import '../../../shared/design_system/widgets/app_card.dart';
+import '../../../shared/design_system/widgets/status_pill.dart';
 import '../../../shared/providers.dart';
+import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/loading_overlay.dart';
 import '../../../shared/widgets/toast.dart';
 import '../../../features/extension/presentation/submission_page.dart';
@@ -38,29 +45,50 @@ class _RecordsListPageState extends ConsumerState<RecordsListPage> {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     return Scaffold(
+      backgroundColor: c.bgCanvas,
       appBar: AppBar(title: const Text('查课记录')),
       body: LoadingOverlay(
         isLoading: _loading,
-        child: _summaries.isEmpty
-            ? const Center(child: Text('暂无查课记录'))
+        child: _summaries.isEmpty && !_loading
+            ? RefreshIndicator(
+                onRefresh: _load,
+                child: ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  children: [
+                    SizedBox(
+                      height: MediaQuery.sizeOf(context).height * 0.6,
+                      child: EmptyState.noRecord(),
+                    ),
+                  ],
+                ),
+              )
             : RefreshIndicator(
                 onRefresh: _load,
                 child: ListView.builder(
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.lg,
+                    AppSpacing.md,
+                    AppSpacing.lg,
+                    AppSpacing.lg,
+                  ),
                   itemCount: _summaries.length,
                   itemBuilder: (context, index) {
                     final s = _summaries[index];
-                    return _TaskCard(
-                      summary: s,
-                      onTap: () async {
-                        await context.push('/records/${s.id}');
-                        _load();
-                      },
-                      onDelete: () => _confirmDelete(s),
-                      onResume: s.status == TaskStatus.inProgress
-                          ? () => _resumeTask(s)
-                          : null,
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                      child: _TaskCard(
+                        summary: s,
+                        onTap: () async {
+                          await context.push('/records/${s.id}');
+                          _load();
+                        },
+                        onDelete: () => _confirmDelete(s),
+                        onResume: s.status == TaskStatus.inProgress
+                            ? () => _resumeTask(s)
+                            : null,
+                      ),
                     );
                   },
                 ),
@@ -130,6 +158,7 @@ class _RecordsListPageState extends ConsumerState<RecordsListPage> {
       return;
     }
 
+    final c = context.colors;
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -141,21 +170,29 @@ class _RecordsListPageState extends ConsumerState<RecordsListPage> {
             Text(
               '确认放弃 ${summary.classNames.join("、")} 的${summary.typeLabel}记录？',
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.md),
             Container(
-              padding: const EdgeInsets.all(10),
+              padding: const EdgeInsets.all(AppSpacing.sm + 2),
               decoration: BoxDecoration(
-                color: Colors.orange.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(6),
+                color: c.stateWarning.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(AppRadius.normal),
+                border: Border.all(
+                  color: c.stateWarning.withValues(alpha: 0.24),
+                ),
               ),
-              child: const Row(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(Icons.info_outline, color: Colors.orange, size: 18),
-                  SizedBox(width: 8),
+                  Icon(
+                    Icons.info_outline,
+                    color: c.stateWarning,
+                    size: 18,
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
                   Expanded(
                     child: Text(
                       '放弃后该记录不会参与名单提交，但数据仍保留用于查看。',
-                      style: TextStyle(fontSize: 12, color: Colors.orange),
+                      style: AppTextStyles.sm.copyWith(color: c.textPrimary),
                     ),
                   ),
                 ],
@@ -170,7 +207,8 @@ class _RecordsListPageState extends ConsumerState<RecordsListPage> {
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('放弃', style: TextStyle(color: Colors.red)),
+            style: TextButton.styleFrom(foregroundColor: c.stateDanger),
+            child: const Text('放弃'),
           ),
         ],
       ),
@@ -204,136 +242,87 @@ class _TaskCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     final date = summary.createdAt.toString().substring(0, 16);
     final isAbandoned = summary.status == TaskStatus.abandoned;
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    return AppCard(
+      onTap: onTap,
+      padding: const EdgeInsets.all(AppSpacing.md),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             children: [
-              Row(
-                children: [
-                  // 类型标签
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 2,
+              Expanded(
+                child: Wrap(
+                  spacing: AppSpacing.xs + 2,
+                  runSpacing: AppSpacing.xs,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    StatusPill(
+                      label: summary.typeLabel,
+                      variant: summary.type == TaskType.rollCall
+                          ? StatusPillVariant.info
+                          : StatusPillVariant.success,
                     ),
-                    decoration: BoxDecoration(
-                      color: summary.type == TaskType.rollCall
-                          ? Colors.blue.withValues(alpha: 0.15)
-                          : Colors.green.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      summary.typeLabel,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: summary.type == TaskType.rollCall
-                            ? Colors.blue
-                            : Colors.green,
-                      ),
-                    ),
-                  ),
-                  if (isAbandoned) ...[
-                    const SizedBox(width: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.red.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: const Text(
-                        '已放弃',
-                        style: TextStyle(fontSize: 12, color: Colors.red),
-                      ),
-                    ),
+                    if (isAbandoned)
+                      const StatusPill.danger(label: '已放弃'),
+                    if (summary.status == TaskStatus.inProgress)
+                      const StatusPill.info(label: '进行中'),
+                    if (summary.status == TaskStatus.completed &&
+                        summary.type == TaskType.rollCall)
+                      const StatusPill.success(label: '已完成'),
                   ],
-                  if (summary.status == TaskStatus.inProgress) ...[
-                    const SizedBox(width: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.blue.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: const Text(
-                        '进行中',
-                        style: TextStyle(fontSize: 12, color: Colors.blue),
-                      ),
-                    ),
-                  ],
-                  if (summary.status == TaskStatus.completed &&
-                      summary.type == TaskType.rollCall) ...[
-                    const SizedBox(width: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.green.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: const Text(
-                        '已完成',
-                        style: TextStyle(fontSize: 12, color: Colors.green),
-                      ),
-                    ),
-                  ],
-                  const Spacer(),
-                  if (!isAbandoned)
-                    IconButton(
-                      icon: const Icon(Icons.delete_outline, size: 20),
-                      onPressed: onDelete,
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                      color: Colors.grey,
-                      tooltip: '放弃',
-                    ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Text(
-                summary.classNames.join('、'),
-                style: Theme.of(context).textTheme.titleSmall,
-              ),
-              const SizedBox(height: 4),
-              Text(
-                '共${summary.totalStudents}人 · '
-                '${summary.type == TaskType.rollCall ? "已点${summary.presentCount + summary.lateCount} 未点${summary.absentCount + summary.leaveCount + summary.otherCount}" : "到${summary.presentCount} 缺${summary.absentCount} 迟${summary.lateCount} 假${summary.leaveCount} 他${summary.otherCount}"}',
-                style: TextStyle(fontSize: 13, color: Colors.grey[600]),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                date,
-                style: TextStyle(fontSize: 12, color: Colors.grey[400]),
-              ),
-              if (onResume != null) ...[
-                const SizedBox(height: 8),
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton.tonal(
-                    onPressed: onResume,
-                    child: const Text('继续'),
-                  ),
                 ),
-              ],
+              ),
+              if (!isAbandoned)
+                IconButton(
+                  icon: Icon(
+                    Icons.delete_outline,
+                    size: 20,
+                    color: c.textTertiary,
+                  ),
+                  onPressed: onDelete,
+                  padding: EdgeInsets.zero,
+                  visualDensity: VisualDensity.compact,
+                  constraints: const BoxConstraints(
+                    minWidth: 32,
+                    minHeight: 32,
+                  ),
+                  tooltip: '放弃',
+                ),
             ],
           ),
-        ),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            summary.classNames.join('、'),
+            style: AppTextStyles.h3.copyWith(color: c.textPrimary),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            '共${summary.totalStudents}人 · '
+            '${summary.type == TaskType.rollCall ? "已点${summary.presentCount + summary.lateCount} 未点${summary.absentCount + summary.leaveCount + summary.otherCount}" : "到${summary.presentCount} 缺${summary.absentCount} 迟${summary.lateCount} 假${summary.leaveCount} 他${summary.otherCount}"}',
+            style: AppTextStyles.sm.copyWith(color: c.textSecondary),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            date,
+            style: AppTextStyles.withTabular(
+              AppTextStyles.xs,
+            ).copyWith(color: c.textTertiary),
+          ),
+          if (onResume != null) ...[
+            const SizedBox(height: AppSpacing.md),
+            AppButton.primary(
+              label: '继续',
+              onPressed: onResume,
+              size: AppButtonSize.md,
+              fullWidth: true,
+              leadingIcon: Icons.play_arrow_rounded,
+            ),
+          ],
+        ],
       ),
     );
   }
