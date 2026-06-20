@@ -16,6 +16,7 @@ import '../../../shared/design_system/widgets/app_card.dart';
 import '../../../shared/design_system/widgets/app_notice_box.dart';
 import '../../../shared/design_system/widgets/app_stat_chip.dart';
 import '../../../shared/design_system/widgets/app_stat_tile.dart';
+import '../../../shared/design_system/widgets/skeleton.dart';
 import '../../../shared/design_system/widgets/status_pill.dart';
 import '../../../shared/providers.dart';
 import '../../../shared/widgets/loading_overlay.dart';
@@ -405,10 +406,7 @@ class _CurrentWeekTab extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         weekSummaryAsync.when(
-          loading: () => const Padding(
-            padding: EdgeInsets.symmetric(vertical: AppSpacing.xl),
-            child: Center(child: CircularProgressIndicator()),
-          ),
+          loading: () => const SkeletonCard(),
           error: (e, _) => AppNoticeBox(
             color: c.stateDanger,
             icon: Icons.error_outline,
@@ -444,7 +442,12 @@ class _CurrentWeekTab extends ConsumerWidget {
         pendingAsync.when(
           loading: () => const Padding(
             padding: EdgeInsets.symmetric(vertical: AppSpacing.lg),
-            child: Center(child: CircularProgressIndicator()),
+            child: Column(
+              children: const [
+                Padding(padding: EdgeInsets.only(bottom: AppSpacing.md), child: SkeletonCard()),
+                SkeletonCard(),
+              ],
+            ),
           ),
           error: (e, _) => AppNoticeBox(
             color: c.stateDanger,
@@ -492,8 +495,8 @@ class _CurrentWeekTab extends ConsumerWidget {
         const _SectionHeader(title: '已审核记录'),
         reviewedAsync.when(
           loading: () => const Padding(
-            padding: EdgeInsets.symmetric(vertical: AppSpacing.lg),
-            child: Center(child: CircularProgressIndicator()),
+            padding: EdgeInsets.only(top: AppSpacing.sm),
+            child: SkeletonCard(),
           ),
           error: (e, _) => AppNoticeBox(
             color: c.stateDanger,

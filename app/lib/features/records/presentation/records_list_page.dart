@@ -295,9 +295,12 @@ class _TaskCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: AppSpacing.sm),
-          Text(
-            summary.classNames.join('、'),
-            style: AppTextStyles.h3.copyWith(color: c.textPrimary),
+          Hero(
+            tag: 'task-classes-${summary.id}',
+            child: Text(
+              summary.classNames.join('、'),
+              style: AppTextStyles.h3.copyWith(color: c.textPrimary),
+            ),
           ),
           const SizedBox(height: AppSpacing.xs),
           Text(

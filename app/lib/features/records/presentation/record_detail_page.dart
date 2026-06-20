@@ -518,10 +518,13 @@ class _RecordDetailPageState extends ConsumerState<RecordDetailPage> {
             Row(
               children: [
                 Expanded(
-                  child: Text(
-                    classNames,
-                    style: AppTextStyles.h2.copyWith(color: c.textPrimary),
-                    overflow: TextOverflow.ellipsis,
+                  child: Hero(
+                    tag: 'task-classes-${widget.taskId}',
+                    child: Text(
+                      classNames,
+                      style: AppTextStyles.h2.copyWith(color: c.textPrimary),
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                 ),
                 if (_isSubmitted)
