@@ -717,28 +717,28 @@ class _SubmissionSearchPageState extends ConsumerState<SubmissionSearchPage> {
                       runSpacing: 8,
                       children: [
                         if (lateCount > 0)
-                          _buildMiniStat('迟到', lateCount, Colors.orange),
+                          _buildMiniStat('迟到', lateCount, context.colors.stateWarning),
                         if (absentCount > 0)
-                          _buildMiniStat('缺勤', absentCount, Colors.red),
+                          _buildMiniStat('缺勤', absentCount, context.colors.stateDanger),
                         if (leaveCount > 0)
-                          _buildMiniStat('请假', leaveCount, Colors.blue),
+                          _buildMiniStat('请假', leaveCount, context.colors.stateInfo),
                         if (otherCount > 0)
-                          _buildMiniStat('其他', otherCount, Colors.grey),
+                          _buildMiniStat('其他', otherCount, context.colors.textTertiary),
                       ],
                     ),
                     const SizedBox(height: 16),
                     // 名单
                     if (absentRecords.isNotEmpty) ...[
-                      _buildRecordGroup('缺勤', absentRecords, Colors.red),
+                      _buildRecordGroup('缺勤', absentRecords, context.colors.stateDanger),
                     ],
                     if (lateRecords.isNotEmpty) ...[
-                      _buildRecordGroup('迟到', lateRecords, Colors.orange),
+                      _buildRecordGroup('迟到', lateRecords, context.colors.stateWarning),
                     ],
                     if (leaveRecords.isNotEmpty) ...[
-                      _buildRecordGroup('请假', leaveRecords, Colors.blue),
+                      _buildRecordGroup('请假', leaveRecords, context.colors.stateInfo),
                     ],
                     if (otherRecords.isNotEmpty) ...[
-                      _buildRecordGroup('其他', otherRecords, Colors.grey),
+                      _buildRecordGroup('其他', otherRecords, context.colors.textTertiary),
                     ],
                   ],
                 ],

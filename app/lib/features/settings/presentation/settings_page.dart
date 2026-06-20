@@ -1155,7 +1155,7 @@ class _PersonTile extends StatelessWidget {
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.purple.withValues(alpha: 0.5),
+                    color: c.brandPrimary.withValues(alpha: 0.5),
                     blurRadius: 12,
                     spreadRadius: 2,
                   ),
@@ -1170,8 +1170,8 @@ class _PersonTile extends StatelessWidget {
       title: Text(
         name,
         style: showGlow
-            ? const TextStyle(
-                color: Colors.purple,
+            ? TextStyle(
+                color: c.brandPrimary,
                 fontWeight: FontWeight.bold,
               )
             : null,

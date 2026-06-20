@@ -242,8 +242,8 @@ class _HomePageState extends ConsumerState<HomePage> {
               constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
               child: Text(
                 count > 99 ? '99+' : '$count',
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: context.colors.onBrand,
                   fontSize: 10,
                   fontWeight: FontWeight.w600,
                 ),
