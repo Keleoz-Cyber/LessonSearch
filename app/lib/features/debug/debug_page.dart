@@ -12,6 +12,7 @@ import '../../../shared/providers.dart';
 import 'sync_tab.dart';
 import 'log_tab.dart';
 import 'release_check_page.dart';
+import '../../../shared/design_system/colors.dart';
 
 class DebugPage extends ConsumerStatefulWidget {
   const DebugPage({super.key});
@@ -38,7 +39,9 @@ class _DebugPageState extends ConsumerState<DebugPage>
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     return Scaffold(
+      backgroundColor: c.bgCanvas,
       appBar: AppBar(
         title: const Text('调试工具'),
         bottom: TabBar(
@@ -212,6 +215,7 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     final auth = ref.watch(authServiceProvider);
     final syncState = ref.watch(syncStateProvider);
 
@@ -230,11 +234,11 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
             spacing: 8,
             runSpacing: 8,
             children: [
-              _StatChip(label: '任务', value: '$_taskCount', color: Colors.blue),
-              _StatChip(label: '记录', value: '$_recordCount', color: Colors.green),
+              _StatChip(label: '任务', value: '$_taskCount', color: c.stateInfo),
+              _StatChip(label: '记录', value: '$_recordCount', color: c.stateSuccess),
               _StatChip(
-                  label: '待同步', value: '$_pendingCount', color: Colors.orange),
-              _StatChip(label: '失败', value: '$_failedCount', color: Colors.red),
+                  label: '待同步', value: '$_pendingCount', color: c.stateWarning),
+              _StatChip(label: '失败', value: '$_failedCount', color: c.stateDanger),
             ],
           ),
           const SizedBox(height: 8),
@@ -248,10 +252,10 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
                         : Icons.check_circle,
                 size: 16,
                 color: syncState == SyncState.error
-                    ? Colors.red
+                    ? c.stateDanger
                     : syncState == SyncState.syncing
-                        ? Colors.orange
-                        : Colors.green,
+                        ? c.stateWarning
+                        : c.stateSuccess,
               ),
               const SizedBox(width: 4),
               Text(
@@ -263,10 +267,10 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
                 style: TextStyle(
                   fontSize: 13,
                   color: syncState == SyncState.error
-                      ? Colors.red
+                      ? c.stateDanger
                       : syncState == SyncState.syncing
-                          ? Colors.orange
-                          : Colors.green,
+                          ? c.stateWarning
+                          : c.stateSuccess,
                 ),
               ),
             ],
@@ -280,7 +284,7 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
               side: BorderSide(
-                color: (_networkResult == 'ok' ? Colors.green : Colors.grey)
+                color: (_networkResult == 'ok' ? c.stateSuccess : c.textTertiary)
                     .withValues(alpha: 0.3),
               ),
             ),
@@ -301,9 +305,9 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
                           style: TextStyle(
                             fontWeight: FontWeight.w500,
                             color: _networkResult == 'ok'
-                                ? Colors.green
+                                ? c.stateSuccess
                                 : _networkResult != null
-                                    ? Colors.red
+                                    ? c.stateDanger
                                     : null,
                           ),
                         ),
@@ -311,7 +315,7 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
                           Text(
                             '延迟: ${_networkLatency}ms',
                             style:
-                                TextStyle(fontSize: 12, color: Colors.grey[600]),
+                                TextStyle(fontSize: 12, color: c.textTertiary),
                           ),
                       ],
                     ),
@@ -338,7 +342,7 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
             elevation: 0,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
-              side: BorderSide(color: Colors.grey.withValues(alpha: 0.2)),
+              side: BorderSide(color: c.textTertiary.withValues(alpha: 0.2)),
             ),
             child: Padding(
               padding: const EdgeInsets.all(12),
@@ -365,7 +369,7 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
             elevation: 0,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
-              side: BorderSide(color: Colors.red.withValues(alpha: 0.3)),
+              side: BorderSide(color: c.stateDanger.withValues(alpha: 0.3)),
             ),
             child: Padding(
               padding: const EdgeInsets.all(12),
@@ -397,13 +401,13 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
                       Expanded(
                         child: OutlinedButton.icon(
                           onPressed: auth.isLoggedIn ? _simulateTokenExpiry : null,
-                          icon: const Icon(Icons.logout, size: 18,
-                              color: Colors.red),
-                          label: const Text('模拟过期',
-                              style: TextStyle(color: Colors.red)),
+                          icon: Icon(Icons.logout, size: 18,
+                              color: c.stateDanger),
+                          label: Text('模拟过期',
+                              style: TextStyle(color: c.stateDanger)),
                           style: OutlinedButton.styleFrom(
                             side: BorderSide(
-                                color: Colors.red.withValues(alpha: 0.3)),
+                                color: c.stateDanger.withValues(alpha: 0.3)),
                           ),
                         ),
                       ),
@@ -414,18 +418,18 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
                     Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: Colors.orange.withValues(alpha: 0.1),
+                        color: c.stateWarning.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Row(
                         children: [
-                          Icon(Icons.access_time, size: 16, color: Colors.orange[700]),
+                          Icon(Icons.access_time, size: 16, color: c.stateWarning),
                           const SizedBox(width: 8),
                           Text(
                             '剩余时间: $_tokenRemainingTime',
                             style: TextStyle(
                               fontSize: 13,
-                              color: Colors.orange[700],
+                              color: c.stateWarning,
                               fontWeight: FontWeight.w500,
                             ),
                           ),
@@ -445,7 +449,7 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
             elevation: 0,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
-              side: BorderSide(color: Colors.grey.withValues(alpha: 0.2)),
+              side: BorderSide(color: c.textTertiary.withValues(alpha: 0.2)),
             ),
             child: Padding(
               padding: const EdgeInsets.all(12),
@@ -522,12 +526,13 @@ class _InfoRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: TextStyle(fontSize: 13, color: Colors.grey[600])),
+          Text(label, style: TextStyle(fontSize: 13, color: c.textTertiary)),
           Text(value,
               style:
                   const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
@@ -536,3 +541,4 @@ class _InfoRow extends StatelessWidget {
     );
   }
 }
+

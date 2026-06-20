@@ -456,6 +456,7 @@ class _FaqCardState extends State<_FaqCard> {
                 AnimatedRotation(
                   turns: _expanded ? 0.5 : 0,
                   duration: AppDuration.fast,
+                  curve: AppCurves.normal,
                   child: Icon(
                     Icons.expand_more,
                     color: c.textSecondary,

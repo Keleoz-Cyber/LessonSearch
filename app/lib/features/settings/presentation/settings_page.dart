@@ -1074,7 +1074,7 @@ class _AboutPageState extends ConsumerState<AboutPage> {
             child: TweenAnimationBuilder<double>(
               tween: Tween(begin: 0, end: heart.endY),
               duration: const Duration(milliseconds: 2500),
-              curve: Curves.easeIn,
+              curve: AppCurves.depart,
               builder: (context, value, child) {
                 return Transform.translate(
                   offset: Offset(0, value),

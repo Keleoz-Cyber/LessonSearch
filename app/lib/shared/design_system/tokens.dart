@@ -23,11 +23,14 @@ class AppDuration {
   static const Duration fast = Duration(milliseconds: 150);
   static const Duration normal = Duration(milliseconds: 200);
   static const Duration slow = Duration(milliseconds: 300);
+  static const Duration page = Duration(milliseconds: 450);
 }
 
 class AppCurves {
   static const Curve fast = Curves.easeOut;
   static const Curve normal = Curves.easeInOut;
+  static const Curve emphasize = Curves.easeOutBack;
+  static const Curve depart = Curves.easeIn;
 }
 
 class AppMinTouchSize {

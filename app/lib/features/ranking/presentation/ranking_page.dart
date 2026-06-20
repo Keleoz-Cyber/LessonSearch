@@ -295,6 +295,7 @@ class _RankingPageState extends ConsumerState<RankingPage>
                   const Spacer(),
                   AnimatedRotation(
                     duration: AppDuration.fast,
+                    curve: AppCurves.normal,
                     turns: _rulesExpanded ? 0.5 : 0,
                     child: Icon(
                       Icons.keyboard_arrow_down,

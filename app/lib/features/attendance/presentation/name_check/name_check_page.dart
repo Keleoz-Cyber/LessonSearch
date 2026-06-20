@@ -455,8 +455,8 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
             ref.read(nameCheckProvider.notifier).switchClass(i);
             _pageController.animateToPage(
               i,
-              duration: const Duration(milliseconds: 200),
-              curve: Curves.easeInOut,
+              duration: AppDuration.normal,
+              curve: AppCurves.normal,
             );
             setState(() => _focusedIndex = firstPending);
             return;
@@ -783,8 +783,8 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
         if (state.classes.length > 1) {
           _pageController.animateToPage(
             classIndex,
-            duration: const Duration(milliseconds: 200),
-            curve: Curves.easeInOut,
+            duration: AppDuration.normal,
+            curve: AppCurves.normal,
           );
         }
         setState(() => _focusedIndex = 0);

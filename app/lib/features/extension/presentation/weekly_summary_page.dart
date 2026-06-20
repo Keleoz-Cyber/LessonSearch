@@ -13,6 +13,9 @@ import '../../../shared/design_system/tokens.dart';
 import '../../../shared/design_system/typography.dart';
 import '../../../shared/design_system/widgets/app_button.dart';
 import '../../../shared/design_system/widgets/app_card.dart';
+import '../../../shared/design_system/widgets/app_notice_box.dart';
+import '../../../shared/design_system/widgets/app_stat_chip.dart';
+import '../../../shared/design_system/widgets/app_stat_tile.dart';
 import '../../../shared/design_system/widgets/status_pill.dart';
 import '../../../shared/providers.dart';
 import '../../../shared/widgets/loading_overlay.dart';
@@ -406,7 +409,7 @@ class _CurrentWeekTab extends ConsumerWidget {
             padding: EdgeInsets.symmetric(vertical: AppSpacing.xl),
             child: Center(child: CircularProgressIndicator()),
           ),
-          error: (e, _) => _NoticeBox(
+          error: (e, _) => AppNoticeBox(
             color: c.stateDanger,
             icon: Icons.error_outline,
             title: '加载汇总统计失败',
@@ -428,7 +431,7 @@ class _CurrentWeekTab extends ConsumerWidget {
             padding: EdgeInsets.symmetric(vertical: AppSpacing.lg),
             child: Center(child: CircularProgressIndicator()),
           ),
-          error: (e, _) => _NoticeBox(
+          error: (e, _) => AppNoticeBox(
             color: c.stateDanger,
             icon: Icons.error_outline,
             title: '加载提交状态失败',
@@ -443,7 +446,7 @@ class _CurrentWeekTab extends ConsumerWidget {
             padding: EdgeInsets.symmetric(vertical: AppSpacing.lg),
             child: Center(child: CircularProgressIndicator()),
           ),
-          error: (e, _) => _NoticeBox(
+          error: (e, _) => AppNoticeBox(
             color: c.stateDanger,
             icon: Icons.error_outline,
             title: '加载失败',
@@ -492,7 +495,7 @@ class _CurrentWeekTab extends ConsumerWidget {
             padding: EdgeInsets.symmetric(vertical: AppSpacing.lg),
             child: Center(child: CircularProgressIndicator()),
           ),
-          error: (e, _) => _NoticeBox(
+          error: (e, _) => AppNoticeBox(
             color: c.stateDanger,
             icon: Icons.error_outline,
             title: '加载失败',
@@ -567,19 +570,19 @@ class _CurrentWeekTab extends ConsumerWidget {
               Wrap(
                 spacing: AppSpacing.xs,
                 children: [
-                  _StatChip(
+                  AppStatChip(
                     label: '应交',
                     count: totalDuty,
                     color: c.brandPrimary,
                     compact: true,
                   ),
-                  _StatChip(
+                  AppStatChip(
                     label: '已交',
                     count: submittedCount,
                     color: c.stateSuccess,
                     compact: true,
                   ),
-                  _StatChip(
+                  AppStatChip(
                     label: '未交',
                     count: notSubmittedCount,
                     color: c.stateWarning,
@@ -747,10 +750,10 @@ class _CurrentWeekTab extends ConsumerWidget {
             spacing: AppSpacing.sm,
             runSpacing: AppSpacing.sm,
             children: [
-              _StatChip(label: '迟到', count: lateCount, color: c.stateWarning),
-              _StatChip(label: '缺勤', count: absentCount, color: c.stateDanger),
-              _StatChip(label: '请假', count: leaveCount, color: c.stateInfo),
-              _StatChip(label: '其他', count: otherCount, color: c.textTertiary),
+              AppStatChip(label: '迟到', count: lateCount, color: c.stateWarning),
+              AppStatChip(label: '缺勤', count: absentCount, color: c.stateDanger),
+              AppStatChip(label: '请假', count: leaveCount, color: c.stateInfo),
+              AppStatChip(label: '其他', count: otherCount, color: c.textTertiary),
             ],
           ),
           const SizedBox(height: AppSpacing.md),
@@ -831,7 +834,7 @@ class _CurrentWeekTab extends ConsumerWidget {
         padding: EdgeInsets.symmetric(vertical: AppSpacing.xl),
         child: Center(child: CircularProgressIndicator()),
       ),
-      error: (e, _) => _NoticeBox(
+      error: (e, _) => AppNoticeBox(
         color: c.stateDanger,
         icon: Icons.error_outline,
         title: '加载发布状态失败',
@@ -882,7 +885,7 @@ class _CurrentWeekTab extends ConsumerWidget {
                   padding: EdgeInsets.symmetric(vertical: AppSpacing.lg),
                   child: Center(child: CircularProgressIndicator()),
                 ),
-                error: (e, _) => _NoticeBox(
+                error: (e, _) => AppNoticeBox(
                   color: c.stateDanger,
                   icon: Icons.error_outline,
                   title: '加载职务状态失败',
@@ -898,7 +901,7 @@ class _CurrentWeekTab extends ConsumerWidget {
             padding: EdgeInsets.symmetric(vertical: AppSpacing.xl),
             child: Center(child: CircularProgressIndicator()),
           ),
-          error: (e, _) => _NoticeBox(
+          error: (e, _) => AppNoticeBox(
             color: c.stateDanger,
             icon: Icons.error_outline,
             title: '加载汇总数据失败',
@@ -1023,7 +1026,7 @@ class _CurrentWeekTab extends ConsumerWidget {
           Row(
             children: [
               Expanded(
-                child: _StatTile(
+                child: AppStatTile(
                   label: '迟到/早退',
                   count: lateCount,
                   color: c.stateWarning,
@@ -1032,7 +1035,7 @@ class _CurrentWeekTab extends ConsumerWidget {
               ),
               const SizedBox(width: AppSpacing.md),
               Expanded(
-                child: _StatTile(
+                child: AppStatTile(
                   label: '旷课',
                   count: absentCount,
                   color: c.stateDanger,
@@ -1041,7 +1044,7 @@ class _CurrentWeekTab extends ConsumerWidget {
               ),
               const SizedBox(width: AppSpacing.md),
               Expanded(
-                child: _StatTile(
+                child: AppStatTile(
                   label: '已审核',
                   count: approvedCount,
                   color: c.stateSuccess,
@@ -1362,7 +1365,7 @@ class _PendingSubmissionCard extends ConsumerWidget {
                         );
                       }
                       if (snapshot.hasError) {
-                        return _NoticeBox(
+                        return AppNoticeBox(
                           color: c.stateDanger,
                           icon: Icons.error_outline,
                           title: '加载失败',
@@ -1404,7 +1407,7 @@ class _PendingSubmissionCard extends ConsumerWidget {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             if (isRejected) ...[
-                              _NoticeBox(
+                              AppNoticeBox(
                                 color: c.stateDanger,
                                 icon: Icons.cancel,
                                 title: '已拒绝',
@@ -1437,19 +1440,19 @@ class _PendingSubmissionCard extends ConsumerWidget {
                                 spacing: AppSpacing.sm,
                                 runSpacing: AppSpacing.sm,
                                 children: [
-                                  _StatChip(
+                                  AppStatChip(
                                       label: '迟到',
                                       count: lateCount,
                                       color: c.stateWarning),
-                                  _StatChip(
+                                  AppStatChip(
                                       label: '缺勤',
                                       count: absentCount,
                                       color: c.stateDanger),
-                                  _StatChip(
+                                  AppStatChip(
                                       label: '请假',
                                       count: leaveCount,
                                       color: c.stateInfo),
-                                  _StatChip(
+                                  AppStatChip(
                                       label: '其他',
                                       count: otherCount,
                                       color: c.textTertiary),
@@ -1722,19 +1725,19 @@ class _PendingSubmissionCard extends ConsumerWidget {
                       spacing: AppSpacing.sm,
                       runSpacing: AppSpacing.sm,
                       children: [
-                        _StatChip(
+                        AppStatChip(
                             label: '迟到',
                             count: lateCount,
                             color: c.stateWarning),
-                        _StatChip(
+                        AppStatChip(
                             label: '缺勤',
                             count: absentCount,
                             color: c.stateDanger),
-                        _StatChip(
+                        AppStatChip(
                             label: '请假',
                             count: leaveCount,
                             color: c.stateInfo),
-                        _StatChip(
+                        AppStatChip(
                             label: '其他',
                             count: otherCount,
                             color: c.textTertiary),
@@ -1762,7 +1765,7 @@ class _PendingSubmissionCard extends ConsumerWidget {
                           records: otherRecords,
                           color: c.textTertiary),
                     const SizedBox(height: AppSpacing.sm),
-                    _NoticeBox(
+                    AppNoticeBox(
                       color: isApprove ? c.stateSuccess : c.stateDanger,
                       icon: isApprove
                           ? Icons.check_circle_outline
@@ -1956,7 +1959,7 @@ class _ReviewedSubmissionCard extends ConsumerWidget {
             ),
             if (!isApproved && submission['review_note'] != null) ...[
               const SizedBox(height: AppSpacing.sm),
-              _NoticeBox(
+              AppNoticeBox(
                 color: c.stateDanger,
                 icon: Icons.message_outlined,
                 title: '拒绝理由',
@@ -2043,7 +2046,7 @@ class _ReviewedSubmissionCard extends ConsumerWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     if (isRejected) ...[
-                      _NoticeBox(
+                      AppNoticeBox(
                         color: c.stateDanger,
                         icon: Icons.cancel,
                         title: '已拒绝',
@@ -2076,20 +2079,20 @@ class _ReviewedSubmissionCard extends ConsumerWidget {
                         spacing: AppSpacing.sm,
                         runSpacing: AppSpacing.sm,
                         children: [
-                          _StatChip(
+                          AppStatChip(
                               label: '迟到',
                               count: lateCount,
                               color: c.stateWarning),
-                          _StatChip(
+                          AppStatChip(
                               label: '缺勤',
                               count: absentCount,
                               color: c.stateDanger),
-                          _StatChip(
+                          AppStatChip(
                               label: '请假',
                               count: leaveCount,
                               color: c.stateInfo),
                           if (otherCount > 0)
-                            _StatChip(
+                            AppStatChip(
                                 label: '其他',
                                 count: otherCount,
                                 color: c.textTertiary),
@@ -2797,149 +2800,6 @@ class _MicroChip extends StatelessWidget {
 }
 
 // =================== 共享 helper 区 ===================
-
-class _StatChip extends StatelessWidget {
-  final String label;
-  final int count;
-  final Color color;
-  final bool compact;
-
-  const _StatChip({
-    required this.label,
-    required this.count,
-    required this.color,
-    this.compact = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final padH = compact ? AppSpacing.sm : AppSpacing.md;
-    final padV = compact ? 4.0 : 6.0;
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: padH, vertical: padV),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.10),
-        borderRadius: BorderRadius.circular(AppRadius.sm + 2),
-        border: Border.all(color: color.withValues(alpha: 0.20)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            label,
-            style: AppTextStyles.xs.copyWith(color: color),
-          ),
-          const SizedBox(width: 4),
-          Text(
-            '$count',
-            style: AppTextStyles.withTabular(AppTextStyles.bodyMedium).copyWith(
-              color: color,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _StatTile extends StatelessWidget {
-  final String label;
-  final int count;
-  final Color color;
-  final IconData icon;
-
-  const _StatTile({
-    required this.label,
-    required this.count,
-    required this.color,
-    required this.icon,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        border: Border.all(color: color.withValues(alpha: 0.16)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, size: 18, color: color),
-          const SizedBox(height: AppSpacing.xs),
-          Text(
-            '$count',
-            style: AppTextStyles.withTabular(AppTextStyles.h1).copyWith(
-              color: color,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            label,
-            style: AppTextStyles.xs.copyWith(color: color),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _NoticeBox extends StatelessWidget {
-  final Color color;
-  final IconData icon;
-  final String title;
-  final String? body;
-  const _NoticeBox({
-    required this.color,
-    required this.icon,
-    required this.title,
-    this.body,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        border: Border.all(color: color.withValues(alpha: 0.20)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, color: color, size: 18),
-          const SizedBox(width: AppSpacing.sm),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: AppTextStyles.bodyMedium.copyWith(
-                    color: color,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                if (body != null) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    body!,
-                    style: AppTextStyles.sm.copyWith(color: color),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 class _SectionHeader extends StatelessWidget {
   final String title;

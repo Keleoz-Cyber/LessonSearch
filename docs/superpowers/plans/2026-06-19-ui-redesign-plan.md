@@ -1,5 +1,7 @@
 # UI 重设计 实施计划
 
+> **状态：已完成（2026-06-20）** — 19 个原始 task 全部完成，并扩展覆盖全部 24 个 presentation 页面。详见 CHANGELOG.md v0.7.0「UI 设计系统重做」章节。后续追加：G（helper 提取）+ F（debug 接入）+ 动画体系（AppDuration 扩档 / AnimatedSwitcher / Hero / 骨架屏）。
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 把考勤助手 UI 从 Material 3 默认风格升级到 Linear/SaaS 风（中性灰 + sky→blue 渐变），覆盖设计系统骨架与 4 个核心页面，不破坏已上线业务逻辑。

@@ -9,7 +9,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/sync/sync_service.dart';
 import '../../../shared/providers.dart';
-import '../../../shared/widgets/toast.dart';
+import '../../../shared/design_system/colors.dart';
 
 // TODO: 使用 package_info_plus 读取真实 App 版本，避免手动维护
 const _appVersion = '0.6.5';
@@ -234,7 +234,7 @@ class _ReleaseCheckPageState extends ConsumerState<ReleaseCheckPage> {
               children: [
                 // 总体结论
                 _buildConclusion(
-                    canRelease, totalIssues, hasTokenProblem, _hasPasswordError),
+                    context, canRelease, totalIssues, hasTokenProblem, _hasPasswordError),
                 const SizedBox(height: 20),
 
                 // 登录状态
@@ -454,43 +454,45 @@ class _ReleaseCheckPageState extends ConsumerState<ReleaseCheckPage> {
   }
 
   Widget _buildConclusion(
+    BuildContext context,
     bool canRelease,
     int totalIssues,
     bool hasTokenProblem,
     bool hasPasswordError,
   ) {
+    final c = context.colors;
     final Color color;
     final IconData icon;
     final String title;
     final String subtitle;
 
     if (canRelease) {
-      color = Colors.green;
+      color = c.stateSuccess;
       icon = Icons.check_circle;
       title = '可以发布';
       subtitle = '所有检查项通过，可以打包 APK 或交付使用';
     } else if (hasTokenProblem) {
-      color = Colors.red;
+      color = c.stateDanger;
       icon = Icons.error;
       title = '无法发布';
       subtitle = 'Token 状态异常，请重新登录后再试';
     } else if (totalIssues > 0) {
-      color = Colors.red;
+      color = c.stateDanger;
       icon = Icons.error;
       title = '暂不建议发布';
       subtitle = '有 $totalIssues 条同步问题未处理，请先解决';
     } else if (!_networkOk) {
-      color = Colors.orange;
+      color = c.stateWarning;
       icon = Icons.warning;
       title = '请谨慎发布';
       subtitle = '服务器连接异常，建议先确认网络状态';
     } else if (hasPasswordError) {
-      color = Colors.orange;
+      color = c.stateWarning;
       icon = Icons.warning;
       title = '请谨慎发布';
       subtitle = '账号安全状态加载失败，建议重试确认后再发布';
     } else {
-      color = Colors.orange;
+      color = c.stateWarning;
       icon = Icons.warning;
       title = '请检查';
       subtitle = '部分检查项未通过';
@@ -545,12 +547,13 @@ class _ReleaseCheckPageState extends ConsumerState<ReleaseCheckPage> {
     required List<_CheckItem> items,
     Widget? trailing,
   }) {
+    final c = context.colors;
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: BorderSide(
-          color: Colors.grey.withValues(alpha: 0.2),
+          color: c.textTertiary.withValues(alpha: 0.2),
         ),
       ),
       margin: const EdgeInsets.only(bottom: 12),
@@ -575,14 +578,15 @@ class _ReleaseCheckPageState extends ConsumerState<ReleaseCheckPage> {
               ],
             ),
             const SizedBox(height: 12),
-            ...items.map((item) => _buildCheckRow(item)),
+            ...items.map((item) => _buildCheckRow(context, item)),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildCheckRow(_CheckItem item) {
+  Widget _buildCheckRow(BuildContext context, _CheckItem item) {
+    final c = context.colors;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
@@ -590,12 +594,12 @@ class _ReleaseCheckPageState extends ConsumerState<ReleaseCheckPage> {
           Icon(
             item.ok ? Icons.check_circle : Icons.error,
             size: 16,
-            color: item.ok ? Colors.green : Colors.red,
+            color: item.ok ? c.stateSuccess : c.stateDanger,
           ),
           const SizedBox(width: 8),
           Text(
             item.label,
-            style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+            style: TextStyle(fontSize: 13, color: c.textTertiary),
           ),
           const Spacer(),
           Text(
@@ -603,7 +607,7 @@ class _ReleaseCheckPageState extends ConsumerState<ReleaseCheckPage> {
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w500,
-              color: item.ok ? null : Colors.red,
+              color: item.ok ? null : c.stateDanger,
             ),
           ),
         ],
@@ -623,3 +627,4 @@ class _CheckItem {
     required this.ok,
   });
 }
+

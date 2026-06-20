@@ -6,6 +6,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/database/app_database.dart';
 import '../../../shared/providers.dart';
 import '../../../shared/widgets/toast.dart';
+import '../../../shared/design_system/colors.dart';
+import '../../../shared/design_system/tokens.dart';
+import '../../../shared/design_system/typography.dart';
 
 class SyncTab extends ConsumerStatefulWidget {
   const SyncTab({super.key});
@@ -116,15 +119,16 @@ class _SyncTabState extends ConsumerState<SyncTab> {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     if (_loading) return const Center(child: CircularProgressIndicator());
 
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+          padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.md, AppSpacing.lg, 0),
           child: Wrap(
-            spacing: 8,
-            runSpacing: 8,
+            spacing: AppSpacing.sm,
+            runSpacing: AppSpacing.sm,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               FilledButton.icon(
@@ -142,7 +146,7 @@ class _SyncTabState extends ConsumerState<SyncTab> {
                   onPressed: _retryFailed,
                   icon: const Icon(Icons.refresh, size: 18),
                   label: Text('重试(${_failed.length})'),
-                  style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
+                  style: OutlinedButton.styleFrom(foregroundColor: c.stateDanger),
                 ),
               IconButton(
                 onPressed: _load,
@@ -159,50 +163,50 @@ class _SyncTabState extends ConsumerState<SyncTab> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(Icons.check_circle_outline,
-                          size: 48, color: Colors.grey[400]),
-                      const SizedBox(height: 8),
+                          size: 48, color: c.textTertiary),
+                      const SizedBox(height: AppSpacing.sm),
                       Text('同步队列为空',
-                          style: TextStyle(color: Colors.grey[500])),
+                          style: AppTextStyles.sm.copyWith(color: c.textTertiary)),
                     ],
                   ),
                 )
               : ListView(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(AppSpacing.lg),
                   children: [
                     if (_pending.isNotEmpty) ...[
                       _subHeader(
-                          '待同步 (${_pending.length})', Icons.cloud_upload, Colors.orange),
-                      const SizedBox(height: 4),
+                          '待同步 (${_pending.length})', Icons.cloud_upload, c.stateWarning),
+                      const SizedBox(height: AppSpacing.xs),
                       ..._pending.map((item) => _SyncItemTile(
                             item: item,
-                            highlightColor: Colors.orange,
+                            highlightColor: c.stateWarning,
                             onDelete: () => _deleteItem(item.id),
                           )),
                     ],
                     if (_failed.isNotEmpty) ...[
-                      const SizedBox(height: 16),
+                      const SizedBox(height: AppSpacing.lg),
                       _subHeader(
-                          '失败 (${_failed.length})', Icons.error_outline, Colors.red),
-                      const SizedBox(height: 4),
+                          '失败 (${_failed.length})', Icons.error_outline, c.stateDanger),
+                      const SizedBox(height: AppSpacing.xs),
                       ..._failed.map((item) => _SyncItemTile(
                             item: item,
-                            highlightColor: Colors.red,
+                            highlightColor: c.stateDanger,
                             onDelete: () => _deleteItem(item.id),
                           )),
                     ],
                   ],
                 ),
         ),
-        const Divider(height: 1),
+        Divider(height: 1, color: c.borderSubtle),
         Padding(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(AppSpacing.md),
           child: SizedBox(
             width: double.infinity,
             child: OutlinedButton.icon(
               onPressed: _clearQueue,
               icon: const Icon(Icons.delete_outline, size: 18),
               label: const Text('清空同步队列'),
-              style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
+              style: OutlinedButton.styleFrom(foregroundColor: c.stateDanger),
             ),
           ),
         ),
@@ -215,10 +219,10 @@ Widget _subHeader(String title, IconData icon, Color color) {
   return Row(
     children: [
       Icon(icon, size: 16, color: color),
-      const SizedBox(width: 6),
+      const SizedBox(width: AppSpacing.xs + 2),
       Text(title,
-          style: TextStyle(
-              fontSize: 13, fontWeight: FontWeight.bold, color: color)),
+          style: AppTextStyles.sm.copyWith(
+              fontWeight: FontWeight.w600, color: color)),
     ],
   );
 }
@@ -250,15 +254,16 @@ class _SyncItemTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      elevation: 0,
-      margin: const EdgeInsets.only(bottom: 6),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
-        side: BorderSide(color: highlightColor.withValues(alpha: 0.2)),
+    final c = context.colors;
+    return Container(
+      margin: const EdgeInsets.only(bottom: AppSpacing.xs + 2),
+      decoration: BoxDecoration(
+        color: c.bgSurface,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(color: highlightColor.withValues(alpha: 0.2)),
       ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
         child: Row(
           children: [
             Container(
@@ -269,58 +274,52 @@ class _SyncItemTile extends StatelessWidget {
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: AppSpacing.sm + 2),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Wrap(
-                    spacing: 4,
-                    runSpacing: 4,
+                    spacing: AppSpacing.xs,
+                    runSpacing: AppSpacing.xs,
                     crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 6, vertical: 2),
+                            horizontal: AppSpacing.xs + 2, vertical: 2),
                         decoration: BoxDecoration(
                           color: highlightColor.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(4),
+                          borderRadius: BorderRadius.circular(AppRadius.sm),
                         ),
                         child: Text(
                           item.action.toUpperCase(),
-                          style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                              color: highlightColor),
+                          style: AppTextStyles.xs.copyWith(
+                              fontWeight: FontWeight.w600, color: highlightColor),
                         ),
                       ),
                       Text(item.entityType,
-                          style: const TextStyle(
-                              fontSize: 13, fontWeight: FontWeight.w500)),
+                          style: AppTextStyles.sm.copyWith(
+                              fontWeight: FontWeight.w500, color: c.textPrimary)),
                       Text('#${item.entityId}',
-                          style: TextStyle(
-                              fontSize: 12, color: Colors.grey[600])),
+                          style: AppTextStyles.xs.copyWith(color: c.textTertiary)),
                       if (item.retryCount > 0)
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 2),
+                              horizontal: AppSpacing.xs + 2, vertical: 2),
                           decoration: BoxDecoration(
-                            color: Colors.red.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(4),
+                            color: c.stateDanger.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(AppRadius.sm),
                           ),
                           child: Text('x${item.retryCount}',
-                              style: const TextStyle(
-                                  fontSize: 10, color: Colors.red)),
+                              style: AppTextStyles.xs.copyWith(color: c.stateDanger)),
                         ),
                     ],
                   ),
                   const SizedBox(height: 2),
                   Text(
                     _formatPayload(item.payload),
-                    style: TextStyle(
-                        fontSize: 11,
-                        fontFamily: 'monospace',
-                        color: Colors.grey[600]),
+                    style: AppTextStyles.xs.copyWith(
+                        fontFamily: 'monospace', color: c.textTertiary),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -328,7 +327,7 @@ class _SyncItemTile extends StatelessWidget {
               ),
             ),
             IconButton(
-              icon: Icon(Icons.close, size: 16, color: Colors.grey[400]),
+              icon: Icon(Icons.close, size: 16, color: c.textTertiary),
               onPressed: onDelete,
               tooltip: '删除',
               padding: EdgeInsets.zero,

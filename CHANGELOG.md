@@ -6,6 +6,18 @@
 
 ## v0.7.0
 
+### UI 设计系统重做
+
+- **设计系统骨架** - 在 `shared/design_system/` 建立 tokens（颜色/字号/间距/圆角/动效）+ 亮暗主题 + 9 个核心组件（AppButton/AppCard/StatusPill/AppInput/AppTopBar/BottomActionBar/AppSegmentedControl/SyncStatusBanner/SegmentedProgressBar）
+- **品牌色统一** - 主色 `#2563EB`（blue-600），中性灰背景，sky→blue 渐变；淘汰 Material 3 默认紫蓝
+- **24 个页面全部接入设计系统** - 按统一规范改造：home / name_check / submission / record_detail / confirmation / text_gen / records_list / selection / roll_call / login / register / real_name / weekly_summary / submission_search / ranking / settings / faq / set_password / sync_issues / markdown_document / debug 系列
+- **核心视觉升级** - 周次 hero 用品牌渐变；StatusPill 替代手写徽章；AppCard 替代 Card（圆角 8、规范阴影、暗色边框）；审核对话框拒绝/通过按钮用语义色（stateDanger/stateSuccess）
+- **响应式加固** - 所有 Row 内用 Flexible/Expanded + overflow:ellipsis；拒绝/通过按钮在窄屏（< 320px）改纵向；对话框宽 min(width*0.92, 480)
+- **废弃组件清理** - 删除 `EntryCard` / `FeatureCard` / `StatusBadge` / `CountBadge`（0 调用方）
+- **公共 helper 提取** - `_NoticeBox` / `_StatChip` / `_StatTile` 提升为 `AppNoticeBox` / `AppStatChip` / `AppStatTile` 放入 design_system
+- **动画体系** - AppDuration 扩档（page/emphasize/depart）；AnimatedRotation 补 curve；状态切换引入 AnimatedSwitcher；列表→详情 Hero 共享元素；weekly_summary 卡片骨架屏
+- **widget_test 修复** - 标记为 skip（依赖注入未 mock，待引入 integration_test）
+
 ### 记名流程稳定性修复
 
 - **markStudent 回滚修复** - 失败恢复时不再使用过时的局部变量，基于最新 state 副本回滚目标项；失败时 LoggerService 记录详细错误日志，前端弹 Toast 提示

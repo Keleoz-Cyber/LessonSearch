@@ -6,6 +6,7 @@ import '../../../shared/design_system/colors.dart';
 import '../../../shared/design_system/tokens.dart';
 import '../../../shared/design_system/typography.dart';
 import '../../../shared/design_system/widgets/app_card.dart';
+import '../../../shared/design_system/widgets/app_notice_box.dart';
 import '../../../shared/design_system/widgets/status_pill.dart';
 import '../../../shared/providers.dart';
 import '../../../shared/widgets/empty_state.dart';
@@ -573,7 +574,7 @@ class _SubmissionSearchPageState extends ConsumerState<SubmissionSearchPage> {
               ],
               if (status == 'rejected') ...[
                 const SizedBox(height: AppSpacing.md),
-                _NoticeBox(
+                AppNoticeBox(
                   color: c.stateDanger,
                   icon: Icons.cancel,
                   title: '已拒绝',
@@ -584,7 +585,7 @@ class _SubmissionSearchPageState extends ConsumerState<SubmissionSearchPage> {
               ],
               if (recordCount == 0) ...[
                 const SizedBox(height: AppSpacing.md),
-                _NoticeBox(
+                AppNoticeBox(
                   color: c.stateWarning,
                   icon: Icons.warning_amber_outlined,
                   title: '无关联学生记录',
@@ -691,7 +692,7 @@ class _SubmissionSearchPageState extends ConsumerState<SubmissionSearchPage> {
                 children: [
                   // rejected 状态提示（独立于空状态始终显示）
                   if (isRejected) ...[
-                    _NoticeBox(
+                    AppNoticeBox(
                       color: c.stateDanger,
                       icon: Icons.cancel,
                       title: '已拒绝',
@@ -938,52 +939,3 @@ class _ResetChip extends StatelessWidget {
   }
 }
 
-class _NoticeBox extends StatelessWidget {
-  final Color color;
-  final IconData icon;
-  final String title;
-  final String? body;
-  const _NoticeBox({
-    required this.color,
-    required this.icon,
-    required this.title,
-    this.body,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(AppRadius.normal),
-        border: Border.all(color: color.withValues(alpha: 0.2)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(icon, color: color, size: 18),
-              const SizedBox(width: AppSpacing.sm),
-              Text(
-                title,
-                style: AppTextStyles.bodyMedium.copyWith(
-                  color: color,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-          if (body != null) ...[
-            const SizedBox(height: AppSpacing.xs),
-            Text(
-              body!,
-              style: AppTextStyles.sm.copyWith(color: color),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}

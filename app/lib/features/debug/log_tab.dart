@@ -5,6 +5,7 @@ import 'package:share_plus/share_plus.dart';
 
 import '../../../core/logger/logger_service.dart';
 import '../../../shared/widgets/toast.dart';
+import '../../../shared/design_system/colors.dart';
 
 enum LogFilter { all, sync, network, error }
 
@@ -57,6 +58,7 @@ class _LogTabState extends ConsumerState<LogTab> {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     final filtered = _filteredLogs;
 
     return Column(
@@ -108,10 +110,10 @@ class _LogTabState extends ConsumerState<LogTab> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.history, size: 32, color: Colors.grey[400]),
+                      Icon(Icons.history, size: 32, color: c.textTertiary),
                       const SizedBox(height: 8),
                       Text('暂无日志',
-                          style: TextStyle(color: Colors.grey[500])),
+                          style: TextStyle(color: c.textTertiary)),
                     ],
                   ),
                 )
@@ -133,7 +135,7 @@ class _LogTabState extends ConsumerState<LogTab> {
                           style: TextStyle(
                             fontFamily: 'monospace',
                             fontSize: 12,
-                            color: isError ? Colors.red : null,
+                            color: isError ? c.stateDanger : null,
                           ),
                         ),
                       ),
@@ -145,3 +147,4 @@ class _LogTabState extends ConsumerState<LogTab> {
     );
   }
 }
+
