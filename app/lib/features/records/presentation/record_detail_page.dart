@@ -244,6 +244,7 @@ class _RecordDetailPageState extends ConsumerState<RecordDetailPage> {
   Widget build(BuildContext context) {
     if (_loading) {
       return Scaffold(
+        backgroundColor: context.colors.bgCanvas,
         appBar: AppBar(title: const Text('记录详情')),
         body: const LoadingOverlay(
           isLoading: true,
@@ -275,6 +276,7 @@ class _RecordDetailPageState extends ConsumerState<RecordDetailPage> {
     }
 
     return Scaffold(
+      backgroundColor: context.colors.bgCanvas,
       appBar: AppBar(title: const Text('点名记录')),
       body: Column(
         children: [
@@ -348,6 +350,7 @@ class _RecordDetailPageState extends ConsumerState<RecordDetailPage> {
     }
 
     return Scaffold(
+      backgroundColor: context.colors.bgCanvas,
       appBar: AppBar(
         title: const Text('记名详情'),
         actions: [
@@ -376,7 +379,7 @@ class _RecordDetailPageState extends ConsumerState<RecordDetailPage> {
                 ? Center(
                     child: Text(
                       _editing ? '没有记录' : '全部到齐，没有异常记录',
-                      style: TextStyle(color: Colors.grey[500]),
+                      style: AppTextStyles.sm.copyWith(color: context.colors.textTertiary),
                     ),
                   )
                 : ListView(
@@ -594,14 +597,17 @@ class _RecordRow extends StatelessWidget {
     required this.onStatusChanged,
   });
 
-  Color get _color => switch (entry.status) {
-    AttendanceStatus.present => Colors.green,
-    AttendanceStatus.absent => Colors.red,
-    AttendanceStatus.late_ => Colors.amber.shade700,
-    AttendanceStatus.leave => Colors.blue,
-    AttendanceStatus.other => Colors.purple,
-    AttendanceStatus.pending => Colors.grey,
-  };
+  Color _color(BuildContext context) {
+    final c = context.colors;
+    return switch (entry.status) {
+      AttendanceStatus.present => c.stateSuccess,
+      AttendanceStatus.absent => c.stateDanger,
+      AttendanceStatus.late_ => c.stateWarning,
+      AttendanceStatus.leave => c.stateInfo,
+      AttendanceStatus.other => c.brandPrimary,
+      AttendanceStatus.pending => c.textTertiary,
+    };
+  }
 
   String get _label => switch (entry.status) {
     AttendanceStatus.present => '到课',
@@ -636,7 +642,7 @@ class _RecordRow extends StatelessWidget {
             child: Text(
               entry.studentNo,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+              style: AppTextStyles.sm.copyWith(color: context.colors.textTertiary),
             ),
           ),
           if (editing)
@@ -675,7 +681,7 @@ class _RecordRow extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   StatusPill(variant: _pillVariant, label: _label),
-                  Icon(Icons.arrow_drop_down, size: 16, color: _color),
+                  Icon(Icons.arrow_drop_down, size: 16, color: _color(context)),
                 ],
               ),
             )
@@ -735,6 +741,7 @@ class _RollCallItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
@@ -744,23 +751,22 @@ class _RollCallItem extends StatelessWidget {
             flex: 3,
             child: Text(
               studentNo,
-              style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+              style: AppTextStyles.sm.copyWith(color: c.textTertiary),
               overflow: TextOverflow.ellipsis,
             ),
           ),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 2),
             decoration: BoxDecoration(
-              color: (called ? Colors.green : Colors.grey).withValues(
+              color: (called ? c.stateSuccess : c.textTertiary).withValues(
                 alpha: 0.15,
               ),
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: BorderRadius.circular(AppRadius.sm),
             ),
             child: Text(
               called ? '已点' : '未点',
-              style: TextStyle(
-                color: called ? Colors.green : Colors.grey,
-                fontSize: 13,
+              style: AppTextStyles.sm.copyWith(
+                color: called ? c.stateSuccess : c.textTertiary,
               ),
             ),
           ),
@@ -827,56 +833,70 @@ class _TextSheet extends StatelessWidget {
           ),
         ),
         Padding(
-          padding: const EdgeInsets.all(12),
-          child: FilledButton.icon(
-            onPressed: () async {
-              final confirm = await showDialog<bool>(
-                context: context,
-                builder: (ctx) => AlertDialog(
-                  icon: const Icon(Icons.info_outline, color: Colors.blue, size: 48),
-                  title: const Text('复制汇报文本'),
-                  content: const Text(
-                    '确认复制最终汇报文本？\n\n'
-                    '复制后请前往"扩展功能 → 名单提交"完成提交审核。\n'
-                    '提交后如需修改，请先撤回。',
-                    style: TextStyle(fontSize: 15),
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(ctx, false),
-                      child: const Text('取消'),
-                    ),
-                    FilledButton(
-                      onPressed: () => Navigator.pop(ctx, true),
-                      style: FilledButton.styleFrom(backgroundColor: Colors.blue),
-                      child: const Text('确认复制'),
-                    ),
-                  ],
+          padding: const EdgeInsets.all(AppSpacing.md),
+          child: Builder(
+            builder: (btnContext) {
+              final c = btnContext.colors;
+              return FilledButton.icon(
+                onPressed: () async {
+                  final confirm = await showDialog<bool>(
+                    context: context,
+                    builder: (ctx) {
+                      final dc = ctx.colors;
+                      return AlertDialog(
+                        icon: Icon(Icons.info_outline,
+                            color: dc.stateInfo, size: 40),
+                        title: const Text('复制汇报文本'),
+                        content: const Text(
+                          '确认复制最终汇报文本？\n\n'
+                          '复制后请前往"扩展功能 → 名单提交"完成提交审核。\n'
+                          '提交后如需修改，请先撤回。',
+                          style: TextStyle(fontSize: 15),
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx, false),
+                            child: const Text('取消'),
+                          ),
+                          FilledButton(
+                            onPressed: () => Navigator.pop(ctx, true),
+                            style: FilledButton.styleFrom(
+                              backgroundColor: dc.brandPrimary,
+                              foregroundColor: dc.onBrand,
+                            ),
+                            child: const Text('确认复制'),
+                          ),
+                        ],
+                      );
+                    },
+                  );
+
+                  if (confirm != true) return;
+
+                  Clipboard.setData(ClipboardData(text: groupReport));
+                  if (!context.mounted) return;
+                  Toast.show(context, '已复制到剪贴板');
+
+                  await Future.delayed(const Duration(milliseconds: 300));
+
+                  final uri = Uri.parse('weixin://');
+                  if (await canLaunchUrl(uri)) {
+                    await launchUrl(uri);
+                  } else {
+                    if (context.mounted) {
+                      Toast.show(context, '未安装微信');
+                    }
+                  }
+                },
+                icon: const Icon(Icons.wechat),
+                label: const Text('复制并打开微信'),
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size.fromHeight(44),
+                  backgroundColor: c.stateSuccess,
+                  foregroundColor: c.onBrand,
                 ),
               );
-
-              if (confirm != true) return;
-
-              Clipboard.setData(ClipboardData(text: groupReport));
-              Toast.show(context, '已复制到剪贴板');
-
-              await Future.delayed(const Duration(milliseconds: 300));
-
-              final uri = Uri.parse('weixin://');
-              if (await canLaunchUrl(uri)) {
-                await launchUrl(uri);
-              } else {
-                if (context.mounted) {
-                  Toast.show(context, '未安装微信');
-                }
-              }
             },
-            icon: const Icon(Icons.wechat),
-            label: const Text('复制并打开微信'),
-            style: FilledButton.styleFrom(
-              minimumSize: const Size.fromHeight(44),
-              backgroundColor: Colors.green,
-            ),
           ),
         ),
       ],
@@ -884,17 +904,18 @@ class _TextSheet extends StatelessWidget {
   }
 
   Widget _buildCommitteeReportView(BuildContext context) {
+    final c = context.colors;
     return ListView.builder(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       itemCount: classStatsList.length,
       itemBuilder: (context, index) {
         final cs = classStatsList[index];
         final text = _generateClassCommitteeReport(cs);
 
-        return Card(
-          margin: const EdgeInsets.only(bottom: 12),
-          child: Padding(
-            padding: const EdgeInsets.all(12),
+        return Padding(
+          padding: const EdgeInsets.only(bottom: AppSpacing.md),
+          child: AppCard(
+            padding: const EdgeInsets.all(AppSpacing.md),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -903,14 +924,16 @@ class _TextSheet extends StatelessWidget {
                     Expanded(
                       child: Text(
                         cs.className,
-                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
+                        style: AppTextStyles.bodyMedium.copyWith(
+                          color: c.textPrimary,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ),
                     FilledButton.icon(
                       onPressed: () async {
                         Clipboard.setData(ClipboardData(text: text));
+                        if (!context.mounted) return;
                         Toast.show(context, '已复制到剪贴板');
 
                         await Future.delayed(const Duration(milliseconds: 300));
@@ -927,16 +950,17 @@ class _TextSheet extends StatelessWidget {
                       icon: const Icon(Icons.copy, size: 18),
                       label: const Text('复制'),
                       style: FilledButton.styleFrom(
-                        backgroundColor: Colors.blue,
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        backgroundColor: c.brandPrimary,
+                        foregroundColor: c.onBrand,
+                        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: AppSpacing.sm),
                 SelectableText(
                   text,
-                  style: const TextStyle(fontSize: 14, height: 1.5),
+                  style: AppTextStyles.body.copyWith(color: c.textPrimary, height: 1.5),
                 ),
               ],
             ),
