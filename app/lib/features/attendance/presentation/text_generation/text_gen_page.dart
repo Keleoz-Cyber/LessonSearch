@@ -342,21 +342,22 @@ class _TextGenPageState extends ConsumerState<TextGenPage>
         final cs = _classStatsList[index];
         final text = _generateClassCommitteeReport(cs, date);
 
-        return Padding(
-          padding: const EdgeInsets.only(bottom: AppSpacing.md),
-          child: AppCard(
-            padding: const EdgeInsets.all(AppSpacing.md),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        cs.className,
-                        style: AppTextStyles.h3.copyWith(
-                          color: c.textPrimary,
-                        ),
+        return RepaintBoundary(
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: AppSpacing.md),
+            child: AppCard(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          cs.className,
+                          style: AppTextStyles.h3.copyWith(
+                            color: c.textPrimary,
+                          ),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
@@ -380,6 +381,7 @@ class _TextGenPageState extends ConsumerState<TextGenPage>
               ],
             ),
           ),
+        ),
         );
       },
     );

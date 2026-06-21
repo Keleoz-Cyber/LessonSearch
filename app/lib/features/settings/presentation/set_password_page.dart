@@ -122,7 +122,7 @@ class _SetPasswordPageState extends ConsumerState<SetPasswordPage> {
         title: hasPasswordAsync.when(
           data: (hasPassword) => Text(hasPassword ? '修改密码' : '设置密码'),
           loading: () => const Text('设置密码'),
-          error: (_, __) => const Text('设置密码'),
+          error: (_, _) => const Text('设置密码'),
         ),
       ),
       body: SingleChildScrollView(

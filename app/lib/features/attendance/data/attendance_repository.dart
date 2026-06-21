@@ -74,9 +74,8 @@ class AttendanceRepository {
       payload: {
         if (status != null) 'status': status.value,
         if (phase != null) 'phase': phase.value,
-        if (currentClassIndex != null) 'current_class_index': currentClassIndex,
-        if (currentStudentIndex != null)
-          'current_student_index': currentStudentIndex,
+        'current_class_index': ?currentClassIndex,
+        'current_student_index': ?currentStudentIndex,
       },
     );
 
@@ -133,7 +132,7 @@ class AttendanceRepository {
         'student_id': studentId,
         'class_id': classId,
         'status': status.value,
-        if (remark != null) 'remark': remark,
+        'remark': ?remark,
       },
     );
 
@@ -159,7 +158,7 @@ class AttendanceRepository {
         'task_id': record.taskId,
         'student_id': record.studentId,
         'status': status.value,
-        if (remark != null) 'remark': remark,
+        'remark': ?remark,
       },
     );
   }

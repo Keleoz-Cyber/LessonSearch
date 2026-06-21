@@ -170,11 +170,9 @@ class RecordsRepository {
       } else {
         final existingTime = existing.updatedAt;
         final newTime = r.updatedAt;
-        if (newTime != null &&
-            (existingTime == null || newTime.isAfter(existingTime))) {
+        if ((existingTime == null || newTime.isAfter(existingTime))) {
           deduped[r.studentId] = r;
-        } else if (newTime != null &&
-            existingTime != null &&
+        } else if (existingTime != null &&
             newTime.isAtSameMomentAs(existingTime) &&
             r.id > existing.id) {
           deduped[r.studentId] = r;

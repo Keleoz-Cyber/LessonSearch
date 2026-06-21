@@ -188,7 +188,7 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
         final days = diff.inDays;
         final hours = diff.inHours % 24;
         final minutes = diff.inMinutes % 60;
-        setState(() => _tokenRemainingTime = '${days}天 ${hours}小时 ${minutes}分');
+        setState(() => _tokenRemainingTime = '$days天 $hours小时 $minutes分');
       }
     } catch (e) {
       setState(() => _tokenRemainingTime = '解析失败: $e');

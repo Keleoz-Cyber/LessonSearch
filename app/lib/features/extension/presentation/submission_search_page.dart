@@ -235,11 +235,13 @@ class _SubmissionSearchPageState extends ConsumerState<SubmissionSearchPage> {
                           ),
                         );
                       }
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                        child: _SubmissionCard(
-                          item: _items[index],
-                          onTap: () => _showDetail(_items[index]),
+                      return RepaintBoundary(
+                        child: Padding(
+                          padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                          child: _SubmissionCard(
+                            item: _items[index],
+                            onTap: () => _showDetail(_items[index]),
+                          ),
                         ),
                       );
                     },
@@ -453,6 +455,7 @@ class _SubmissionSearchPageState extends ConsumerState<SubmissionSearchPage> {
       setState(() => _weekNumber = result);
       _loadData();
     }
+    controller.dispose();
   }
 
   Future<void> _showDateRangePicker() async {

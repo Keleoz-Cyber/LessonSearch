@@ -131,7 +131,7 @@ class _ReleaseCheckPageState extends ConsumerState<ReleaseCheckPage> {
         if (!mounted) return;
         setState(() {
           _tokenStatus = '有效';
-          _tokenRemaining = '${days}天${hours}小时';
+          _tokenRemaining = '$days天$hours小时';
         });
       }
     } catch (e) {
@@ -177,7 +177,7 @@ class _ReleaseCheckPageState extends ConsumerState<ReleaseCheckPage> {
         _hasPassword = user['has_password'] == true;
         _hasPasswordError = false;
       });
-    } on DioException catch (e) {
+    } on DioException {
       if (!mounted) return;
       setState(() {
         _hasPassword = false;
@@ -574,7 +574,7 @@ class _ReleaseCheckPageState extends ConsumerState<ReleaseCheckPage> {
                       ),
                 ),
                 const Spacer(),
-                if (trailing != null) trailing,
+                ?trailing,
               ],
             ),
             const SizedBox(height: 12),

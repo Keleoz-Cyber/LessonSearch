@@ -76,18 +76,20 @@ class _RecordsListPageState extends ConsumerState<RecordsListPage> {
                   itemCount: _summaries.length,
                   itemBuilder: (context, index) {
                     final s = _summaries[index];
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: AppSpacing.md),
-                      child: _TaskCard(
-                        summary: s,
-                        onTap: () async {
-                          await context.push('/records/${s.id}');
-                          _load();
-                        },
-                        onDelete: () => _confirmDelete(s),
-                        onResume: s.status == TaskStatus.inProgress
-                            ? () => _resumeTask(s)
-                            : null,
+                    return RepaintBoundary(
+                      child: Padding(
+                        padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                        child: _TaskCard(
+                          summary: s,
+                          onTap: () async {
+                            await context.push('/records/${s.id}');
+                            _load();
+                          },
+                          onDelete: () => _confirmDelete(s),
+                          onResume: s.status == TaskStatus.inProgress
+                              ? () => _resumeTask(s)
+                              : null,
+                        ),
                       ),
                     );
                   },
@@ -151,7 +153,7 @@ class _RecordsListPageState extends ConsumerState<RecordsListPage> {
     final isSyncFailed = hasSyncFailed.when(
       data: (failed) => failed,
       loading: () => false,
-      error: (_, __) => false,
+      error: (_, _) => false,
     );
     if (isSyncFailed) {
       Toast.show(context, '存在同步失败数据，请先到同步问题详情处理后再操作');

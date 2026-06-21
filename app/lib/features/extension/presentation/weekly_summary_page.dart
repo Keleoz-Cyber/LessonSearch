@@ -345,7 +345,7 @@ class _CurrentWeekTab extends ConsumerWidget {
               const SizedBox(width: AppSpacing.sm),
               exportStatusAsync.when(
                 loading: () => const SizedBox.shrink(),
-                error: (_, __) => const SizedBox.shrink(),
+                error: (_, _) => const SizedBox.shrink(),
                 data: (status) {
                   final isPublished =
                       status['is_published'] as bool? ?? false;
@@ -443,7 +443,7 @@ class _CurrentWeekTab extends ConsumerWidget {
           loading: () => const Padding(
             padding: EdgeInsets.symmetric(vertical: AppSpacing.lg),
             child: Column(
-              children: const [
+              children: [
                 Padding(padding: EdgeInsets.only(bottom: AppSpacing.md), child: SkeletonCard()),
                 SkeletonCard(),
               ],
@@ -1183,7 +1183,7 @@ class _CurrentWeekTab extends ConsumerWidget {
       );
 
       final bytes = Uint8List.fromList(response.data as List<int>);
-      final filename = '第${weekNumber}周考勤表.xlsx';
+      final filename = '第$weekNumber周考勤表.xlsx';
 
       final tempDir = await getTemporaryDirectory();
       final file = File('${tempDir.path}/$filename');
@@ -1607,6 +1607,7 @@ class _PendingSubmissionCard extends ConsumerWidget {
       final note = controller.text.trim();
       if (note.isEmpty) {
         Toast.show(context, '请输入拒绝理由');
+        controller.dispose();
         return;
       }
       try {
@@ -1623,6 +1624,7 @@ class _PendingSubmissionCard extends ConsumerWidget {
         Toast.show(context, '操作失败: $e');
       }
     }
+    controller.dispose();
   }
 
   /// 审核前确认对话框，展示提交摘要信息
@@ -2193,10 +2195,12 @@ class _HistoryWeekTab extends ConsumerWidget {
         itemCount: weeks.length,
         itemBuilder: (context, index) {
           final week = weeks[index];
-          return _HistoryWeekCard(
-            weekNumber: week,
-            currentWeek: currentWeek,
-            isAdmin: isAdmin,
+          return RepaintBoundary(
+            child: _HistoryWeekCard(
+              weekNumber: week,
+              currentWeek: currentWeek,
+              isAdmin: isAdmin,
+            ),
           );
         },
       ),
@@ -2298,7 +2302,7 @@ class _HistoryWeekCard extends ConsumerWidget {
                       style:
                           AppTextStyles.xs.copyWith(color: c.textTertiary),
                     ),
-                    error: (_, __) => const SizedBox.shrink(),
+                    error: (_, _) => const SizedBox.shrink(),
                     data: (status) {
                       final isPublished =
                           status['is_published'] as bool? ?? false;
@@ -2347,7 +2351,7 @@ class _HistoryWeekCard extends ConsumerWidget {
                           if (isPublished)
                             weekSummaryAsync.when(
                               loading: () => const SizedBox.shrink(),
-                              error: (_, __) => const SizedBox.shrink(),
+                              error: (_, _) => const SizedBox.shrink(),
                               data: (summary) {
                                 final totalAbnormalStudents =
                                     summary['total_abnormal_students']
@@ -2632,7 +2636,7 @@ class _SummaryDetailDialogState extends State<_SummaryDetailDialog> {
                         AppSpacing.lg,
                       ),
                       itemCount: filteredData.length,
-                      separatorBuilder: (_, __) =>
+                      separatorBuilder: (_, _) =>
                           const SizedBox(height: AppSpacing.sm),
                       itemBuilder: (context, index) {
                         final row = filteredData[index];
@@ -2641,15 +2645,17 @@ class _SummaryDetailDialogState extends State<_SummaryDetailDialog> {
                         final leaveNum = (row['leave'] as int?) ?? 0;
                         final otherNum = (row['other'] as int?) ?? 0;
                         final total = (row['total'] as int?) ?? 0;
-                        return _StudentRow(
-                          index: index + 1,
-                          name: (row['name'] as String?) ?? '未知',
-                          className: (row['class_name'] as String?) ?? '',
-                          late: lateNum,
-                          absent: absentNum,
-                          leave: leaveNum,
-                          other: otherNum,
-                          total: total,
+                        return RepaintBoundary(
+                          child: _StudentRow(
+                            index: index + 1,
+                            name: (row['name'] as String?) ?? '未知',
+                            className: (row['class_name'] as String?) ?? '',
+                            late: lateNum,
+                            absent: absentNum,
+                            leave: leaveNum,
+                            other: otherNum,
+                            total: total,
+                          ),
                         );
                       },
                     ),

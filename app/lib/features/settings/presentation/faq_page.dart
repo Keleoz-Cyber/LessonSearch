@@ -388,27 +388,29 @@ class FaqPage extends ConsumerWidget {
         itemBuilder: (context, index) {
           final category = categoryNames[index];
           final items = categories[category]!;
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.lg,
-                  AppSpacing.lg,
-                  AppSpacing.lg,
-                  AppSpacing.sm,
-                ),
-                child: Text(
-                  category,
-                  style: AppTextStyles.sm.copyWith(
-                    color: c.brandPrimary,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 0.5,
+          return RepaintBoundary(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.lg,
+                    AppSpacing.lg,
+                    AppSpacing.lg,
+                    AppSpacing.sm,
+                  ),
+                  child: Text(
+                    category,
+                    style: AppTextStyles.sm.copyWith(
+                      color: c.brandPrimary,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.5,
+                    ),
                   ),
                 ),
-              ),
-              ...items.map((item) => _FaqCard(item: item)),
-            ],
+                ...items.map((item) => _FaqCard(item: item)),
+              ],
+            ),
           );
         },
       ),

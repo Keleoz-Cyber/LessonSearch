@@ -76,7 +76,7 @@ class SettingsPage extends ConsumerWidget {
                         valueColor: AlwaysStoppedAnimation(c.brandPrimary),
                       ),
                     ),
-                    error: (_, __) => Icon(Icons.refresh, color: c.textTertiary),
+                    error: (_, _) => Icon(Icons.refresh, color: c.textTertiary),
                   ),
                   onTap: () {
                     // loading 状态：提示稍候
@@ -159,11 +159,11 @@ class SettingsPage extends ConsumerWidget {
               final isSyncFailed = hasSyncFailed.when(
                 data: (failed) => failed,
                 loading: () => false,
-                error: (_, __) => false,
+                error: (_, _) => false,
               );
               return syncIssueCountAsync.when(
                 loading: () => const SizedBox.shrink(),
-                error: (_, __) => const SizedBox.shrink(),
+                error: (_, _) => const SizedBox.shrink(),
                 data: (count) {
                   if (count == 0) return const SizedBox.shrink();
                   return ListTile(

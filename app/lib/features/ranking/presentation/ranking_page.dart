@@ -195,9 +195,11 @@ class _RankingPageState extends ConsumerState<RankingPage>
           }
           final itemIndex = index - 2;
           final item = items[itemIndex] as Map<String, dynamic>;
-          return Padding(
-            padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-            child: _buildRankingItem(context, item),
+          return RepaintBoundary(
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+              child: _buildRankingItem(context, item),
+            ),
           );
         },
       ),

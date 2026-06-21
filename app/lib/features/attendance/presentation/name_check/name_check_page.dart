@@ -465,7 +465,7 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
       }
 
       // 没有找到pending，保持焦点
-      setState(() => _focusedIndex = _focusedIndex);
+      setState(() {});
     }
 
     Future<void> mark(AttendanceStatus status, {String? remark}) async {
@@ -487,7 +487,7 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
         if (hasPendingInAllClasses) {
           jumpToNextPending();
         } else {
-          setState(() => _focusedIndex = _focusedIndex);
+          setState(() {});
         }
       } catch (_) {
         if (context.mounted) Toast.show(context, '标记失败，请重试');
@@ -515,7 +515,7 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
         if (hasPendingInAllClasses) {
           jumpToNextPending();
         } else {
-          setState(() => _focusedIndex = _focusedIndex);
+          setState(() {});
         }
       } catch (_) {
         if (context.mounted) Toast.show(context, '标记失败，请重试');

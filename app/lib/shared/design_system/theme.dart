@@ -112,7 +112,6 @@ ThemeData _build(AppColors c, Brightness brightness) {
         TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
       },
     ),
-    splashFactory: NoSplash.splashFactory,
     highlightColor: Colors.transparent,
   );
 }

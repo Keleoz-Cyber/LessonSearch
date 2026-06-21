@@ -60,13 +60,11 @@ class AnnouncementService {
       await cacheAnnouncement(announcement);
     }
 
-    if (announcement == null) {
-      announcement = {
+    announcement ??= {
         'version': announcementVersion,
         'title': announcementTitle,
         'content': announcementContent,
       };
-    }
 
     final version = announcement['version'] as int;
     if (dismissed >= version) return;

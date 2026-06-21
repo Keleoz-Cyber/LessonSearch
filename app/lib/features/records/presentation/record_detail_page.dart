@@ -337,7 +337,7 @@ class _RecordDetailPageState extends ConsumerState<RecordDetailPage> {
     final isSyncFailed = hasSyncFailed.when(
       data: (failed) => failed,
       loading: () => false,
-      error: (_, __) => false,
+      error: (_, _) => false,
     );
 
     final abnormal = _editing
@@ -915,19 +915,20 @@ class _TextSheet extends StatelessWidget {
         final cs = classStatsList[index];
         final text = _generateClassCommitteeReport(cs);
 
-        return Padding(
-          padding: const EdgeInsets.only(bottom: AppSpacing.md),
-          child: AppCard(
-            padding: const EdgeInsets.all(AppSpacing.md),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        cs.className,
-                        style: AppTextStyles.bodyMedium.copyWith(
+        return RepaintBoundary(
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: AppSpacing.md),
+            child: AppCard(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          cs.className,
+                          style: AppTextStyles.bodyMedium.copyWith(
                           color: c.textPrimary,
                           fontWeight: FontWeight.w600,
                         ),
@@ -968,6 +969,7 @@ class _TextSheet extends StatelessWidget {
               ],
             ),
           ),
+        ),
         );
       },
     );

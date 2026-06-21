@@ -46,19 +46,21 @@ class AppCard extends StatelessWidget {
 
     if (onTap == null) {
       return AnimatedContainer(
-        duration: AppDuration.fast,
-        curve: AppCurves.fast,
+        duration: AppDuration.normal,
+        curve: AppCurves.normal,
         decoration: decoration,
         padding: padding,
         child: child,
       );
     }
 
-    return Material(
-      color: Colors.transparent,
-      borderRadius: BorderRadius.circular(AppRadius.md),
-      child: Ink(
-        decoration: decoration,
+    return AnimatedContainer(
+      duration: AppDuration.normal,
+      curve: AppCurves.normal,
+      decoration: decoration,
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(AppRadius.md),
         child: InkWell(
           onTap: onTap,
           borderRadius: BorderRadius.circular(AppRadius.md),

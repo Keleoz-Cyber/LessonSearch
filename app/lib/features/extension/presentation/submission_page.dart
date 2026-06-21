@@ -606,7 +606,7 @@ class _SubmitTaskTab extends ConsumerWidget {
     final isSyncFailed = hasSyncFailed.when(
       data: (failed) => failed,
       loading: () => false,
-      error: (_, __) => false,
+      error: (_, _) => false,
     );
 
     return SingleChildScrollView(
@@ -634,7 +634,7 @@ class _SubmitTaskTab extends ConsumerWidget {
               );
             },
             loading: () => const SizedBox.shrink(),
-            error: (_, __) => const SizedBox.shrink(),
+            error: (_, _) => const SizedBox.shrink(),
           ),
           AppCard(
             padding: const EdgeInsets.all(AppSpacing.lg),
@@ -656,9 +656,7 @@ class _SubmitTaskTab extends ConsumerWidget {
                           .join('、');
                       return Text(
                         '待审核管理员: $names',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
+                        style: AppTextStyles.sm.copyWith(color: context.colors.textSecondary),
                       );
                     },
                   ),
@@ -666,7 +664,7 @@ class _SubmitTaskTab extends ConsumerWidget {
               ),
             ),
           const SizedBox(height: 16),
-          Text('本周记名任务', style: Theme.of(context).textTheme.titleMedium),
+          Text('本周记名任务', style: AppTextStyles.h3),
           const SizedBox(height: 8),
           tasksAsync.when(
             loading: () => const Center(child: CircularProgressIndicator()),
@@ -693,7 +691,7 @@ class _SubmitTaskTab extends ConsumerWidget {
             },
           ),
           const SizedBox(height: 24),
-          Text('说明', style: Theme.of(context).textTheme.titleSmall),
+          Text('说明', style: AppTextStyles.bodyMedium),
           const SizedBox(height: 8),
           Text(
             '• 只有记名任务需要提交\n'
@@ -805,7 +803,7 @@ class _SubmitButton extends ConsumerWidget {
     final isSyncFailed = hasSyncFailed.when(
       data: (failed) => failed,
       loading: () => false,
-      error: (_, __) => false,
+      error: (_, _) => false,
     );
 
     final c = context.colors;
@@ -895,7 +893,7 @@ class _MySubmissionsTab extends ConsumerWidget {
         error: (e, _) => ListView(
           physics: const AlwaysScrollableScrollPhysics(),
           children: [
-            SizedBox(height: 200),
+            const SizedBox(height: 200),
             Center(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -924,7 +922,9 @@ class _MySubmissionsTab extends ConsumerWidget {
             itemCount: submissions.length,
             itemBuilder: (context, index) {
               final submission = submissions[index] as Map<String, dynamic>;
-              return _SubmissionCard(submission: submission);
+              return RepaintBoundary(
+                child: _SubmissionCard(submission: submission),
+              );
             },
           );
         },
@@ -1002,33 +1002,25 @@ class _SubmissionCard extends ConsumerWidget {
                   const SizedBox(width: 12),
                   Text(
                     '第 ${submission['week_number']} 周',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
+                    style: AppTextStyles.sm.copyWith(color: context.colors.textSecondary),
                   ),
                   const SizedBox(width: 8),
                   Text(
                     '· $recordCount 条记录',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
+                    style: AppTextStyles.sm.copyWith(color: context.colors.textSecondary),
                   ),
                 ],
               ),
               const SizedBox(height: 8),
               Text(
                 DateFormat('yyyy-MM-dd HH:mm').format(submittedAt),
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
+                style: AppTextStyles.bodyMedium.copyWith(color: context.colors.textSecondary),
               ),
               if (reviewerName != null) ...[
                 const SizedBox(height: 4),
                 Text(
                   '审核人: $reviewerName',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
+                  style: AppTextStyles.sm.copyWith(color: context.colors.textSecondary),
                 ),
               ],
               if (submission['review_note'] != null) ...[
@@ -1043,7 +1035,7 @@ class _SubmissionCard extends ConsumerWidget {
                   ),
                   child: Text(
                     '备注: ${submission['review_note']}',
-                    style: Theme.of(context).textTheme.bodySmall,
+                    style: AppTextStyles.sm,
                   ),
                 ),
               ],
