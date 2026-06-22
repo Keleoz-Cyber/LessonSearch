@@ -3679,6 +3679,676 @@ class SyncQueueCompanion extends UpdateCompanion<SyncQueueData> {
   }
 }
 
+class $DutyPlanRowsTable extends DutyPlanRows
+    with TableInfo<$DutyPlanRowsTable, DutyPlanRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $DutyPlanRowsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _weekNumberMeta = const VerificationMeta(
+    'weekNumber',
+  );
+  @override
+  late final GeneratedColumn<int> weekNumber = GeneratedColumn<int>(
+    'week_number',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _weekdayMeta = const VerificationMeta(
+    'weekday',
+  );
+  @override
+  late final GeneratedColumn<int> weekday = GeneratedColumn<int>(
+    'weekday',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _periodMeta = const VerificationMeta('period');
+  @override
+  late final GeneratedColumn<int> period = GeneratedColumn<int>(
+    'period',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _classIdsMeta = const VerificationMeta(
+    'classIds',
+  );
+  @override
+  late final GeneratedColumn<String> classIds = GeneratedColumn<String>(
+    'class_ids',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _classNameMeta = const VerificationMeta(
+    'className',
+  );
+  @override
+  late final GeneratedColumn<String> className = GeneratedColumn<String>(
+    'class_name',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _remarkMeta = const VerificationMeta('remark');
+  @override
+  late final GeneratedColumn<String> remark = GeneratedColumn<String>(
+    'remark',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _notificationIdMeta = const VerificationMeta(
+    'notificationId',
+  );
+  @override
+  late final GeneratedColumn<int> notificationId = GeneratedColumn<int>(
+    'notification_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _reminderEnabledMeta = const VerificationMeta(
+    'reminderEnabled',
+  );
+  @override
+  late final GeneratedColumn<bool> reminderEnabled = GeneratedColumn<bool>(
+    'reminder_enabled',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("reminder_enabled" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  static const VerificationMeta _classStartAtMeta = const VerificationMeta(
+    'classStartAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> classStartAt = GeneratedColumn<DateTime>(
+    'class_start_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    weekNumber,
+    weekday,
+    period,
+    classIds,
+    className,
+    remark,
+    notificationId,
+    reminderEnabled,
+    classStartAt,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'duty_plan_rows';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<DutyPlanRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('week_number')) {
+      context.handle(
+        _weekNumberMeta,
+        weekNumber.isAcceptableOrUnknown(data['week_number']!, _weekNumberMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_weekNumberMeta);
+    }
+    if (data.containsKey('weekday')) {
+      context.handle(
+        _weekdayMeta,
+        weekday.isAcceptableOrUnknown(data['weekday']!, _weekdayMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_weekdayMeta);
+    }
+    if (data.containsKey('period')) {
+      context.handle(
+        _periodMeta,
+        period.isAcceptableOrUnknown(data['period']!, _periodMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_periodMeta);
+    }
+    if (data.containsKey('class_ids')) {
+      context.handle(
+        _classIdsMeta,
+        classIds.isAcceptableOrUnknown(data['class_ids']!, _classIdsMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_classIdsMeta);
+    }
+    if (data.containsKey('class_name')) {
+      context.handle(
+        _classNameMeta,
+        className.isAcceptableOrUnknown(data['class_name']!, _classNameMeta),
+      );
+    }
+    if (data.containsKey('remark')) {
+      context.handle(
+        _remarkMeta,
+        remark.isAcceptableOrUnknown(data['remark']!, _remarkMeta),
+      );
+    }
+    if (data.containsKey('notification_id')) {
+      context.handle(
+        _notificationIdMeta,
+        notificationId.isAcceptableOrUnknown(
+          data['notification_id']!,
+          _notificationIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_notificationIdMeta);
+    }
+    if (data.containsKey('reminder_enabled')) {
+      context.handle(
+        _reminderEnabledMeta,
+        reminderEnabled.isAcceptableOrUnknown(
+          data['reminder_enabled']!,
+          _reminderEnabledMeta,
+        ),
+      );
+    }
+    if (data.containsKey('class_start_at')) {
+      context.handle(
+        _classStartAtMeta,
+        classStartAt.isAcceptableOrUnknown(
+          data['class_start_at']!,
+          _classStartAtMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_classStartAtMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  DutyPlanRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return DutyPlanRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      weekNumber: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}week_number'],
+      )!,
+      weekday: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}weekday'],
+      )!,
+      period: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}period'],
+      )!,
+      classIds: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}class_ids'],
+      )!,
+      className: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}class_name'],
+      ),
+      remark: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}remark'],
+      ),
+      notificationId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}notification_id'],
+      )!,
+      reminderEnabled: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}reminder_enabled'],
+      )!,
+      classStartAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}class_start_at'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $DutyPlanRowsTable createAlias(String alias) {
+    return $DutyPlanRowsTable(attachedDatabase, alias);
+  }
+}
+
+class DutyPlanRow extends DataClass implements Insertable<DutyPlanRow> {
+  final String id;
+  final int weekNumber;
+  final int weekday;
+  final int period;
+  final String classIds;
+  final String? className;
+  final String? remark;
+  final int notificationId;
+  final bool reminderEnabled;
+  final DateTime classStartAt;
+  final DateTime createdAt;
+  const DutyPlanRow({
+    required this.id,
+    required this.weekNumber,
+    required this.weekday,
+    required this.period,
+    required this.classIds,
+    this.className,
+    this.remark,
+    required this.notificationId,
+    required this.reminderEnabled,
+    required this.classStartAt,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['week_number'] = Variable<int>(weekNumber);
+    map['weekday'] = Variable<int>(weekday);
+    map['period'] = Variable<int>(period);
+    map['class_ids'] = Variable<String>(classIds);
+    if (!nullToAbsent || className != null) {
+      map['class_name'] = Variable<String>(className);
+    }
+    if (!nullToAbsent || remark != null) {
+      map['remark'] = Variable<String>(remark);
+    }
+    map['notification_id'] = Variable<int>(notificationId);
+    map['reminder_enabled'] = Variable<bool>(reminderEnabled);
+    map['class_start_at'] = Variable<DateTime>(classStartAt);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  DutyPlanRowsCompanion toCompanion(bool nullToAbsent) {
+    return DutyPlanRowsCompanion(
+      id: Value(id),
+      weekNumber: Value(weekNumber),
+      weekday: Value(weekday),
+      period: Value(period),
+      classIds: Value(classIds),
+      className: className == null && nullToAbsent
+          ? const Value.absent()
+          : Value(className),
+      remark: remark == null && nullToAbsent
+          ? const Value.absent()
+          : Value(remark),
+      notificationId: Value(notificationId),
+      reminderEnabled: Value(reminderEnabled),
+      classStartAt: Value(classStartAt),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory DutyPlanRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return DutyPlanRow(
+      id: serializer.fromJson<String>(json['id']),
+      weekNumber: serializer.fromJson<int>(json['weekNumber']),
+      weekday: serializer.fromJson<int>(json['weekday']),
+      period: serializer.fromJson<int>(json['period']),
+      classIds: serializer.fromJson<String>(json['classIds']),
+      className: serializer.fromJson<String?>(json['className']),
+      remark: serializer.fromJson<String?>(json['remark']),
+      notificationId: serializer.fromJson<int>(json['notificationId']),
+      reminderEnabled: serializer.fromJson<bool>(json['reminderEnabled']),
+      classStartAt: serializer.fromJson<DateTime>(json['classStartAt']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'weekNumber': serializer.toJson<int>(weekNumber),
+      'weekday': serializer.toJson<int>(weekday),
+      'period': serializer.toJson<int>(period),
+      'classIds': serializer.toJson<String>(classIds),
+      'className': serializer.toJson<String?>(className),
+      'remark': serializer.toJson<String?>(remark),
+      'notificationId': serializer.toJson<int>(notificationId),
+      'reminderEnabled': serializer.toJson<bool>(reminderEnabled),
+      'classStartAt': serializer.toJson<DateTime>(classStartAt),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  DutyPlanRow copyWith({
+    String? id,
+    int? weekNumber,
+    int? weekday,
+    int? period,
+    String? classIds,
+    Value<String?> className = const Value.absent(),
+    Value<String?> remark = const Value.absent(),
+    int? notificationId,
+    bool? reminderEnabled,
+    DateTime? classStartAt,
+    DateTime? createdAt,
+  }) => DutyPlanRow(
+    id: id ?? this.id,
+    weekNumber: weekNumber ?? this.weekNumber,
+    weekday: weekday ?? this.weekday,
+    period: period ?? this.period,
+    classIds: classIds ?? this.classIds,
+    className: className.present ? className.value : this.className,
+    remark: remark.present ? remark.value : this.remark,
+    notificationId: notificationId ?? this.notificationId,
+    reminderEnabled: reminderEnabled ?? this.reminderEnabled,
+    classStartAt: classStartAt ?? this.classStartAt,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  DutyPlanRow copyWithCompanion(DutyPlanRowsCompanion data) {
+    return DutyPlanRow(
+      id: data.id.present ? data.id.value : this.id,
+      weekNumber: data.weekNumber.present
+          ? data.weekNumber.value
+          : this.weekNumber,
+      weekday: data.weekday.present ? data.weekday.value : this.weekday,
+      period: data.period.present ? data.period.value : this.period,
+      classIds: data.classIds.present ? data.classIds.value : this.classIds,
+      className: data.className.present ? data.className.value : this.className,
+      remark: data.remark.present ? data.remark.value : this.remark,
+      notificationId: data.notificationId.present
+          ? data.notificationId.value
+          : this.notificationId,
+      reminderEnabled: data.reminderEnabled.present
+          ? data.reminderEnabled.value
+          : this.reminderEnabled,
+      classStartAt: data.classStartAt.present
+          ? data.classStartAt.value
+          : this.classStartAt,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DutyPlanRow(')
+          ..write('id: $id, ')
+          ..write('weekNumber: $weekNumber, ')
+          ..write('weekday: $weekday, ')
+          ..write('period: $period, ')
+          ..write('classIds: $classIds, ')
+          ..write('className: $className, ')
+          ..write('remark: $remark, ')
+          ..write('notificationId: $notificationId, ')
+          ..write('reminderEnabled: $reminderEnabled, ')
+          ..write('classStartAt: $classStartAt, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    weekNumber,
+    weekday,
+    period,
+    classIds,
+    className,
+    remark,
+    notificationId,
+    reminderEnabled,
+    classStartAt,
+    createdAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is DutyPlanRow &&
+          other.id == this.id &&
+          other.weekNumber == this.weekNumber &&
+          other.weekday == this.weekday &&
+          other.period == this.period &&
+          other.classIds == this.classIds &&
+          other.className == this.className &&
+          other.remark == this.remark &&
+          other.notificationId == this.notificationId &&
+          other.reminderEnabled == this.reminderEnabled &&
+          other.classStartAt == this.classStartAt &&
+          other.createdAt == this.createdAt);
+}
+
+class DutyPlanRowsCompanion extends UpdateCompanion<DutyPlanRow> {
+  final Value<String> id;
+  final Value<int> weekNumber;
+  final Value<int> weekday;
+  final Value<int> period;
+  final Value<String> classIds;
+  final Value<String?> className;
+  final Value<String?> remark;
+  final Value<int> notificationId;
+  final Value<bool> reminderEnabled;
+  final Value<DateTime> classStartAt;
+  final Value<DateTime> createdAt;
+  final Value<int> rowid;
+  const DutyPlanRowsCompanion({
+    this.id = const Value.absent(),
+    this.weekNumber = const Value.absent(),
+    this.weekday = const Value.absent(),
+    this.period = const Value.absent(),
+    this.classIds = const Value.absent(),
+    this.className = const Value.absent(),
+    this.remark = const Value.absent(),
+    this.notificationId = const Value.absent(),
+    this.reminderEnabled = const Value.absent(),
+    this.classStartAt = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  DutyPlanRowsCompanion.insert({
+    required String id,
+    required int weekNumber,
+    required int weekday,
+    required int period,
+    required String classIds,
+    this.className = const Value.absent(),
+    this.remark = const Value.absent(),
+    required int notificationId,
+    this.reminderEnabled = const Value.absent(),
+    required DateTime classStartAt,
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       weekNumber = Value(weekNumber),
+       weekday = Value(weekday),
+       period = Value(period),
+       classIds = Value(classIds),
+       notificationId = Value(notificationId),
+       classStartAt = Value(classStartAt);
+  static Insertable<DutyPlanRow> custom({
+    Expression<String>? id,
+    Expression<int>? weekNumber,
+    Expression<int>? weekday,
+    Expression<int>? period,
+    Expression<String>? classIds,
+    Expression<String>? className,
+    Expression<String>? remark,
+    Expression<int>? notificationId,
+    Expression<bool>? reminderEnabled,
+    Expression<DateTime>? classStartAt,
+    Expression<DateTime>? createdAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (weekNumber != null) 'week_number': weekNumber,
+      if (weekday != null) 'weekday': weekday,
+      if (period != null) 'period': period,
+      if (classIds != null) 'class_ids': classIds,
+      if (className != null) 'class_name': className,
+      if (remark != null) 'remark': remark,
+      if (notificationId != null) 'notification_id': notificationId,
+      if (reminderEnabled != null) 'reminder_enabled': reminderEnabled,
+      if (classStartAt != null) 'class_start_at': classStartAt,
+      if (createdAt != null) 'created_at': createdAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  DutyPlanRowsCompanion copyWith({
+    Value<String>? id,
+    Value<int>? weekNumber,
+    Value<int>? weekday,
+    Value<int>? period,
+    Value<String>? classIds,
+    Value<String?>? className,
+    Value<String?>? remark,
+    Value<int>? notificationId,
+    Value<bool>? reminderEnabled,
+    Value<DateTime>? classStartAt,
+    Value<DateTime>? createdAt,
+    Value<int>? rowid,
+  }) {
+    return DutyPlanRowsCompanion(
+      id: id ?? this.id,
+      weekNumber: weekNumber ?? this.weekNumber,
+      weekday: weekday ?? this.weekday,
+      period: period ?? this.period,
+      classIds: classIds ?? this.classIds,
+      className: className ?? this.className,
+      remark: remark ?? this.remark,
+      notificationId: notificationId ?? this.notificationId,
+      reminderEnabled: reminderEnabled ?? this.reminderEnabled,
+      classStartAt: classStartAt ?? this.classStartAt,
+      createdAt: createdAt ?? this.createdAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (weekNumber.present) {
+      map['week_number'] = Variable<int>(weekNumber.value);
+    }
+    if (weekday.present) {
+      map['weekday'] = Variable<int>(weekday.value);
+    }
+    if (period.present) {
+      map['period'] = Variable<int>(period.value);
+    }
+    if (classIds.present) {
+      map['class_ids'] = Variable<String>(classIds.value);
+    }
+    if (className.present) {
+      map['class_name'] = Variable<String>(className.value);
+    }
+    if (remark.present) {
+      map['remark'] = Variable<String>(remark.value);
+    }
+    if (notificationId.present) {
+      map['notification_id'] = Variable<int>(notificationId.value);
+    }
+    if (reminderEnabled.present) {
+      map['reminder_enabled'] = Variable<bool>(reminderEnabled.value);
+    }
+    if (classStartAt.present) {
+      map['class_start_at'] = Variable<DateTime>(classStartAt.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DutyPlanRowsCompanion(')
+          ..write('id: $id, ')
+          ..write('weekNumber: $weekNumber, ')
+          ..write('weekday: $weekday, ')
+          ..write('period: $period, ')
+          ..write('classIds: $classIds, ')
+          ..write('className: $className, ')
+          ..write('remark: $remark, ')
+          ..write('notificationId: $notificationId, ')
+          ..write('reminderEnabled: $reminderEnabled, ')
+          ..write('classStartAt: $classStartAt, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -3694,6 +4364,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $AttendanceRecordsTable attendanceRecords =
       $AttendanceRecordsTable(this);
   late final $SyncQueueTable syncQueue = $SyncQueueTable(this);
+  late final $DutyPlanRowsTable dutyPlanRows = $DutyPlanRowsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -3708,6 +4379,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     taskClasses,
     attendanceRecords,
     syncQueue,
+    dutyPlanRows,
   ];
 }
 
@@ -7299,6 +7971,328 @@ typedef $$SyncQueueTableProcessedTableManager =
       SyncQueueData,
       PrefetchHooks Function()
     >;
+typedef $$DutyPlanRowsTableCreateCompanionBuilder =
+    DutyPlanRowsCompanion Function({
+      required String id,
+      required int weekNumber,
+      required int weekday,
+      required int period,
+      required String classIds,
+      Value<String?> className,
+      Value<String?> remark,
+      required int notificationId,
+      Value<bool> reminderEnabled,
+      required DateTime classStartAt,
+      Value<DateTime> createdAt,
+      Value<int> rowid,
+    });
+typedef $$DutyPlanRowsTableUpdateCompanionBuilder =
+    DutyPlanRowsCompanion Function({
+      Value<String> id,
+      Value<int> weekNumber,
+      Value<int> weekday,
+      Value<int> period,
+      Value<String> classIds,
+      Value<String?> className,
+      Value<String?> remark,
+      Value<int> notificationId,
+      Value<bool> reminderEnabled,
+      Value<DateTime> classStartAt,
+      Value<DateTime> createdAt,
+      Value<int> rowid,
+    });
+
+class $$DutyPlanRowsTableFilterComposer
+    extends Composer<_$AppDatabase, $DutyPlanRowsTable> {
+  $$DutyPlanRowsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get weekNumber => $composableBuilder(
+    column: $table.weekNumber,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get weekday => $composableBuilder(
+    column: $table.weekday,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get period => $composableBuilder(
+    column: $table.period,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get classIds => $composableBuilder(
+    column: $table.classIds,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get className => $composableBuilder(
+    column: $table.className,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get remark => $composableBuilder(
+    column: $table.remark,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get notificationId => $composableBuilder(
+    column: $table.notificationId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get reminderEnabled => $composableBuilder(
+    column: $table.reminderEnabled,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get classStartAt => $composableBuilder(
+    column: $table.classStartAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$DutyPlanRowsTableOrderingComposer
+    extends Composer<_$AppDatabase, $DutyPlanRowsTable> {
+  $$DutyPlanRowsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get weekNumber => $composableBuilder(
+    column: $table.weekNumber,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get weekday => $composableBuilder(
+    column: $table.weekday,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get period => $composableBuilder(
+    column: $table.period,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get classIds => $composableBuilder(
+    column: $table.classIds,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get className => $composableBuilder(
+    column: $table.className,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get remark => $composableBuilder(
+    column: $table.remark,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get notificationId => $composableBuilder(
+    column: $table.notificationId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get reminderEnabled => $composableBuilder(
+    column: $table.reminderEnabled,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get classStartAt => $composableBuilder(
+    column: $table.classStartAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$DutyPlanRowsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $DutyPlanRowsTable> {
+  $$DutyPlanRowsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get weekNumber => $composableBuilder(
+    column: $table.weekNumber,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get weekday =>
+      $composableBuilder(column: $table.weekday, builder: (column) => column);
+
+  GeneratedColumn<int> get period =>
+      $composableBuilder(column: $table.period, builder: (column) => column);
+
+  GeneratedColumn<String> get classIds =>
+      $composableBuilder(column: $table.classIds, builder: (column) => column);
+
+  GeneratedColumn<String> get className =>
+      $composableBuilder(column: $table.className, builder: (column) => column);
+
+  GeneratedColumn<String> get remark =>
+      $composableBuilder(column: $table.remark, builder: (column) => column);
+
+  GeneratedColumn<int> get notificationId => $composableBuilder(
+    column: $table.notificationId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get reminderEnabled => $composableBuilder(
+    column: $table.reminderEnabled,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get classStartAt => $composableBuilder(
+    column: $table.classStartAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+}
+
+class $$DutyPlanRowsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $DutyPlanRowsTable,
+          DutyPlanRow,
+          $$DutyPlanRowsTableFilterComposer,
+          $$DutyPlanRowsTableOrderingComposer,
+          $$DutyPlanRowsTableAnnotationComposer,
+          $$DutyPlanRowsTableCreateCompanionBuilder,
+          $$DutyPlanRowsTableUpdateCompanionBuilder,
+          (
+            DutyPlanRow,
+            BaseReferences<_$AppDatabase, $DutyPlanRowsTable, DutyPlanRow>,
+          ),
+          DutyPlanRow,
+          PrefetchHooks Function()
+        > {
+  $$DutyPlanRowsTableTableManager(_$AppDatabase db, $DutyPlanRowsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$DutyPlanRowsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$DutyPlanRowsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$DutyPlanRowsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<int> weekNumber = const Value.absent(),
+                Value<int> weekday = const Value.absent(),
+                Value<int> period = const Value.absent(),
+                Value<String> classIds = const Value.absent(),
+                Value<String?> className = const Value.absent(),
+                Value<String?> remark = const Value.absent(),
+                Value<int> notificationId = const Value.absent(),
+                Value<bool> reminderEnabled = const Value.absent(),
+                Value<DateTime> classStartAt = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => DutyPlanRowsCompanion(
+                id: id,
+                weekNumber: weekNumber,
+                weekday: weekday,
+                period: period,
+                classIds: classIds,
+                className: className,
+                remark: remark,
+                notificationId: notificationId,
+                reminderEnabled: reminderEnabled,
+                classStartAt: classStartAt,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required int weekNumber,
+                required int weekday,
+                required int period,
+                required String classIds,
+                Value<String?> className = const Value.absent(),
+                Value<String?> remark = const Value.absent(),
+                required int notificationId,
+                Value<bool> reminderEnabled = const Value.absent(),
+                required DateTime classStartAt,
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => DutyPlanRowsCompanion.insert(
+                id: id,
+                weekNumber: weekNumber,
+                weekday: weekday,
+                period: period,
+                classIds: classIds,
+                className: className,
+                remark: remark,
+                notificationId: notificationId,
+                reminderEnabled: reminderEnabled,
+                classStartAt: classStartAt,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$DutyPlanRowsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $DutyPlanRowsTable,
+      DutyPlanRow,
+      $$DutyPlanRowsTableFilterComposer,
+      $$DutyPlanRowsTableOrderingComposer,
+      $$DutyPlanRowsTableAnnotationComposer,
+      $$DutyPlanRowsTableCreateCompanionBuilder,
+      $$DutyPlanRowsTableUpdateCompanionBuilder,
+      (
+        DutyPlanRow,
+        BaseReferences<_$AppDatabase, $DutyPlanRowsTable, DutyPlanRow>,
+      ),
+      DutyPlanRow,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -7321,4 +8315,6 @@ class $AppDatabaseManager {
       $$AttendanceRecordsTableTableManager(_db, _db.attendanceRecords);
   $$SyncQueueTableTableManager get syncQueue =>
       $$SyncQueueTableTableManager(_db, _db.syncQueue);
+  $$DutyPlanRowsTableTableManager get dutyPlanRows =>
+      $$DutyPlanRowsTableTableManager(_db, _db.dutyPlanRows);
 }

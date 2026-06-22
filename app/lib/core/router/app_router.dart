@@ -23,6 +23,8 @@ import '../../features/settings/presentation/sync_issues_page.dart';
 import '../../features/debug/debug_page.dart';
 import '../../features/debug/release_check_page.dart';
 import '../../features/home/presentation/home_page.dart';
+import '../../features/duty_plan/presentation/duty_plan_list_page.dart';
+import '../../features/duty_plan/presentation/duty_plan_create_page.dart';
 import '../../shared/providers.dart';
 
 final _routerKey = GlobalKey<NavigatorState>();
@@ -50,6 +52,7 @@ String? _redirect(BuildContext context, GoRouterState state) {
     '/records',
     '/extension',
     '/settings',
+    '/duty-plan',
   ];
 
   final needsLogin = protectedRoutes.any(
@@ -111,6 +114,16 @@ final appRouter = GoRouter(
       path: '/extension/ranking',
       name: 'ranking',
       builder: (context, state) => const RankingPage(),
+    ),
+    GoRoute(
+      path: '/duty-plan',
+      name: 'duty-plan',
+      builder: (context, state) => const DutyPlanListPage(),
+    ),
+    GoRoute(
+      path: '/duty-plan/create',
+      name: 'duty-plan-create',
+      builder: (context, state) => const DutyPlanCreatePage(),
     ),
 
     GoRoute(

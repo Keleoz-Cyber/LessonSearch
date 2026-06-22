@@ -14,6 +14,8 @@ import '../features/attendance/data/local/attendance_local_ds.dart';
 import '../features/attendance/data/remote/attendance_remote_ds.dart';
 import '../features/attendance/data/attendance_repository.dart';
 import '../features/student/data/student_repository.dart';
+import '../features/duty_plan/data/duty_plan_repository.dart';
+import '../features/duty_plan/domain/duty_plan.dart';
 
 /// 全局数据库实例
 final databaseProvider = Provider<AppDatabase>((ref) {
@@ -223,6 +225,24 @@ final recordsRepositoryProvider = Provider<RecordsRepository>((ref) {
     ref.watch(databaseProvider),
     ref.watch(attendanceLocalDSProvider),
   );
+});
+
+/// 查课计划仓库
+final dutyPlanRepositoryProvider = Provider<DutyPlanRepository>((ref) {
+  return DutyPlanRepository(ref.watch(databaseProvider));
+});
+
+/// 查课计划列表（FutureProvider，自动刷新）
+final dutyPlansProvider = FutureProvider<List<DutyPlan>>((ref) async {
+  final repo = ref.watch(dutyPlanRepositoryProvider);
+  return repo.getAll();
+});
+
+/// 即将到来的查课计划（用于首页 hero 卡片）
+final upcomingDutyPlansProvider =
+    FutureProvider<List<DutyPlan>>((ref) async {
+  final repo = ref.watch(dutyPlanRepositoryProvider);
+  return repo.getUpcoming(limit: 5);
 });
 
 /// 主题模式（暗色/亮色/跟随系统）

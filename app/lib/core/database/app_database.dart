@@ -19,13 +19,14 @@ part 'app_database.g.dart';
     TaskClasses,
     AttendanceRecords,
     SyncQueue,
+    DutyPlanRows,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration {
@@ -40,6 +41,11 @@ class AppDatabase extends _$AppDatabase {
           } catch (_) {}
           try {
             await m.addColumn(attendanceTasks, attendanceTasks.userId);
+          } catch (_) {}
+        }
+        if (from < 3) {
+          try {
+            await m.createTable(dutyPlanRows);
           } catch (_) {}
         }
       },

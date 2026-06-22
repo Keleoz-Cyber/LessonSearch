@@ -301,6 +301,12 @@ class _HomePageState extends ConsumerState<HomePage> {
 
     final entries = <_SecondaryEntry>[
       _SecondaryEntry(
+        icon: Icons.event_note_outlined,
+        title: '查课计划',
+        subtitle: '排表与提醒',
+        onTap: () => _checkLoginAndNavigate('/duty-plan'),
+      ),
+      _SecondaryEntry(
         icon: Icons.history,
         title: '查课记录',
         subtitle: '查看与编辑历史',

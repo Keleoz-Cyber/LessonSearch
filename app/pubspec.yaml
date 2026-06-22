@@ -38,6 +38,11 @@ dependencies:
   flutter_markdown: ^0.7.4+1
   share_plus: ^10.0.0
 
+  # 本地通知
+  flutter_local_notifications: ^17.2.4
+  timezone: ^0.9.4
+  flutter_timezone: ^3.0.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

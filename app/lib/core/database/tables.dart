@@ -105,3 +105,24 @@ class SyncQueue extends Table {
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get syncedAt => dateTime().nullable()();
 }
+
+// ============================================================
+// 查课计划（本地，不同步）
+// ============================================================
+
+class DutyPlanRows extends Table {
+  TextColumn get id => text()();
+  IntColumn get weekNumber => integer()();
+  IntColumn get weekday => integer()(); // 1-5
+  IntColumn get period => integer()(); // 1-8
+  TextColumn get classIds => text()(); // JSON: ["1","2"]
+  TextColumn get className => text().nullable()(); // 备注用班级名缓存
+  TextColumn get remark => text().nullable()();
+  IntColumn get notificationId => integer()();
+  BoolColumn get reminderEnabled => boolean().withDefault(const Constant(true))();
+  DateTimeColumn get classStartAt => dateTime()(); // 上课开始时间（绝对）
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
