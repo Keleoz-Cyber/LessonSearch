@@ -211,15 +211,22 @@ class SyncService {
                   continue;
                 }
 
-                if (reason.contains('记录不存在') ||
-                    reason.contains('已提交审核') ||
-                    reason.contains('该任务已放弃') ||
-                    reason.contains('不可修改记录')) {
-                  // 跳过并标记为已同步
+                if (reason.contains('记录不存在')) {
+                  // 记录不存在是正常的（可能已被删除），跳过
                   await _local.markSynced(matchedItem.id);
                   successCount++;
                   LoggerService.sync(
                     'SKIP (batch): record/update #${matchedItem.entityId} - $reason',
+                  );
+                } else if (reason.contains('已提交审核') ||
+                    reason.contains('该任务已放弃') ||
+                    reason.contains('不可修改记录')) {
+                  // 保护性拒绝，不静默 synced，标记为 failed(999)
+                  await _local.markSyncFailed(matchedItem.id, retryCount: 999);
+                  failCount++;
+                  LoggerService.sync(
+                    'REJECTED (batch): record/update #${matchedItem.entityId} - $reason',
+                    isError: true,
                   );
                 } else {
                   final newRetry = matchedItem.retryCount + 1;
