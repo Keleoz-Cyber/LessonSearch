@@ -6,6 +6,27 @@
 
 ## v0.7.0
 
+### 新功能
+
+- **查课计划 + 本地提醒**（v0.7.0+33）
+  - 提前排定本周/未来周的查课任务（周次/星期/节次/班级/教室/备注）
+  - 上课前 15 分钟系统通知栏提醒（`flutter_local_notifications` + `timezone`）
+  - **纯本地存储**，不依赖第三方推送 SaaS（极光/个推），保护学生班级隐私
+  - 班级选择对话框支持年级/专业横向筛选，按"年级+专业"分组展示
+  - 列表按周分组 + 状态标签（已设提醒/提醒已关/已结束）
+  - 长按卡片可切换提醒状态或删除
+  - 顶部品牌色横条提示"上课前 15 分钟会通过系统通知提醒"
+  - 入口：首页二级入口"查课计划"
+  - 新增表 `DutyPlanRows`（schema 2→3→4，含 classroom 字段）
+- **FAQ 新增「查课计划」分类** 9 条问答（功能说明 / 创建流程 / 节次时间表 / 班级筛选 / 提醒开关 / 收不到通知排查 / 隐私说明 / 多班级 / 删除）
+
+### 业务稳定性修复
+
+- **记名页同步失败不再阻塞操作** - 之前 sync 队列有任意 failed 项会锁死所有底部记名按钮，打断正在进行的记名。改为非阻塞警告横条「本次记名仍可继续，标记会保留到本地。结束后请到「同步问题」处理」，5 个按钮始终可点
+- **班级数据主动加载** - 查课计划创建页主动调用 `syncBaseData()`，不再依赖用户先去点名页才加载到班级
+- **查课计划班级对话框 StatefulBuilder** - 修复点击班级不刷新、需要重开对话框才看到选中状态的 bug
+- **记名 setState 强制刷新坏味道清理** - `setState(() => _focusedIndex = _focusedIndex)` 三处改为 `setState(() {})`
+
 ### UI 设计系统重做
 
 - **设计系统骨架** - 在 `shared/design_system/` 建立 tokens（颜色/字号/间距/圆角/动效）+ 亮暗主题 + 9 个核心组件（AppButton/AppCard/StatusPill/AppInput/AppTopBar/BottomActionBar/AppSegmentedControl/SyncStatusBanner/SegmentedProgressBar）
@@ -75,12 +96,63 @@
 - AppSegmentedControl 修复透明段点击死区，并增加 a11y 语义
 - SegmentedProgressBar 增加输入断言与契约文档，避免 flex < 0 运行时崩溃
 
-### 技术债务（尚未修复）
+### 性能与动画优化
 
-- **Bug 3** - reconcile 删除记录与 SyncQueue 中未消费的 create 项撞车（需在 LocalDS 加"取消队列项"逻辑）
-- **Bug 9** - updateRecord 底层未做已提交/已放弃防护（当前仅 UI 层拦截）
-- **Bug 11** - UI 同步状态判断口径不统一（代码味道，不影响功能）
-- **UI 跟进** - AppCard 可点击变体改用 AnimatedContainer 让 selected 切换有过渡；新增 AppButtonSize.xl 让首页 88px 高度从 caller 端 SizedBox hack 迁移到设计系统；首页 hero 标题加 maxLines=1+ellipsis；首页同步指示器 IconButton 缩小内边距让角标更贴近图标；_buildSyncWarningCard 自动 syncNow 触发改用 initState 监听器
+- **AppCard 选中态动画** - onTap 分支也用 AnimatedContainer，selected 切换 200ms 平滑过渡
+- **AppButton 按下反馈** - 改 StatefulWidget，onTapDown/Up AnimatedScale 0.96 按下形变
+- **Material ripple 恢复** - 移除 `splashFactory: NoSplash`，恢复 Android 触感反馈
+- **数字滚动动画** - AppStatTile 用 TweenAnimationBuilder<int> 600ms 滚动入场；home badge scale 0.6→1.0 弹出
+- **骨架屏 shimmer 扫光** - SkeletonCard 从 alpha 脉冲改为线性渐变扫光（1400ms 循环），加载状态识别度提升
+- **SyncStatusBanner 旋转图标** - syncing 态用 RotationTransition 持续旋转 sync 图标
+- **home 同步状态 AnimatedSwitcher** - sync banner 出现/消失淡入淡出
+- **Hero 共享元素** - records_list → record_detail 的班级名文本飞越过渡
+- **AppInput focus 动画** - label/prefixIcon 颜色根据 focused/error 状态动画过渡
+- **per-platform PageTransitions** - Android 用 ZoomPageTransitionsBuilder（M3 风格），iOS 保持 Cupertino
+- **selection 班级选中动画** - Icon 用 AnimatedSwitcher + ScaleTransition 弹出
+- **AnimatedRotation curve** - ranking/faq 箭头旋转补 curve: AppCurves.normal
+- **AppDuration/Curves 扩档** - 新增 page=450ms / emphasize=easeOutBack / depart=easeIn
+- **9 处 ListView 加 RepaintBoundary** - 卡片型列表滚动 FPS 提升
+- **submission_page Theme.of 缓存** - 14 处 Theme.of + 30+ 处 context.colors 裸调用改为方法级缓存
+- **dialog TextEditingController dispose** - 防止内存泄漏
+- **dart fix --apply** - 自动清理 37 项（unnecessary_const / underscores / braces / null_aware）
+
+### 文档更新
+
+- **AGENT.md** - v0.6.5 → v0.7.0，新增 duty_plan / design_system / notification 模块说明
+- **README.md** - 版本号 badge + v0.7.0 亮点 6 条
+- **docs/dev-guide.md** - 版本号 + DutyPlanRows 表 + schema 4 + Provider 依赖链
+- **docs/design-system.md** - 新建设计系统手册（tokens / 组件 API / 调用模式 / 禁用清单）
+- **删除无用文档** - `app/README.md`（Flutter 默认模板）、`docs/business-flow.md`（合并到 dev-guide）、`docs/business-logic-audit.md`（v0.6.5 审计已过时）
+
+### 已知问题（T0/T1/T2 级，待修复）
+
+> 以下 22 项问题已通过深度审计识别，按优先级排序，将在后续版本修复。
+
+**T0 级（数据正确性，7 项）**：
+- **T0-15** `pending` 状态被计入 `present` — `text_gen_page`/`record_detail_page` 生成汇报文本时到课人数虚高
+- **T0-14** 已提交任务被远端 403 拒绝后 sync 静默标记 `synced` — 本地/服务端永久不一致
+- **T0-9** 401 认证过期 `break` 退出整条同步队列 — 后续正常项全部阻塞
+- **T0-1** `_syncRecord` 缺 `delete` action — delete 同步项被静默跳过，本地/服务端数据不一致
+- **T0-2** `finishNameCheck` 与 `markStudent` 并发竞态 — 标记可能被覆盖丢失
+- **T0-13** `getUnsyncedCount` 用 `'unfinished'` 查 status — 永远返回 0
+- **T0-4** `getSyncIssueCount` 与 `getPendingSyncItems` 口径不一致 — 已放弃项阻止提交
+
+**T1 级（流程卡住，8 项）**：
+- **T1-16** `records_list` 显示 `in_progress` 任务 — 用户可进入生成文本触发 T0-15
+- **T1-17** `TaskResumeChecker` 不恢复 `confirming`/`text_generating` 阶段任务
+- **T1-3** reconcile 删除记录时未取消未消费的 create/update sync 项
+- **T1-18** `RollCallNotifier.nextStudent` 先 createRecord 后 updateTaskStatus，后者失败时记录已写入
+- **T1-8** 启动时 `retryAllFailed()` 无条件重置所有 failed（包括 401 认证过期项）
+- **T1-12** 400/422 永久性错误也计作 `failed` 并允许重试 — 重试→失败循环
+- **T1-10** sync_issues 无"跳过此项"单条操作
+- **T1-21** `classroom` 可为 null，老数据升级后显示异常
+
+**T2 级（极端条件，5 项）**：
+- **T2-7** `prevStudent` 删除记录后无事务保护
+- **T2-20** 数据库迁移 `catch(_){}` 吞噬异常
+- **T2-11** `syncNow` while 忙等待无超时
+- **T2-19** `mark()` 闭包捕获过期的 `hasPendingInAllClasses`
+- **T2-24** `Stream.periodic` 轮询无手动 cancel
 
 ---
 
