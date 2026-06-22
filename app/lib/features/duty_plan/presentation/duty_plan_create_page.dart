@@ -26,6 +26,8 @@ class _DutyPlanCreatePageState extends ConsumerState<DutyPlanCreatePage> {
   int? _weekday;
   int? _period;
   List<ClassInfo> _allClasses = [];
+  List<GradeInfo> _grades = [];
+  List<MajorInfo> _majors = [];
   final List<ClassInfo> _selectedClasses = [];
   final _remarkController = TextEditingController();
   DateTime? _semesterStartDate;
@@ -45,12 +47,26 @@ class _DutyPlanCreatePageState extends ConsumerState<DutyPlanCreatePage> {
       final currentWeek = data['week_number'] as int;
       final startDate = DateTime.parse(data['start_date'] as String);
       final repo = ref.read(studentRepositoryProvider);
-      final classes = await repo.getClasses();
+      // 主动同步基础数据（年级/专业/班级），避免依赖点名页先加载
+      var classes = await repo.getClasses();
+      if (classes.isEmpty) {
+        try {
+          await repo.syncBaseData();
+          classes = await repo.getClasses();
+        } catch (_) {
+          // 网络失败时仍允许进入页面
+        }
+      }
+      final grades = await repo.getGrades();
+      final majors = await repo.getMajors();
       if (!mounted) return;
       setState(() {
         _weekNumber = currentWeek;
-        _semesterStartDate = startDate.subtract(Duration(days: (currentWeek - 1) * 7));
+        _semesterStartDate =
+            startDate.subtract(Duration(days: (currentWeek - 1) * 7));
         _allClasses = classes;
+        _grades = grades;
+        _majors = majors;
         _loading = false;
       });
     } catch (e) {
@@ -302,39 +318,192 @@ class _DutyPlanCreatePageState extends ConsumerState<DutyPlanCreatePage> {
     final c = context.colors;
     if (_allClasses.isEmpty) {
       return Text(
-        '暂无可选班级，请先在「开始记名/点名」页加载',
+        '暂无可选班级',
         style: AppTextStyles.sm.copyWith(color: c.textTertiary),
       );
     }
-    return Wrap(
-      spacing: AppSpacing.sm,
-      runSpacing: AppSpacing.sm,
-      children: _allClasses.map((cls) {
-        final selected = _selectedClasses.any((s) => s.id == cls.id);
-        return FilterChip(
-          label: Text(cls.displayName),
-          selected: selected,
-          onSelected: (on) {
-            setState(() {
-              if (on) {
-                _selectedClasses.add(cls);
-              } else {
-                _selectedClasses.removeWhere((s) => s.id == cls.id);
-              }
-            });
-          },
-          selectedColor: c.brandSubtle,
-          checkmarkColor: c.brandPrimary,
-          labelStyle: AppTextStyles.sm.copyWith(
-            color: selected ? c.brandPrimary : c.textPrimary,
-            fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+    return GestureDetector(
+      onTap: () => _showClassDialog(),
+      child: AppCard(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: Row(
+          children: [
+            Icon(Icons.class_outlined, size: 18, color: c.brandPrimary),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _selectedClasses.isEmpty
+                        ? '点击选择班级'
+                        : '已选 ${_selectedClasses.length} 个班级',
+                    style: AppTextStyles.bodyMedium.copyWith(
+                      color: _selectedClasses.isEmpty
+                          ? c.textTertiary
+                          : c.textPrimary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  if (_selectedClasses.isNotEmpty) ...[
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      _selectedClasses.map((c) => c.displayName).join('、'),
+                      style: AppTextStyles.sm.copyWith(color: c.textSecondary),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_right, size: 20, color: c.textTertiary),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showClassDialog() {
+    final gradeMap = <int, GradeInfo>{};
+    for (final g in _grades) gradeMap[g.id] = g;
+    final majorMap = <int, MajorInfo>{};
+    for (final m in _majors) majorMap[m.id] = m;
+
+    // 按年级+专业分组
+    final grouped = <String, List<ClassInfo>>{};
+    for (final cls in _allClasses) {
+      final g = gradeMap[cls.gradeId];
+      final m = majorMap[cls.majorId];
+      final key = '${g?.name ?? '其他'} ${m?.shortName ?? ''}';
+      grouped.putIfAbsent(key, () => []).add(cls);
+    }
+    final keys = grouped.keys.toList()..sort();
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        final dc = ctx.colors;
+        return AlertDialog(
+          title: Text(
+            '选择班级 (${_selectedClasses.length})',
+            style: AppTextStyles.h3.copyWith(color: dc.textPrimary),
           ),
-          backgroundColor: c.bgSurface,
-          side: BorderSide(
-            color: selected ? c.brandPrimary : c.borderDefault,
+          content: SizedBox(
+            width: double.maxFinite,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // 已选班级 header
+                if (_selectedClasses.isNotEmpty) ...[
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.sm, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: dc.brandSubtle,
+                      borderRadius: BorderRadius.circular(AppRadius.sm),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            _selectedClasses
+                                .map((c) => c.displayName)
+                                .join('、'),
+                            style: AppTextStyles.sm.copyWith(
+                              color: dc.brandPrimary,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            Navigator.pop(ctx);
+                            setState(() => _selectedClasses.clear());
+                          },
+                          child: Text('清除',
+                              style: AppTextStyles.sm
+                                  .copyWith(color: dc.stateDanger)),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                ],
+                Expanded(
+                  child: ListView(
+                    children: keys.map((key) {
+                      final classList = grouped[key]!;
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Padding(
+                            padding:
+                                const EdgeInsets.only(bottom: AppSpacing.xs),
+                            child: Text(
+                              key,
+                              style: AppTextStyles.xs.copyWith(
+                                color: dc.textTertiary,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                          Wrap(
+                            spacing: AppSpacing.sm,
+                            runSpacing: AppSpacing.sm,
+                            children: classList.map((cls) {
+                              final selected =
+                                  _selectedClasses.any((s) => s.id == cls.id);
+                              return FilterChip(
+                                label: Text(cls.displayName),
+                                selected: selected,
+                                onSelected: (on) {
+                                  setState(() {
+                                    if (on) {
+                                      _selectedClasses.add(cls);
+                                    } else {
+                                      _selectedClasses
+                                          .removeWhere((s) => s.id == cls.id);
+                                    }
+                                  });
+                                },
+                                selectedColor: dc.brandSubtle,
+                                checkmarkColor: dc.brandPrimary,
+                                labelStyle: AppTextStyles.sm.copyWith(
+                                  color: selected
+                                      ? dc.brandPrimary
+                                      : dc.textPrimary,
+                                  fontWeight: selected
+                                      ? FontWeight.w600
+                                      : FontWeight.w400,
+                                ),
+                                backgroundColor: dc.bgSurface,
+                                side: BorderSide(
+                                  color:
+                                      selected ? dc.brandPrimary : dc.borderDefault,
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                          const SizedBox(height: AppSpacing.sm),
+                        ],
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ],
+            ),
           ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('完成'),
+            ),
+          ],
         );
-      }).toList(),
+      },
     );
   }
 
