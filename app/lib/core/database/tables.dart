@@ -117,6 +117,7 @@ class DutyPlanRows extends Table {
   IntColumn get period => integer()(); // 1-8
   TextColumn get classIds => text()(); // JSON: ["1","2"]
   TextColumn get className => text().nullable()(); // 备注用班级名缓存
+  TextColumn get classroom => text().nullable()(); // 教室
   TextColumn get remark => text().nullable()();
   IntColumn get notificationId => integer()();
   BoolColumn get reminderEnabled => boolean().withDefault(const Constant(true))();

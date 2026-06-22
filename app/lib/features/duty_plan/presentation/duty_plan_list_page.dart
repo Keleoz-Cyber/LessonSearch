@@ -246,7 +246,7 @@ class _DutyPlanCard extends ConsumerWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  '${fmt.format(plan.classStartAt)} · ${plan.timeRange}',
+                  '${fmt.format(plan.classStartAt)} · ${plan.timeRange}${plan.classroom != null ? ' · ${plan.classroom}' : ''}',
                   style: AppTextStyles.withTabular(AppTextStyles.xs)
                       .copyWith(color: c.textTertiary),
                 ),
@@ -302,10 +302,12 @@ class _DutyPlanCard extends ConsumerWidget {
     if (action == 'toggle') {
       final newEnabled = !plan.reminderEnabled;
       if (newEnabled) {
+        final classroomStr =
+            plan.classroom != null ? ' @ ${plan.classroom}' : '';
         await notif.scheduleDutyReminder(
           notificationId: plan.notificationId,
-          title: '查课提醒 · 第${plan.period}节',
-          body: '${plan.weekdayLabel} ${plan.timeRange} 即将开始，记得查课',
+          title: '查课提醒 · 第${plan.period}节$classroomStr',
+          body: '${plan.weekdayLabel} ${plan.timeRange}$classroomStr 即将开始，记得查课',
           scheduledAt: plan.remindAt,
           payload: plan.id,
         );
@@ -319,6 +321,7 @@ class _DutyPlanCard extends ConsumerWidget {
         period: plan.period,
         classIds: plan.classIds,
         className: plan.className,
+        classroom: plan.classroom,
         remark: plan.remark,
         notificationId: plan.notificationId,
         reminderEnabled: newEnabled,

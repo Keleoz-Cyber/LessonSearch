@@ -3747,6 +3747,17 @@ class $DutyPlanRowsTable extends DutyPlanRows
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _classroomMeta = const VerificationMeta(
+    'classroom',
+  );
+  @override
+  late final GeneratedColumn<String> classroom = GeneratedColumn<String>(
+    'classroom',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _remarkMeta = const VerificationMeta('remark');
   @override
   late final GeneratedColumn<String> remark = GeneratedColumn<String>(
@@ -3813,6 +3824,7 @@ class $DutyPlanRowsTable extends DutyPlanRows
     period,
     classIds,
     className,
+    classroom,
     remark,
     notificationId,
     reminderEnabled,
@@ -3872,6 +3884,12 @@ class $DutyPlanRowsTable extends DutyPlanRows
       context.handle(
         _classNameMeta,
         className.isAcceptableOrUnknown(data['class_name']!, _classNameMeta),
+      );
+    }
+    if (data.containsKey('classroom')) {
+      context.handle(
+        _classroomMeta,
+        classroom.isAcceptableOrUnknown(data['classroom']!, _classroomMeta),
       );
     }
     if (data.containsKey('remark')) {
@@ -3950,6 +3968,10 @@ class $DutyPlanRowsTable extends DutyPlanRows
         DriftSqlType.string,
         data['${effectivePrefix}class_name'],
       ),
+      classroom: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}classroom'],
+      ),
       remark: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}remark'],
@@ -3986,6 +4008,7 @@ class DutyPlanRow extends DataClass implements Insertable<DutyPlanRow> {
   final int period;
   final String classIds;
   final String? className;
+  final String? classroom;
   final String? remark;
   final int notificationId;
   final bool reminderEnabled;
@@ -3998,6 +4021,7 @@ class DutyPlanRow extends DataClass implements Insertable<DutyPlanRow> {
     required this.period,
     required this.classIds,
     this.className,
+    this.classroom,
     this.remark,
     required this.notificationId,
     required this.reminderEnabled,
@@ -4014,6 +4038,9 @@ class DutyPlanRow extends DataClass implements Insertable<DutyPlanRow> {
     map['class_ids'] = Variable<String>(classIds);
     if (!nullToAbsent || className != null) {
       map['class_name'] = Variable<String>(className);
+    }
+    if (!nullToAbsent || classroom != null) {
+      map['classroom'] = Variable<String>(classroom);
     }
     if (!nullToAbsent || remark != null) {
       map['remark'] = Variable<String>(remark);
@@ -4035,6 +4062,9 @@ class DutyPlanRow extends DataClass implements Insertable<DutyPlanRow> {
       className: className == null && nullToAbsent
           ? const Value.absent()
           : Value(className),
+      classroom: classroom == null && nullToAbsent
+          ? const Value.absent()
+          : Value(classroom),
       remark: remark == null && nullToAbsent
           ? const Value.absent()
           : Value(remark),
@@ -4057,6 +4087,7 @@ class DutyPlanRow extends DataClass implements Insertable<DutyPlanRow> {
       period: serializer.fromJson<int>(json['period']),
       classIds: serializer.fromJson<String>(json['classIds']),
       className: serializer.fromJson<String?>(json['className']),
+      classroom: serializer.fromJson<String?>(json['classroom']),
       remark: serializer.fromJson<String?>(json['remark']),
       notificationId: serializer.fromJson<int>(json['notificationId']),
       reminderEnabled: serializer.fromJson<bool>(json['reminderEnabled']),
@@ -4074,6 +4105,7 @@ class DutyPlanRow extends DataClass implements Insertable<DutyPlanRow> {
       'period': serializer.toJson<int>(period),
       'classIds': serializer.toJson<String>(classIds),
       'className': serializer.toJson<String?>(className),
+      'classroom': serializer.toJson<String?>(classroom),
       'remark': serializer.toJson<String?>(remark),
       'notificationId': serializer.toJson<int>(notificationId),
       'reminderEnabled': serializer.toJson<bool>(reminderEnabled),
@@ -4089,6 +4121,7 @@ class DutyPlanRow extends DataClass implements Insertable<DutyPlanRow> {
     int? period,
     String? classIds,
     Value<String?> className = const Value.absent(),
+    Value<String?> classroom = const Value.absent(),
     Value<String?> remark = const Value.absent(),
     int? notificationId,
     bool? reminderEnabled,
@@ -4101,6 +4134,7 @@ class DutyPlanRow extends DataClass implements Insertable<DutyPlanRow> {
     period: period ?? this.period,
     classIds: classIds ?? this.classIds,
     className: className.present ? className.value : this.className,
+    classroom: classroom.present ? classroom.value : this.classroom,
     remark: remark.present ? remark.value : this.remark,
     notificationId: notificationId ?? this.notificationId,
     reminderEnabled: reminderEnabled ?? this.reminderEnabled,
@@ -4117,6 +4151,7 @@ class DutyPlanRow extends DataClass implements Insertable<DutyPlanRow> {
       period: data.period.present ? data.period.value : this.period,
       classIds: data.classIds.present ? data.classIds.value : this.classIds,
       className: data.className.present ? data.className.value : this.className,
+      classroom: data.classroom.present ? data.classroom.value : this.classroom,
       remark: data.remark.present ? data.remark.value : this.remark,
       notificationId: data.notificationId.present
           ? data.notificationId.value
@@ -4140,6 +4175,7 @@ class DutyPlanRow extends DataClass implements Insertable<DutyPlanRow> {
           ..write('period: $period, ')
           ..write('classIds: $classIds, ')
           ..write('className: $className, ')
+          ..write('classroom: $classroom, ')
           ..write('remark: $remark, ')
           ..write('notificationId: $notificationId, ')
           ..write('reminderEnabled: $reminderEnabled, ')
@@ -4157,6 +4193,7 @@ class DutyPlanRow extends DataClass implements Insertable<DutyPlanRow> {
     period,
     classIds,
     className,
+    classroom,
     remark,
     notificationId,
     reminderEnabled,
@@ -4173,6 +4210,7 @@ class DutyPlanRow extends DataClass implements Insertable<DutyPlanRow> {
           other.period == this.period &&
           other.classIds == this.classIds &&
           other.className == this.className &&
+          other.classroom == this.classroom &&
           other.remark == this.remark &&
           other.notificationId == this.notificationId &&
           other.reminderEnabled == this.reminderEnabled &&
@@ -4187,6 +4225,7 @@ class DutyPlanRowsCompanion extends UpdateCompanion<DutyPlanRow> {
   final Value<int> period;
   final Value<String> classIds;
   final Value<String?> className;
+  final Value<String?> classroom;
   final Value<String?> remark;
   final Value<int> notificationId;
   final Value<bool> reminderEnabled;
@@ -4200,6 +4239,7 @@ class DutyPlanRowsCompanion extends UpdateCompanion<DutyPlanRow> {
     this.period = const Value.absent(),
     this.classIds = const Value.absent(),
     this.className = const Value.absent(),
+    this.classroom = const Value.absent(),
     this.remark = const Value.absent(),
     this.notificationId = const Value.absent(),
     this.reminderEnabled = const Value.absent(),
@@ -4214,6 +4254,7 @@ class DutyPlanRowsCompanion extends UpdateCompanion<DutyPlanRow> {
     required int period,
     required String classIds,
     this.className = const Value.absent(),
+    this.classroom = const Value.absent(),
     this.remark = const Value.absent(),
     required int notificationId,
     this.reminderEnabled = const Value.absent(),
@@ -4234,6 +4275,7 @@ class DutyPlanRowsCompanion extends UpdateCompanion<DutyPlanRow> {
     Expression<int>? period,
     Expression<String>? classIds,
     Expression<String>? className,
+    Expression<String>? classroom,
     Expression<String>? remark,
     Expression<int>? notificationId,
     Expression<bool>? reminderEnabled,
@@ -4248,6 +4290,7 @@ class DutyPlanRowsCompanion extends UpdateCompanion<DutyPlanRow> {
       if (period != null) 'period': period,
       if (classIds != null) 'class_ids': classIds,
       if (className != null) 'class_name': className,
+      if (classroom != null) 'classroom': classroom,
       if (remark != null) 'remark': remark,
       if (notificationId != null) 'notification_id': notificationId,
       if (reminderEnabled != null) 'reminder_enabled': reminderEnabled,
@@ -4264,6 +4307,7 @@ class DutyPlanRowsCompanion extends UpdateCompanion<DutyPlanRow> {
     Value<int>? period,
     Value<String>? classIds,
     Value<String?>? className,
+    Value<String?>? classroom,
     Value<String?>? remark,
     Value<int>? notificationId,
     Value<bool>? reminderEnabled,
@@ -4278,6 +4322,7 @@ class DutyPlanRowsCompanion extends UpdateCompanion<DutyPlanRow> {
       period: period ?? this.period,
       classIds: classIds ?? this.classIds,
       className: className ?? this.className,
+      classroom: classroom ?? this.classroom,
       remark: remark ?? this.remark,
       notificationId: notificationId ?? this.notificationId,
       reminderEnabled: reminderEnabled ?? this.reminderEnabled,
@@ -4307,6 +4352,9 @@ class DutyPlanRowsCompanion extends UpdateCompanion<DutyPlanRow> {
     }
     if (className.present) {
       map['class_name'] = Variable<String>(className.value);
+    }
+    if (classroom.present) {
+      map['classroom'] = Variable<String>(classroom.value);
     }
     if (remark.present) {
       map['remark'] = Variable<String>(remark.value);
@@ -4338,6 +4386,7 @@ class DutyPlanRowsCompanion extends UpdateCompanion<DutyPlanRow> {
           ..write('period: $period, ')
           ..write('classIds: $classIds, ')
           ..write('className: $className, ')
+          ..write('classroom: $classroom, ')
           ..write('remark: $remark, ')
           ..write('notificationId: $notificationId, ')
           ..write('reminderEnabled: $reminderEnabled, ')
@@ -7979,6 +8028,7 @@ typedef $$DutyPlanRowsTableCreateCompanionBuilder =
       required int period,
       required String classIds,
       Value<String?> className,
+      Value<String?> classroom,
       Value<String?> remark,
       required int notificationId,
       Value<bool> reminderEnabled,
@@ -7994,6 +8044,7 @@ typedef $$DutyPlanRowsTableUpdateCompanionBuilder =
       Value<int> period,
       Value<String> classIds,
       Value<String?> className,
+      Value<String?> classroom,
       Value<String?> remark,
       Value<int> notificationId,
       Value<bool> reminderEnabled,
@@ -8038,6 +8089,11 @@ class $$DutyPlanRowsTableFilterComposer
 
   ColumnFilters<String> get className => $composableBuilder(
     column: $table.className,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get classroom => $composableBuilder(
+    column: $table.classroom,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -8106,6 +8162,11 @@ class $$DutyPlanRowsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get classroom => $composableBuilder(
+    column: $table.classroom,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get remark => $composableBuilder(
     column: $table.remark,
     builder: (column) => ColumnOrderings(column),
@@ -8160,6 +8221,9 @@ class $$DutyPlanRowsTableAnnotationComposer
 
   GeneratedColumn<String> get className =>
       $composableBuilder(column: $table.className, builder: (column) => column);
+
+  GeneratedColumn<String> get classroom =>
+      $composableBuilder(column: $table.classroom, builder: (column) => column);
 
   GeneratedColumn<String> get remark =>
       $composableBuilder(column: $table.remark, builder: (column) => column);
@@ -8220,6 +8284,7 @@ class $$DutyPlanRowsTableTableManager
                 Value<int> period = const Value.absent(),
                 Value<String> classIds = const Value.absent(),
                 Value<String?> className = const Value.absent(),
+                Value<String?> classroom = const Value.absent(),
                 Value<String?> remark = const Value.absent(),
                 Value<int> notificationId = const Value.absent(),
                 Value<bool> reminderEnabled = const Value.absent(),
@@ -8233,6 +8298,7 @@ class $$DutyPlanRowsTableTableManager
                 period: period,
                 classIds: classIds,
                 className: className,
+                classroom: classroom,
                 remark: remark,
                 notificationId: notificationId,
                 reminderEnabled: reminderEnabled,
@@ -8248,6 +8314,7 @@ class $$DutyPlanRowsTableTableManager
                 required int period,
                 required String classIds,
                 Value<String?> className = const Value.absent(),
+                Value<String?> classroom = const Value.absent(),
                 Value<String?> remark = const Value.absent(),
                 required int notificationId,
                 Value<bool> reminderEnabled = const Value.absent(),
@@ -8261,6 +8328,7 @@ class $$DutyPlanRowsTableTableManager
                 period: period,
                 classIds: classIds,
                 className: className,
+                classroom: classroom,
                 remark: remark,
                 notificationId: notificationId,
                 reminderEnabled: reminderEnabled,

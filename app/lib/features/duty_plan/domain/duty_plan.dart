@@ -55,6 +55,7 @@ class DutyPlan {
   final int period; // 1-8
   final List<String> classIds;
   final String? className; // 显示用班级名缓存
+  final String? classroom; // 教室
   final String? remark;
   final int notificationId;
   final bool reminderEnabled;
@@ -68,6 +69,7 @@ class DutyPlan {
     required this.period,
     required this.classIds,
     this.className,
+    this.classroom,
     this.remark,
     required this.notificationId,
     this.reminderEnabled = true,

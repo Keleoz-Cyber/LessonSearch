@@ -29,6 +29,7 @@ class _DutyPlanCreatePageState extends ConsumerState<DutyPlanCreatePage> {
   List<GradeInfo> _grades = [];
   List<MajorInfo> _majors = [];
   final List<ClassInfo> _selectedClasses = [];
+  final _classroomController = TextEditingController();
   final _remarkController = TextEditingController();
   DateTime? _semesterStartDate;
   bool _loading = true;
@@ -36,6 +37,7 @@ class _DutyPlanCreatePageState extends ConsumerState<DutyPlanCreatePage> {
   @override
   void initState() {
     super.initState();
+    _classroomController.addListener(() => setState(() {}));
     _load();
   }
 
@@ -76,17 +78,19 @@ class _DutyPlanCreatePageState extends ConsumerState<DutyPlanCreatePage> {
     }
   }
 
-  @override
+@override
   void dispose() {
+    _classroomController.dispose();
     _remarkController.dispose();
     super.dispose();
   }
 
-  bool get _canSubmit =>
+bool get _canSubmit =>
       _weekNumber != null &&
       _weekday != null &&
       _period != null &&
       _selectedClasses.isNotEmpty &&
+      _classroomController.text.trim().isNotEmpty &&
       _semesterStartDate != null;
   Future<void> _submit() async {
     if (!_canSubmit) return;
@@ -108,6 +112,7 @@ class _DutyPlanCreatePageState extends ConsumerState<DutyPlanCreatePage> {
       period: _period!,
       classIds: _selectedClasses.map((c) => c.id.toString()).toList(),
       className: _selectedClasses.map((c) => c.displayName).join('、'),
+      classroom: _classroomController.text.trim(),
       remark: _remarkController.text.trim().isEmpty
           ? null
           : _remarkController.text.trim(),
@@ -128,10 +133,12 @@ class _DutyPlanCreatePageState extends ConsumerState<DutyPlanCreatePage> {
     }
 
     await repo.upsert(plan);
+    final classroomStr =
+        plan.classroom != null ? ' @ ${plan.classroom}' : '';
     final scheduled = await notif.scheduleDutyReminder(
       notificationId: plan.notificationId,
-      title: '查课提醒 · 第${plan.period}节',
-      body: '${plan.weekdayLabel} ${plan.timeRange} 即将开始，记得查课',
+      title: '查课提醒 · 第${plan.period}节$classroomStr',
+      body: '${plan.weekdayLabel} ${plan.timeRange}$classroomStr 即将开始，记得查课',
       scheduledAt: plan.remindAt,
       payload: plan.id,
     );
@@ -179,6 +186,22 @@ class _DutyPlanCreatePageState extends ConsumerState<DutyPlanCreatePage> {
                   _sectionLabel(context,
                       '班级 (${_selectedClasses.length}/${_allClasses.length})'),
                   _classPicker(),
+                  const SizedBox(height: AppSpacing.xl),
+                  _sectionLabel(context, '教室'),
+                  TextField(
+                    controller: _classroomController,
+                    decoration: InputDecoration(
+                      hintText: '例如：4213',
+                      hintStyle:
+                          AppTextStyles.sm.copyWith(color: c.textTertiary),
+                      prefixIcon: Icon(Icons.room_outlined,
+                          size: 18, color: c.textSecondary),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(AppRadius.md),
+                      ),
+                    ),
+                    maxLines: 1,
+                  ),
                   const SizedBox(height: AppSpacing.xl),
                   _sectionLabel(context, '备注 (可选)'),
                   TextField(
