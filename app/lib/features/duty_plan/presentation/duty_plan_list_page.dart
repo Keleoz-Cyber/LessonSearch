@@ -44,7 +44,11 @@ class DutyPlanListPage extends ConsumerWidget {
         backgroundColor: c.brandPrimary,
         foregroundColor: c.onBrand,
       ),
-      body: plansAsync.when(
+      body: Column(
+        children: [
+          _buildHint(context),
+          Expanded(
+            child: plansAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(
           child: Text(
@@ -78,6 +82,33 @@ class DutyPlanListPage extends ConsumerWidget {
           }
           return _buildList(context, ref, plans);
         },
+      ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHint(BuildContext context) {
+    final c = context.colors;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.lg,
+        vertical: AppSpacing.sm,
+      ),
+      color: c.brandSubtle,
+      child: Row(
+        children: [
+          Icon(Icons.alarm, size: 14, color: c.brandPrimary),
+          const SizedBox(width: AppSpacing.xs + 2),
+          Expanded(
+            child: Text(
+              '上课前 15 分钟会通过系统通知提醒',
+              style: AppTextStyles.xs.copyWith(color: c.brandPrimary),
+            ),
+          ),
+        ],
       ),
     );
   }
