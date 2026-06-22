@@ -389,144 +389,302 @@ bool get _canSubmit =>
 
   void _showClassDialog() {
     final gradeMap = <int, GradeInfo>{};
-    for (final g in _grades) gradeMap[g.id] = g;
-    final majorMap = <int, MajorInfo>{};
-    for (final m in _majors) majorMap[m.id] = m;
-
-    // 按年级+专业分组
-    final grouped = <String, List<ClassInfo>>{};
-    for (final cls in _allClasses) {
-      final g = gradeMap[cls.gradeId];
-      final m = majorMap[cls.majorId];
-      final key = '${g?.name ?? '其他'} ${m?.shortName ?? ''}';
-      grouped.putIfAbsent(key, () => []).add(cls);
+    for (final g in _grades) {
+      gradeMap[g.id] = g;
     }
-    final keys = grouped.keys.toList()..sort();
+    final majorMap = <int, MajorInfo>{};
+    for (final m in _majors) {
+      majorMap[m.id] = m;
+    }
+
+    // 收集出现过的年级/专业（只显示有班级的）
+    final usedGradeIds = _allClasses.map((c) => c.gradeId).toSet();
+    final usedMajorIds = _allClasses.map((c) => c.majorId).toSet();
+    final usedGrades = _grades.where((g) => usedGradeIds.contains(g.id)).toList()
+      ..sort((a, b) => b.year.compareTo(a.year));
+    final usedMajors = _majors.where((m) => usedMajorIds.contains(m.id)).toList()
+      ..sort((a, b) => a.shortName.compareTo(b.shortName));
+
+    int? filterGradeId;
+    int? filterMajorId;
 
     showDialog(
       context: context,
       builder: (ctx) {
-        final dc = ctx.colors;
-        return AlertDialog(
-          title: Text(
-            '选择班级 (${_selectedClasses.length})',
-            style: AppTextStyles.h3.copyWith(color: dc.textPrimary),
-          ),
-          content: SizedBox(
-            width: double.maxFinite,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // 已选班级 header
-                if (_selectedClasses.isNotEmpty) ...[
+        return StatefulBuilder(
+          builder: (ctx, dialogSetState) {
+            final dc = ctx.colors;
+
+            // 应用筛选
+            final filtered = _allClasses.where((cls) {
+              if (filterGradeId != null && cls.gradeId != filterGradeId) {
+                return false;
+              }
+              if (filterMajorId != null && cls.majorId != filterMajorId) {
+                return false;
+              }
+              return true;
+            }).toList();
+
+            // 按年级+专业分组
+            final grouped = <String, List<ClassInfo>>{};
+            for (final cls in filtered) {
+              final g = gradeMap[cls.gradeId];
+              final m = majorMap[cls.majorId];
+              final key = '${g?.name ?? '其他'} ${m?.shortName ?? ''}';
+              grouped.putIfAbsent(key, () => []).add(cls);
+            }
+            final keys = grouped.keys.toList()..sort();
+
+            return AlertDialog(
+              insetPadding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.lg,
+                vertical: AppSpacing.xl,
+              ),
+              title: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      '选择班级',
+                      style: AppTextStyles.h3.copyWith(color: dc.textPrimary),
+                    ),
+                  ),
                   Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: AppSpacing.sm, vertical: 4),
+                        horizontal: AppSpacing.sm, vertical: 2),
                     decoration: BoxDecoration(
                       color: dc.brandSubtle,
-                      borderRadius: BorderRadius.circular(AppRadius.sm),
+                      borderRadius: BorderRadius.circular(AppRadius.full),
                     ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            _selectedClasses
-                                .map((c) => c.displayName)
-                                .join('、'),
-                            style: AppTextStyles.sm.copyWith(
-                              color: dc.brandPrimary,
-                              fontWeight: FontWeight.w500,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        TextButton(
-                          onPressed: () {
-                            Navigator.pop(ctx);
-                            setState(() => _selectedClasses.clear());
-                          },
-                          child: Text('清除',
-                              style: AppTextStyles.sm
-                                  .copyWith(color: dc.stateDanger)),
-                        ),
-                      ],
+                    child: Text(
+                      '已选 ${_selectedClasses.length}',
+                      style: AppTextStyles.xs.copyWith(
+                        color: dc.brandPrimary,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
-                  const SizedBox(height: AppSpacing.sm),
                 ],
-                Expanded(
-                  child: ListView(
-                    children: keys.map((key) {
-                      final classList = grouped[key]!;
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+              ),
+              content: SizedBox(
+                width: double.maxFinite,
+                height: MediaQuery.sizeOf(ctx).height * 0.7,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // 年级筛选
+                    SizedBox(
+                      height: 36,
+                      child: ListView(
+                        scrollDirection: Axis.horizontal,
                         children: [
-                          Padding(
-                            padding:
-                                const EdgeInsets.only(bottom: AppSpacing.xs),
-                            child: Text(
-                              key,
-                              style: AppTextStyles.xs.copyWith(
-                                color: dc.textTertiary,
-                                fontWeight: FontWeight.w600,
+                          _filterChip(
+                            dc,
+                            label: '全部年级',
+                            selected: filterGradeId == null,
+                            onTap: () =>
+                                dialogSetState(() => filterGradeId = null),
+                          ),
+                          ...usedGrades.map((g) => _filterChip(
+                                dc,
+                                label: g.name,
+                                selected: filterGradeId == g.id,
+                                onTap: () => dialogSetState(
+                                    () => filterGradeId = g.id),
+                              )),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    // 专业筛选
+                    SizedBox(
+                      height: 36,
+                      child: ListView(
+                        scrollDirection: Axis.horizontal,
+                        children: [
+                          _filterChip(
+                            dc,
+                            label: '全部专业',
+                            selected: filterMajorId == null,
+                            onTap: () =>
+                                dialogSetState(() => filterMajorId = null),
+                          ),
+                          ...usedMajors.map((m) => _filterChip(
+                                dc,
+                                label: m.shortName,
+                                selected: filterMajorId == m.id,
+                                onTap: () => dialogSetState(
+                                    () => filterMajorId = m.id),
+                              )),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    // 已选预览（折叠）
+                    if (_selectedClasses.isNotEmpty)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.sm, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: dc.brandSubtle,
+                          borderRadius: BorderRadius.circular(AppRadius.sm),
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                _selectedClasses
+                                    .map((c) => c.displayName)
+                                    .join('、'),
+                                style: AppTextStyles.xs.copyWith(
+                                  color: dc.brandPrimary,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
-                          ),
-                          Wrap(
-                            spacing: AppSpacing.sm,
-                            runSpacing: AppSpacing.sm,
-                            children: classList.map((cls) {
-                              final selected =
-                                  _selectedClasses.any((s) => s.id == cls.id);
-                              return FilterChip(
-                                label: Text(cls.displayName),
-                                selected: selected,
-                                onSelected: (on) {
-                                  setState(() {
-                                    if (on) {
-                                      _selectedClasses.add(cls);
-                                    } else {
-                                      _selectedClasses
-                                          .removeWhere((s) => s.id == cls.id);
-                                    }
-                                  });
-                                },
-                                selectedColor: dc.brandSubtle,
-                                checkmarkColor: dc.brandPrimary,
-                                labelStyle: AppTextStyles.sm.copyWith(
-                                  color: selected
-                                      ? dc.brandPrimary
-                                      : dc.textPrimary,
-                                  fontWeight: selected
-                                      ? FontWeight.w600
-                                      : FontWeight.w400,
-                                ),
-                                backgroundColor: dc.bgSurface,
-                                side: BorderSide(
-                                  color:
-                                      selected ? dc.brandPrimary : dc.borderDefault,
-                                ),
-                              );
-                            }).toList(),
-                          ),
-                          const SizedBox(height: AppSpacing.sm),
-                        ],
-                      );
-                    }).toList(),
-                  ),
+                            const SizedBox(width: AppSpacing.xs),
+                            InkWell(
+                              onTap: () {
+                                dialogSetState(() {
+                                  _selectedClasses.clear();
+                                });
+                                setState(() {});
+                              },
+                              child: Padding(
+                                padding: const EdgeInsets.all(4),
+                                child: Icon(Icons.close,
+                                    size: 16, color: dc.brandPrimary),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    if (_selectedClasses.isNotEmpty)
+                      const SizedBox(height: AppSpacing.sm),
+                    Expanded(
+                      child: keys.isEmpty
+                          ? Center(
+                              child: Text(
+                                '没有符合条件的班级',
+                                style: AppTextStyles.sm
+                                    .copyWith(color: dc.textTertiary),
+                              ),
+                            )
+                          : ListView(
+                              children: keys.map((key) {
+                                final classList = grouped[key]!;
+                                return Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.start,
+                                  children: [
+                                    Padding(
+                                      padding: const EdgeInsets.only(
+                                          bottom: AppSpacing.xs),
+                                      child: Text(
+                                        key,
+                                        style: AppTextStyles.xs.copyWith(
+                                          color: dc.textTertiary,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                    Wrap(
+                                      spacing: AppSpacing.sm,
+                                      runSpacing: AppSpacing.sm,
+                                      children: classList.map((cls) {
+                                        final selected =
+                                            _selectedClasses
+                                                .any((s) => s.id == cls.id);
+                                        return FilterChip(
+                                          label: Text(cls.displayName),
+                                          selected: selected,
+                                          onSelected: (on) {
+                                            dialogSetState(() {
+                                              if (on) {
+                                                _selectedClasses.add(cls);
+                                              } else {
+                                                _selectedClasses.removeWhere(
+                                                    (s) => s.id == cls.id);
+                                              }
+                                            });
+                                            setState(() {});
+                                          },
+                                          selectedColor: dc.brandSubtle,
+                                          checkmarkColor: dc.brandPrimary,
+                                          labelStyle:
+                                              AppTextStyles.sm.copyWith(
+                                            color: selected
+                                                ? dc.brandPrimary
+                                                : dc.textPrimary,
+                                            fontWeight: selected
+                                                ? FontWeight.w600
+                                                : FontWeight.w400,
+                                          ),
+                                          backgroundColor: dc.bgSurface,
+                                          side: BorderSide(
+                                            color: selected
+                                                ? dc.brandPrimary
+                                                : dc.borderDefault,
+                                          ),
+                                        );
+                                      }).toList(),
+                                    ),
+                                    const SizedBox(height: AppSpacing.sm),
+                                  ],
+                                );
+                              }).toList(),
+                            ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('完成'),
                 ),
               ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('完成'),
-            ),
-          ],
+            );
+          },
         );
       },
+    );
+  }
+
+  Widget _filterChip(
+    dynamic dc, {
+    required String label,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(right: AppSpacing.xs),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppRadius.full),
+        child: Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: 6,
+          ),
+          decoration: BoxDecoration(
+            color: selected ? dc.brandPrimary : dc.bgMuted,
+            borderRadius: BorderRadius.circular(AppRadius.full),
+            border: Border.all(
+              color: selected ? dc.brandPrimary : dc.borderDefault,
+            ),
+          ),
+          child: Text(
+            label,
+            style: AppTextStyles.sm.copyWith(
+              color: selected ? dc.onBrand : dc.textPrimary,
+              fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+            ),
+          ),
+        ),
+      ),
     );
   }
 
