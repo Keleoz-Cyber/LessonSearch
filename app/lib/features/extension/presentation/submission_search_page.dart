@@ -643,7 +643,6 @@ class _SubmissionSearchPageState extends ConsumerState<SubmissionSearchPage> {
 
   /// 查看学生明细，复用已有 /submissions/{id}/records 接口
   Future<void> _showStudentDetail(Map<String, dynamic> item) async {
-    final c = context.colors;
     final submissionId = item['id'] as int;
 
     showDialog(
@@ -684,7 +683,9 @@ class _SubmissionSearchPageState extends ConsumerState<SubmissionSearchPage> {
 
       showDialog(
         context: context,
-        builder: (ctx) => AlertDialog(
+        builder: (ctx) {
+          final c = ctx.colors;
+          return AlertDialog(
           title: Text('学生明细 (${records.length}人)'),
           content: SizedBox(
             width: double.maxFinite,
@@ -693,7 +694,6 @@ class _SubmissionSearchPageState extends ConsumerState<SubmissionSearchPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // rejected 状态提示（独立于空状态始终显示）
                   if (isRejected) ...[
                     AppNoticeBox(
                       color: c.stateDanger,
@@ -715,34 +715,32 @@ class _SubmissionSearchPageState extends ConsumerState<SubmissionSearchPage> {
                   else if (lateCount + absentCount + leaveCount + otherCount == 0)
                     EmptyState.noAbnormalRecords()
                   else ...[
-                    // 统计摘要
                     Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
+                      spacing: AppSpacing.sm,
+                      runSpacing: AppSpacing.sm,
                       children: [
                         if (lateCount > 0)
-                          _buildMiniStat('迟到', lateCount, context.colors.stateWarning),
+                          _buildMiniStat('迟到', lateCount, c.stateWarning),
                         if (absentCount > 0)
-                          _buildMiniStat('缺勤', absentCount, context.colors.stateDanger),
+                          _buildMiniStat('缺勤', absentCount, c.stateDanger),
                         if (leaveCount > 0)
-                          _buildMiniStat('请假', leaveCount, context.colors.stateInfo),
+                          _buildMiniStat('请假', leaveCount, c.stateInfo),
                         if (otherCount > 0)
-                          _buildMiniStat('其他', otherCount, context.colors.textTertiary),
+                          _buildMiniStat('其他', otherCount, c.textTertiary),
                       ],
                     ),
-                    const SizedBox(height: 16),
-                    // 名单
+                    const SizedBox(height: AppSpacing.lg),
                     if (absentRecords.isNotEmpty) ...[
-                      _buildRecordGroup('缺勤', absentRecords, context.colors.stateDanger),
+                      _buildRecordGroup('缺勤', absentRecords, c.stateDanger),
                     ],
                     if (lateRecords.isNotEmpty) ...[
-                      _buildRecordGroup('迟到', lateRecords, context.colors.stateWarning),
+                      _buildRecordGroup('迟到', lateRecords, c.stateWarning),
                     ],
                     if (leaveRecords.isNotEmpty) ...[
-                      _buildRecordGroup('请假', leaveRecords, context.colors.stateInfo),
+                      _buildRecordGroup('请假', leaveRecords, c.stateInfo),
                     ],
                     if (otherRecords.isNotEmpty) ...[
-                      _buildRecordGroup('其他', otherRecords, context.colors.textTertiary),
+                      _buildRecordGroup('其他', otherRecords, c.textTertiary),
                     ],
                   ],
                 ],
@@ -755,7 +753,8 @@ class _SubmissionSearchPageState extends ConsumerState<SubmissionSearchPage> {
               child: const Text('关闭'),
             ),
           ],
-        ),
+        );
+        },
       );
     } catch (e) {
       if (mounted) Navigator.of(context, rootNavigator: true).pop();
