@@ -544,7 +544,8 @@ class AttendanceLocalDataSource {
   Future<int> getSyncIssueCount() async {
     final all = await _db.select(_db.syncQueue).get();
     return all.where((s) =>
-      s.syncStatus == 'pending' || s.syncStatus == 'failed'
+      s.syncStatus == 'pending' ||
+      (s.syncStatus == 'failed' && s.retryCount < 5)
     ).length;
   }
 

@@ -16,6 +16,7 @@ class NameCheckState {
   final bool isLoading;
   final bool isFinished;
   final bool isEditing; // 重新编辑模式（从确认页返回）
+  final bool isFinishing; // finishNameCheck 正在执行，阻止 markStudent 并发
   final String? error;
 
   const NameCheckState({
@@ -28,6 +29,7 @@ class NameCheckState {
     this.isLoading = false,
     this.isFinished = false,
     this.isEditing = false,
+    this.isFinishing = false,
     this.error,
   });
 
@@ -64,6 +66,7 @@ class NameCheckState {
     bool? isLoading,
     bool? isFinished,
     bool? isEditing,
+    bool? isFinishing,
     String? error,
   }) {
     final newStudentsByClass = studentsByClass ?? this.studentsByClass;
@@ -81,6 +84,7 @@ class NameCheckState {
       isLoading: isLoading ?? this.isLoading,
       isFinished: isFinished ?? this.isFinished,
       isEditing: isEditing ?? this.isEditing,
+      isFinishing: isFinishing ?? this.isFinishing,
       error: error,
     );
   }
@@ -310,6 +314,9 @@ class NameCheckNotifier extends StateNotifier<NameCheckState> {
     final task = state.task;
     if (task == null) return;
 
+    // 防止 finishNameCheck 执行期间并发修改 state
+    if (state.isFinishing) return;
+
     final students = state.studentsByClass[classId];
     if (students == null || studentIndex >= students.length) return;
 
@@ -399,6 +406,9 @@ class NameCheckNotifier extends StateNotifier<NameCheckState> {
       return const FinishNameCheckResult.failed('无任务数据');
     }
 
+    // 标记正在收尾，阻止 markStudent 并发修改
+    state = state.copyWith(isFinishing: true);
+
     try {
       // 记录 reconcile 前的学生 id 集合，用于识别新增学生
       final beforeIdsByClass = <int, Set<int>>{
@@ -487,6 +497,9 @@ class NameCheckNotifier extends StateNotifier<NameCheckState> {
       // 任务保持 inProgress/executing，避免用户数据丢失
       state = state.copyWith(error: '结束记名失败: ${_formatError(e)}');
       return FinishNameCheckResult.failed(_formatError(e));
+    } finally {
+      // 无论成功失败，解除 isFinishing 锁
+      state = state.copyWith(isFinishing: false);
     }
   }
 

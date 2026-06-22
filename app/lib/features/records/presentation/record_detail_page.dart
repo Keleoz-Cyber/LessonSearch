@@ -196,12 +196,9 @@ class _RecordDetailPageState extends ConsumerState<RecordDetailPage> {
       final other = students
           .where((s) => s.status == AttendanceStatus.other)
           .toList();
-      final present =
-          students.length -
-          absent.length -
-          late_.length -
-          leave.length -
-          other.length;
+      final present = students
+          .where((s) => s.status == AttendanceStatus.present)
+          .length;
 
       toRecord(RecordEntry e) => StudentRecord(
         name: e.studentName,

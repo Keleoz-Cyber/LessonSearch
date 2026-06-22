@@ -77,7 +77,7 @@ class AppDatabase extends _$AppDatabase {
     final queueList = await queueQuery.get();
     count += queueList.length;
     final unfinishedQuery = select(attendanceTasks)
-      ..where((t) => t.status.equals('unfinished'));
+      ..where((t) => t.status.isNotIn(['completed', 'abandoned']));
     final unfinishedList = await unfinishedQuery.get();
     count += unfinishedList.length;
     return count;

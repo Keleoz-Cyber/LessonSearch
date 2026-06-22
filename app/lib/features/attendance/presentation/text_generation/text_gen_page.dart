@@ -89,7 +89,7 @@ class _TextGenPageState extends ConsumerState<TextGenPage>
           case AttendanceStatus.other:
             classOther.add(record);
           case AttendanceStatus.pending:
-            classPresent++;
+            break;
         }
       }
 

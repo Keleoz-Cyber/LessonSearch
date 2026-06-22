@@ -332,8 +332,8 @@ class SyncService {
               'AUTH_EXPIRED: ${item.entityType}/${item.action} #${item.entityId} — 登录状态已过期，请重新登录后继续同步',
               isError: true,
             );
-            // 不再继续同步其他项，等待用户重新登录
-            break;
+            // 跳过此项，继续同步其他项（不阻塞队列）
+            continue;
           } else if (is404) {
             // 服务端不存在，跳过并标记为已同步
             await _local.markSynced(item.id);
@@ -342,11 +342,14 @@ class SyncService {
             );
             successCount++;
           } else if (_isProtected403(e)) {
-            // 服务端保护性拒绝（已提交审核/已放弃/不可修改），跳过
-            await _local.markSynced(item.id);
-            successCount++;
+            // 服务端保护性拒绝（已提交审核/已放弃/不可修改）
+            // 不静默标记 synced，而是标记为 failed(retryCount=999)
+            // 让用户在同步问题页看到"服务端拒绝"，避免本地/服务端不一致
+            await _local.markSyncFailed(item.id, retryCount: 999);
+            failCount++;
             LoggerService.sync(
-              'SKIP (403 protected): ${item.entityType}/${item.action} #${item.entityId} - $errorDetail',
+              'REJECTED (403): ${item.entityType}/${item.action} #${item.entityId} - $errorDetail — 服务端拒绝修改，请在同步问题中查看',
+              isError: true,
             );
           } else if (isNetwork) {
             await _local.markSyncFailed(item.id, retryCount: newRetry);
@@ -555,6 +558,14 @@ class SyncService {
           final id = int.parse(recordId);
           await _remote.updateRecord(id, status, remark: remark);
         }
+      case 'delete':
+        // 服务端无 delete record API。
+        // 点名撤销（prevStudent）的 delete 会被后续的 create/update 覆盖，
+        // 或者 task 完成时服务端会重新拉取完整记录列表。
+        // 直接跳过，避免 sync 队列无限堆积 delete 项。
+        LoggerService.sync(
+          'SKIP (delete): record #$recordId — 服务端无 delete API，跳过同步',
+        );
     }
   }
 
