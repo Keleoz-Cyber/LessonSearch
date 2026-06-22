@@ -28,8 +28,8 @@ class _SkeletonBoxState extends State<SkeletonBox>
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1200),
-    )..repeat(reverse: true);
+      duration: const Duration(milliseconds: 1400),
+    )..repeat();
   }
 
   @override
@@ -41,19 +41,34 @@ class _SkeletonBoxState extends State<SkeletonBox>
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, _) {
-        final alpha = 0.35 + _controller.value * 0.30;
-        return Container(
-          width: widget.width,
-          height: widget.height,
-          decoration: BoxDecoration(
-            color: c.bgMuted.withValues(alpha: alpha),
-            borderRadius: widget.borderRadius ?? BorderRadius.circular(AppRadius.md),
-          ),
-        );
-      },
+    final radius = widget.borderRadius ?? BorderRadius.circular(AppRadius.md);
+    return ClipRRect(
+      borderRadius: radius,
+      child: AnimatedBuilder(
+        animation: _controller,
+        builder: (context, _) {
+          // shimmer 扫光：渐变从 -1.5 移动到 1.5（覆盖整宽 + 边缘留白）
+          final t = _controller.value;
+          final shift = -1.5 + t * 3.0;
+          return Container(
+            width: widget.width,
+            height: widget.height,
+            decoration: BoxDecoration(
+              color: c.bgMuted,
+              gradient: LinearGradient(
+                begin: Alignment(shift - 0.6, 0),
+                end: Alignment(shift + 0.6, 0),
+                colors: [
+                  c.bgMuted,
+                  c.bgMuted.withValues(alpha: 0.4),
+                  c.bgMuted,
+                ],
+                stops: const [0.0, 0.5, 1.0],
+              ),
+            ),
+          );
+        },
+      ),
     );
   }
 }
@@ -91,9 +106,13 @@ class SkeletonCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Expanded(child: SkeletonLine(height: 16)),
+              const Expanded(child: SkeletonLine(height: 16)),
               const SizedBox(width: AppSpacing.sm),
-              SkeletonBox(width: 60, height: 20, borderRadius: BorderRadius.circular(AppRadius.full)),
+              SkeletonBox(
+                width: 60,
+                height: 20,
+                borderRadius: BorderRadius.circular(AppRadius.full),
+              ),
             ],
           ),
           const SizedBox(height: AppSpacing.md),

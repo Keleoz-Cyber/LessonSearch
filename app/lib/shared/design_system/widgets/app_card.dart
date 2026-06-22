@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../colors.dart';
 import '../tokens.dart';
@@ -7,6 +8,7 @@ class AppCard extends StatelessWidget {
   final Widget child;
   final EdgeInsetsGeometry padding;
   final VoidCallback? onTap;
+  final VoidCallback? onLongPress;
   final bool selected;
 
   const AppCard({
@@ -14,6 +16,7 @@ class AppCard extends StatelessWidget {
     required this.child,
     this.padding = const EdgeInsets.all(AppSpacing.lg),
     this.onTap,
+    this.onLongPress,
     this.selected = false,
   });
 
@@ -63,6 +66,12 @@ class AppCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppRadius.md),
         child: InkWell(
           onTap: onTap,
+          onLongPress: onLongPress != null
+              ? () {
+                  HapticFeedback.selectionClick();
+                  onLongPress!();
+                }
+              : null,
           borderRadius: BorderRadius.circular(AppRadius.md),
           child: Padding(padding: padding, child: child),
         ),

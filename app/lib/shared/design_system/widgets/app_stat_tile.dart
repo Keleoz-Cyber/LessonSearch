@@ -34,11 +34,16 @@ class AppStatTile extends StatelessWidget {
         children: [
           Icon(icon, size: 18, color: color),
           const SizedBox(height: AppSpacing.xs),
-          Text(
-            '$count',
-            style: AppTextStyles.withTabular(AppTextStyles.h1).copyWith(
-              color: color,
-              fontWeight: FontWeight.w700,
+          TweenAnimationBuilder<int>(
+            tween: IntTween(begin: 0, end: count),
+            duration: const Duration(milliseconds: 600),
+            curve: Curves.easeOutCubic,
+            builder: (context, value, _) => Text(
+              '$value',
+              style: AppTextStyles.withTabular(AppTextStyles.h1).copyWith(
+                color: color,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
           const SizedBox(height: 2),

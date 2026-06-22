@@ -7,7 +7,7 @@ import '../typography.dart';
 enum AppButtonVariant { primary, secondary, ghost, gradient }
 enum AppButtonSize { sm, md, lg }
 
-class AppButton extends StatelessWidget {
+class AppButton extends StatefulWidget {
   final String label;
   final VoidCallback? onPressed;
   final AppButtonVariant variant;
@@ -74,34 +74,43 @@ class AppButton extends StatelessWidget {
   }) : variant = AppButtonVariant.gradient;
 
   @override
+  State<AppButton> createState() => _AppButtonState();
+}
+
+class _AppButtonState extends State<AppButton> {
+  bool _pressed = false;
+
+  @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final disabled = onPressed == null || loading;
+    final disabled = widget.onPressed == null || widget.loading;
 
-    final height = switch (size) {
+    final height = switch (widget.size) {
       AppButtonSize.sm => 32.0,
       AppButtonSize.md => 40.0,
       AppButtonSize.lg => 48.0,
     };
-    final paddingX = switch (size) {
+    final paddingX = switch (widget.size) {
       AppButtonSize.sm => 12.0,
       AppButtonSize.md => 16.0,
       AppButtonSize.lg => 20.0,
     };
-    final textStyle = switch (size) {
-      AppButtonSize.sm => AppTextStyles.sm.copyWith(fontWeight: FontWeight.w500),
+    final textStyle = switch (widget.size) {
+      AppButtonSize.sm =>
+        AppTextStyles.sm.copyWith(fontWeight: FontWeight.w500),
       AppButtonSize.md => AppTextStyles.bodyMedium,
-      AppButtonSize.lg => AppTextStyles.bodyMedium.copyWith(fontSize: 15, fontWeight: FontWeight.w600),
+      AppButtonSize.lg => AppTextStyles.bodyMedium
+          .copyWith(fontSize: 15, fontWeight: FontWeight.w600),
     };
 
-    final fg = switch (variant) {
+    final fg = switch (widget.variant) {
       AppButtonVariant.primary => c.onBrand,
       AppButtonVariant.gradient => c.onBrand,
       AppButtonVariant.secondary => c.textPrimary,
       AppButtonVariant.ghost => c.textPrimary,
     };
 
-    final bgDecoration = switch (variant) {
+    final bgDecoration = switch (widget.variant) {
       AppButtonVariant.primary => BoxDecoration(
           color: disabled ? c.borderSubtle : c.brandPrimary,
           borderRadius: BorderRadius.circular(AppRadius.normal),
@@ -123,10 +132,10 @@ class AppButton extends StatelessWidget {
     };
 
     Widget content = Row(
-      mainAxisSize: fullWidth ? MainAxisSize.max : MainAxisSize.min,
+      mainAxisSize: widget.fullWidth ? MainAxisSize.max : MainAxisSize.min,
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        if (loading)
+        if (widget.loading)
           SizedBox(
             width: 16,
             height: 16,
@@ -135,31 +144,42 @@ class AppButton extends StatelessWidget {
               valueColor: AlwaysStoppedAnimation(fg),
             ),
           )
-        else if (leadingIcon != null)
-          Icon(leadingIcon, size: 16, color: fg),
-        if ((loading || leadingIcon != null)) const SizedBox(width: 8),
-        Text(label, style: textStyle.copyWith(color: disabled ? c.textDisabled : fg)),
-        if (trailingIcon != null) ...[
+        else if (widget.leadingIcon != null)
+          Icon(widget.leadingIcon, size: 16, color: fg),
+        if ((widget.loading || widget.leadingIcon != null))
           const SizedBox(width: 8),
-          Icon(trailingIcon, size: 16, color: fg),
+        Text(widget.label,
+            style: textStyle.copyWith(color: disabled ? c.textDisabled : fg)),
+        if (widget.trailingIcon != null) ...[
+          const SizedBox(width: 8),
+          Icon(widget.trailingIcon, size: 16, color: fg),
         ],
       ],
     );
 
     return Opacity(
       opacity: disabled ? 0.6 : 1.0,
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: disabled ? null : onPressed,
-          borderRadius: BorderRadius.circular(AppRadius.normal),
-          child: AnimatedContainer(
-            duration: AppDuration.fast,
-            curve: AppCurves.fast,
-            height: height,
-            padding: EdgeInsets.symmetric(horizontal: paddingX),
-            decoration: bgDecoration,
-            child: content,
+      child: AnimatedScale(
+        scale: _pressed && !disabled ? 0.96 : 1.0,
+        duration: AppDuration.fast,
+        curve: AppCurves.fast,
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: disabled ? null : widget.onPressed,
+            onTapDown: disabled ? null : (_) => setState(() => _pressed = true),
+            onTapUp: disabled ? null : (_) => setState(() => _pressed = false),
+            onTapCancel:
+                disabled ? null : () => setState(() => _pressed = false),
+            borderRadius: BorderRadius.circular(AppRadius.normal),
+            child: AnimatedContainer(
+              duration: AppDuration.fast,
+              curve: AppCurves.fast,
+              height: height,
+              padding: EdgeInsets.symmetric(horizontal: paddingX),
+              decoration: bgDecoration,
+              child: content,
+            ),
           ),
         ),
       ),

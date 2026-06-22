@@ -233,21 +233,29 @@ class _HomePageState extends ConsumerState<HomePage> {
           Positioned(
             right: 4,
             top: 4,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-              decoration: BoxDecoration(
-                color: c.stateDanger,
-                borderRadius: BorderRadius.circular(AppRadius.full),
-              ),
-              constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
-              child: Text(
-                count > 99 ? '99+' : '$count',
-                style: TextStyle(
-                  color: context.colors.onBrand,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w600,
+            child: TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0.6, end: 1.0),
+              duration: const Duration(milliseconds: 350),
+              curve: Curves.easeOutBack,
+              builder: (context, scale, child) {
+                return Transform.scale(scale: scale, child: child);
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                decoration: BoxDecoration(
+                  color: c.stateDanger,
+                  borderRadius: BorderRadius.circular(AppRadius.full),
                 ),
-                textAlign: TextAlign.center,
+                constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                child: Text(
+                  count > 99 ? '99+' : '$count',
+                  style: TextStyle(
+                    color: context.colors.onBrand,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
               ),
             ),
           ),
@@ -395,45 +403,55 @@ class _HomePageState extends ConsumerState<HomePage> {
     final hasSyncFailed = ref.watch(hasSyncFailedProvider);
     final isSyncFailed = hasSyncFailed.valueOrNull ?? false;
 
-    return issueCount.when(
-      data: (count) {
-        if (count == 0) return const SizedBox.shrink();
+    return AnimatedSwitcher(
+      duration: AppDuration.normal,
+      switchInCurve: AppCurves.normal,
+      switchOutCurve: AppCurves.depart,
+      child: issueCount.when(
+        data: (count) {
+          if (count == 0) {
+            return const SizedBox.shrink(key: ValueKey('sync-banner-empty'));
+          }
 
-        if (syncState != SyncState.syncing && count > 0) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            ref.read(syncServiceProvider).syncNow();
-          });
-        }
+          if (syncState != SyncState.syncing && count > 0) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              ref.read(syncServiceProvider).syncNow();
+            });
+          }
 
-        final state = isSyncFailed
-            ? SyncBannerState.failed
-            : syncState == SyncState.syncing
-                ? SyncBannerState.syncing
-                : SyncBannerState.unknown;
+          final state = isSyncFailed
+              ? SyncBannerState.failed
+              : syncState == SyncState.syncing
+                  ? SyncBannerState.syncing
+                  : SyncBannerState.unknown;
 
-        final title = isSyncFailed
-            ? '$count 条数据同步失败'
-            : syncState == SyncState.syncing
-                ? '正在自动同步 $count 条记录'
-                : '$count 条记录待同步';
+          final title = isSyncFailed
+              ? '$count 条数据同步失败'
+              : syncState == SyncState.syncing
+                  ? '正在自动同步 $count 条记录'
+                  : '$count 条记录待同步';
 
-        final desc = isSyncFailed
-            ? '请先处理后再继续编辑或提交'
-            : syncState == SyncState.syncing
-                ? '请避免同时编辑或提交，防止冲突'
-                : '系统将在后台自动同步';
+          final desc = isSyncFailed
+              ? '请先处理后再继续编辑或提交'
+              : syncState == SyncState.syncing
+                  ? '请避免同时编辑或提交，防止冲突'
+                  : '系统将在后台自动同步';
 
-        return Padding(
-          padding: const EdgeInsets.only(bottom: AppSpacing.lg),
-          child: SyncStatusBanner(
-            state: state,
-            title: title,
-            description: desc,
-          ),
-        );
-      },
-      loading: () => const SizedBox.shrink(),
-      error: (_, _) => const SizedBox.shrink(),
+          return Padding(
+            key: ValueKey('sync-banner-$state-$count'),
+            padding: const EdgeInsets.only(bottom: AppSpacing.lg),
+            child: SyncStatusBanner(
+              state: state,
+              title: title,
+              description: desc,
+            ),
+          );
+        },
+        loading: () =>
+            const SizedBox.shrink(key: ValueKey('sync-banner-loading')),
+        error: (_, _) =>
+            const SizedBox.shrink(key: ValueKey('sync-banner-error')),
+      ),
     );
   }
 }
