@@ -327,14 +327,14 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
                 ),
               ),
 
-            // 同步失败红色提示条
+            // 同步失败警告（不阻塞当前记名）
             if (isSyncFailed)
               const Padding(
                 padding: EdgeInsets.fromLTRB(16, 8, 16, 0),
                 child: SyncStatusBanner(
                   state: SyncBannerState.failed,
                   title: '存在同步失败数据',
-                  description: '为避免数据不一致，编辑已锁定。请到同步问题详情处理。',
+                  description: '本次记名仍可继续，标记会保留到本地。结束后请到「同步问题」处理。',
                 ),
               ),
 
@@ -556,13 +556,7 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
       }
     }
 
-    // 同步失败时禁用所有编辑按钮
-    final hasSyncFailed = ref.watch(hasSyncFailedProvider);
-    final isSyncFailed = hasSyncFailed.when(
-      data: (failed) => failed,
-      loading: () => false,
-      error: (error, stackTrace) => false,
-    );
+    // 不再因 sync 失败锁定按钮（数据保留在本地，后台稍后重试）
 
     final c = context.colors;
     final focused = _focusedIndex != null && _focusedIndex! < students.length
@@ -575,7 +569,7 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
           : '请选择学生',
       primary: AppButton.primary(
         label: '到课',
-        onPressed: (!isSyncFailed && !_isMarking && _focusedIndex != null)
+        onPressed: (!_isMarking && _focusedIndex != null)
             ? markPresent
             : null,
         size: AppButtonSize.lg,
@@ -590,7 +584,7 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
             _smallActionButton(
               '缺',
               c.stateDanger,
-              (!isSyncFailed && !_isMarking && _focusedIndex != null)
+              (!_isMarking && _focusedIndex != null)
                   ? () => mark(AttendanceStatus.absent)
                   : null,
             ),
@@ -598,7 +592,7 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
             _smallActionButton(
               '迟',
               c.stateWarning,
-              (!isSyncFailed && !_isMarking && _focusedIndex != null)
+              (!_isMarking && _focusedIndex != null)
                   ? () => mark(AttendanceStatus.late_)
                   : null,
             ),
@@ -606,7 +600,7 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
             _smallActionButton(
               '假',
               c.stateInfo,
-              (!isSyncFailed && !_isMarking && _focusedIndex != null)
+              (!_isMarking && _focusedIndex != null)
                   ? () => mark(AttendanceStatus.leave)
                   : null,
             ),
@@ -614,7 +608,7 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
             _smallActionButton(
               '他',
               c.textSecondary,
-              (!isSyncFailed && !_isMarking && _focusedIndex != null)
+              (!_isMarking && _focusedIndex != null)
                   ? markOther
                   : null,
             ),
