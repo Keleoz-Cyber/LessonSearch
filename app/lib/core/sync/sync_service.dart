@@ -341,6 +341,15 @@ class SyncService {
               'SKIP (404): ${item.entityType}/${item.action} #${item.entityId}',
             );
             successCount++;
+          } else if (_isPermanentError(e)) {
+            // 400/422 永久性错误（数据冲突/校验失败），不重试
+            await _local.markSyncFailed(item.id, retryCount: 999);
+            failCount++;
+            LoggerService.sync(
+              'PERMANENT_ERROR: ${item.entityType}/${item.action} #${item.entityId} - $errorDetail — 服务端拒绝，不可重试',
+              isError: true,
+            );
+            continue;
           } else if (_isProtected403(e)) {
             // 服务端保护性拒绝（已提交审核/已放弃/不可修改）
             // 不静默标记 synced，而是标记为 failed(retryCount=999)
@@ -425,6 +434,17 @@ class SyncService {
       return e.message ?? e.toString();
     }
     return e.toString();
+  }
+
+  /// 判断是否是永久性错误（400/422），不应重试
+  bool _isPermanentError(Object e) {
+    if (e is DioException) {
+      final code = e.response?.statusCode;
+      return code == 400 || code == 422;
+    }
+    final s = e.toString();
+    return s.contains(' 400') || s.contains(' 422') ||
+           s.contains('Bad Request') || s.contains('Unprocessable Entity');
   }
 
   /// 判断是否是服务端保护性 403（已提交审核/已放弃/不可修改）

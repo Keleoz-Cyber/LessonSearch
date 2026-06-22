@@ -412,9 +412,13 @@ class AttendanceLocalDataSource {
   }
 
   Future<void> retryAllFailed() async {
+    // 只重置非认证过期的 failed 项（排除 retryCount=999 的 401 项）
+    // 401 项需要用户重新登录后通过 resetAuthFailedSyncItems() 重置
     await (_db.update(
       _db.syncQueue,
-    )..where((s) => s.syncStatus.equals('failed'))).write(
+    )..where(
+        (s) => s.syncStatus.equals('failed') & s.retryCount.isSmallerThanValue(999),
+      )).write(
       const SyncQueueCompanion(
         syncStatus: Value('pending'),
         retryCount: Value(0),

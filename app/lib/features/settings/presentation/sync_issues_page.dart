@@ -1,3 +1,4 @@
+import 'package:drift/drift.dart' as drift;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -259,7 +260,7 @@ class SyncIssuesPage extends ConsumerWidget {
             _buildGroupHeader(context, group),
             const SizedBox(height: AppSpacing.sm),
             ...group.items.map(
-              (item) => _buildIssueItem(context, item, group.color),
+              (item) => _buildIssueItem(context, ref, item, group.color),
             ),
             const SizedBox(height: AppSpacing.xl),
           ],
@@ -335,70 +336,127 @@ class SyncIssuesPage extends ConsumerWidget {
     );
   }
 
-  Widget _buildIssueItem(BuildContext context, SyncQueueData item, Color color) {
+  Widget _buildIssueItem(BuildContext context, WidgetRef ref, SyncQueueData item, Color color) {
     final c = context.colors;
     final entityTypeLabel = _getEntityTypeLabel(item.entityType);
-    final actionLabel = item.action == 'create' ? '创建' : '更新';
+    final actionLabel = item.action == 'create' ? '创建' : item.action == 'update' ? '更新' : '删除';
     final createdAt = DateFormat('MM-dd HH:mm').format(item.createdAt);
     final retryInfo = item.retryCount > 0 && item.retryCount < 999
         ? '已重试 ${item.retryCount} 次'
-        : '';
+        : item.retryCount >= 999
+            ? '不可重试'
+            : '';
 
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.xs + 2),
-      child: AppCard(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.md,
-          vertical: AppSpacing.sm + 2,
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 8,
-              height: 8,
-              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+      child: Dismissible(
+        key: ValueKey('sync-item-${item.id}'),
+        direction: DismissDirection.endToStart,
+        confirmDismiss: (direction) async {
+          return await showDialog<bool>(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              title: const Text('跳过此项'),
+              content: Text('确定跳过这条同步项？\n\n$entityTypeLabel$actionLabel · ID: ${item.entityId}\n\n跳过后此项不再同步，本地数据保留。'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  child: const Text('取消'),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.pop(ctx, true),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: c.stateWarning,
+                    foregroundColor: c.onBrand,
+                  ),
+                  child: const Text('跳过'),
+                ),
+              ],
             ),
-            const SizedBox(width: AppSpacing.md),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+          );
+        },
+        onDismissed: (direction) async {
+          final db = ref.read(databaseProvider);
+          await (db.update(db.syncQueue)..where((s) => s.id.equals(item.id))).write(
+            const SyncQueueCompanion(
+              syncStatus: drift.Value('synced'),
+              syncedAt: drift.Value(null),
+            ),
+          );
+          ref.invalidate(syncIssuesProvider);
+          if (context.mounted) {
+            Toast.show(context, '已跳过');
+          }
+        },
+        background: Container(
+          alignment: Alignment.centerRight,
+          padding: const EdgeInsets.only(right: AppSpacing.lg),
+          decoration: BoxDecoration(
+            color: c.stateWarning.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(AppRadius.md),
+          ),
+          child: Icon(Icons.skip_next, color: c.stateWarning),
+        ),
+        child: AppCard(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: AppSpacing.sm + 2,
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '$entityTypeLabel$actionLabel',
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        color: c.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'ID: ${item.entityId}',
+                      style: AppTextStyles.withTabular(
+                        AppTextStyles.xs,
+                      ).copyWith(color: c.textTertiary),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
-                    '$entityTypeLabel$actionLabel',
-                    style: AppTextStyles.bodyMedium.copyWith(
-                      color: c.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    'ID: ${item.entityId}',
+                    createdAt,
                     style: AppTextStyles.withTabular(
                       AppTextStyles.xs,
                     ).copyWith(color: c.textTertiary),
                   ),
+                  if (retryInfo.isNotEmpty)
+                    Text(
+                      retryInfo,
+                      style: AppTextStyles.xs.copyWith(
+                        color: color.withValues(alpha: 0.85),
+                      ),
+                    ),
+                  const SizedBox(height: 2),
+                  Icon(
+                    Icons.swipe_left,
+                    size: 14,
+                    color: c.textTertiary.withValues(alpha: 0.5),
+                  ),
                 ],
               ),
-            ),
-            const SizedBox(width: AppSpacing.sm),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  createdAt,
-                  style: AppTextStyles.withTabular(
-                    AppTextStyles.xs,
-                  ).copyWith(color: c.textTertiary),
-                ),
-                if (retryInfo.isNotEmpty)
-                  Text(
-                    retryInfo,
-                    style: AppTextStyles.xs.copyWith(
-                      color: color.withValues(alpha: 0.85),
-                    ),
-                  ),
-              ],
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

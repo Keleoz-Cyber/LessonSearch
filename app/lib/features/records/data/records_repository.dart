@@ -79,7 +79,7 @@ class RecordsRepository {
     final tasks =
         await (_db.select(_db.attendanceTasks)
               ..where(
-                (t) => t.status.isIn(['in_progress', 'completed', 'abandoned']),
+                (t) => t.status.isIn(['completed', 'abandoned']),
               )
               ..orderBy([(t) => OrderingTerm.desc(t.createdAt)]))
             .get();
