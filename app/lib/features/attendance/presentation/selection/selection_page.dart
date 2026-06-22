@@ -362,12 +362,24 @@ class _SelectionPageState extends ConsumerState<SelectionPage> {
               },
               child: Row(
                 children: [
-                  Icon(
-                    selected
-                        ? Icons.check_circle
-                        : Icons.radio_button_unchecked,
-                    size: 20,
-                    color: selected ? c.brandPrimary : c.borderStrong,
+                  AnimatedSwitcher(
+                    duration: AppDuration.normal,
+                    switchInCurve: AppCurves.emphasize,
+                    switchOutCurve: AppCurves.fast,
+                    transitionBuilder: (child, animation) {
+                      return ScaleTransition(
+                        scale: animation,
+                        child: FadeTransition(opacity: animation, child: child),
+                      );
+                    },
+                    child: Icon(
+                      selected
+                          ? Icons.check_circle
+                          : Icons.radio_button_unchecked,
+                      key: ValueKey(selected),
+                      size: 20,
+                      color: selected ? c.brandPrimary : c.borderStrong,
+                    ),
                   ),
                   const SizedBox(width: AppSpacing.md),
                   Expanded(
