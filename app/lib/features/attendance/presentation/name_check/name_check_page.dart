@@ -483,8 +483,13 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
             .markStudentById(classId, studentId, status, remark: remark);
         if (!mounted) return;
 
-        // 有pending时自动跳转，无pending时焦点不动
-        if (hasPendingInAllClasses) {
+        // 重新读取最新 state 判断是否有 pending（避免闭包过期值）
+        final latestState = ref.read(nameCheckProvider);
+        final stillHasPending = latestState.classes.any((cls) {
+          final classStudents = latestState.studentsByClass[cls.id] ?? [];
+          return classStudents.any((s) => s.status == AttendanceStatus.pending);
+        });
+        if (stillHasPending) {
           jumpToNextPending();
         } else {
           setState(() {});

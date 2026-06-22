@@ -41,7 +41,10 @@ class AppDatabase extends _$AppDatabase {
           } catch (_) {}
           try {
             await m.addColumn(attendanceTasks, attendanceTasks.userId);
-          } catch (_) {}
+          } catch (e) {
+            // 列已存在是正常情况，其他异常往上抛
+            if (!e.toString().contains('duplicate column')) rethrow;
+          }
         }
         if (from < 3) {
           try {
@@ -51,7 +54,9 @@ class AppDatabase extends _$AppDatabase {
         if (from < 4) {
           try {
             await m.addColumn(dutyPlanRows, dutyPlanRows.classroom);
-          } catch (_) {}
+          } catch (e) {
+            if (!e.toString().contains('duplicate column')) rethrow;
+          }
         }
       },
     );

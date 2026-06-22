@@ -284,13 +284,7 @@ class RollCallNotifier extends StateNotifier<RollCallState> {
     final task = state.task;
     if (student == null || task == null) return;
 
-    // 删除当前学生的考勤记录
-    final recordId = state.calledRecordIds[student.id];
-    if (recordId != null) {
-      await _attendanceRepo.deleteRecord(recordId);
-    }
-
-    // 回退索引
+    // 先回退索引（失败则不删 record）
     final newIndex = state.currentIndex - 1;
     final newCalledRecordIds = Map<int, int>.from(state.calledRecordIds);
     newCalledRecordIds.remove(student.id);
@@ -299,6 +293,12 @@ class RollCallNotifier extends StateNotifier<RollCallState> {
       task,
       currentStudentIndex: newIndex,
     );
+
+    // 索引回退成功后再删除 record
+    final recordId = state.calledRecordIds[student.id];
+    if (recordId != null) {
+      await _attendanceRepo.deleteRecord(recordId);
+    }
 
     state = state.copyWith(
       task: updated,

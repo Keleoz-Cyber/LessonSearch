@@ -66,10 +66,16 @@ class SyncService {
 
   Future<({int success, int failed, int skipped})> syncNow() async {
     if (_isSyncing) {
-      // 已有同步在进行中，等待其完成
+      // 已有同步在进行中，等待其完成（最多等 60 秒）
       LoggerService.sync('已有同步在进行，等待完成后再同步');
-      while (_isSyncing) {
+      final deadline = DateTime.now().add(const Duration(seconds: 60));
+      while (_isSyncing && DateTime.now().isBefore(deadline)) {
         await Future.delayed(const Duration(milliseconds: 100));
+      }
+      if (_isSyncing) {
+        // 超时仍有同步在进行，返回上次结果
+        LoggerService.sync('等待同步超时（60s），返回上次结果', isError: true);
+        return _lastResult ?? (success: 0, failed: 0, skipped: 0);
       }
       // 等待结束后：
       // 1. 若队列已干净（无 pending/failed），可安全返回上一次的真实结果，
