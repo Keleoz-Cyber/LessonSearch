@@ -218,6 +218,21 @@ class AttendanceLocalDataSource {
     await (_db.delete(
       _db.attendanceRecords,
     )..where((r) => r.id.equals(recordId))).go();
+    // 取消该 record 的未消费 sync 项（pending create/update）
+    // 避免删除后又把已删的数据同步到服务端
+    await (_db.update(
+      _db.syncQueue,
+    )..where(
+        (s) =>
+            s.entityType.equals('record') &
+            s.entityId.equals(recordId.toString()) &
+            s.syncStatus.equals('pending'),
+      )).write(
+      const SyncQueueCompanion(
+        syncStatus: Value('synced'),
+        syncedAt: Value(null),
+      ),
+    );
   }
 
   /// 获取单个考勤记录

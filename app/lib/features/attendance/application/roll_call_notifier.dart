@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/logger/logger_service.dart';
 import '../domain/models.dart';
 import '../data/attendance_repository.dart';
 import '../../student/data/student_repository.dart';
@@ -246,15 +247,25 @@ class RollCallNotifier extends StateNotifier<RollCallState> {
 
     if (state.hasNext) {
       final newIndex = state.currentIndex + 1;
-      final updated = await _attendanceRepo.updateTaskStatus(
-        task,
-        currentStudentIndex: newIndex,
-      );
-      state = state.copyWith(
-        task: updated,
-        currentIndex: newIndex,
-        calledRecordIds: newCalledRecordIds,
-      );
+      try {
+        final updated = await _attendanceRepo.updateTaskStatus(
+          task,
+          currentStudentIndex: newIndex,
+        );
+        state = state.copyWith(
+          task: updated,
+          currentIndex: newIndex,
+          calledRecordIds: newCalledRecordIds,
+        );
+      } catch (e) {
+        // updateTaskStatus 失败，回滚刚创建的 record
+        if (record.id != null) {
+          await _attendanceRepo.deleteRecord(record.id!);
+        }
+        newCalledRecordIds.remove(student.id);
+        LoggerService.error('nextStudent updateTaskStatus 失败，已回滚 record: $e');
+        rethrow;
+      }
     } else {
       // 最后一个学生，已点人数 = currentIndex + 1
       state = state.copyWith(

@@ -5,7 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../features/attendance/domain/models.dart';
 import '../../shared/providers.dart';
 
-/// 启动时检查未完成的记名任务（executing 阶段），提示用户继续或放弃
+/// 启动时检查未完成的记名任务（executing/confirming/text_generating 阶段），提示用户继续或放弃
 class TaskResumeChecker {
   static Future<void> check(BuildContext context, WidgetRef ref) async {
     final repo = ref.read(attendanceRepositoryProvider);
@@ -17,12 +17,14 @@ class TaskResumeChecker {
     final currentUserId = ref.read(authServiceProvider).userId;
     final tasks = await repo.getInProgressTasks();
 
-    // 只恢复记名任务 + executing 阶段 + 属于当前用户的任务
+    // 恢复记名任务 + executing/confirming/text_generating 阶段 + 属于当前用户
     final resumable = tasks
         .where(
           (t) =>
               t.type == TaskType.nameCheck &&
-              t.phase == TaskPhase.executing &&
+              (t.phase == TaskPhase.executing ||
+                  t.phase == TaskPhase.confirming ||
+                  t.phase == TaskPhase.textGenerating) &&
               t.userId == currentUserId,
         )
         .toList();
@@ -31,12 +33,20 @@ class TaskResumeChecker {
 
     final task = resumable.first;
 
+    final phaseLabel = switch (task.phase) {
+      TaskPhase.confirming => '已到确认页',
+      TaskPhase.textGenerating => '已到文案生成页',
+      _ => '',
+    };
+
     final result = await showDialog<String>(
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
         title: const Text('发现未完成任务'),
-        content: const Text('上次的记名任务尚未完成，是否继续？'),
+        content: Text(phaseLabel.isEmpty
+            ? '上次的记名任务尚未完成，是否继续？'
+            : '上次的记名任务$phaseLabel，尚未完成。是否继续？'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, 'abandon'),
@@ -64,16 +74,24 @@ class TaskResumeChecker {
       }).toList();
 
       if (!context.mounted) return;
-      context.push(
-        '/name-check/execute',
-        extra: {
-          'classIds': task.classIds,
-          'classNames': classNames,
-          'gradeId': task.selectedGradeId ?? 0,
-          'majorId': task.selectedMajorId ?? 0,
-          'resumeTaskId': task.id,
-        },
-      );
+
+      final extra = {
+        'classIds': task.classIds,
+        'classNames': classNames,
+        'gradeId': task.selectedGradeId ?? 0,
+        'majorId': task.selectedMajorId ?? 0,
+        'resumeTaskId': task.id,
+      };
+
+      // 根据 phase 跳不同页面
+      switch (task.phase) {
+        case TaskPhase.confirming:
+          context.push('/confirmation', extra: extra);
+        case TaskPhase.textGenerating:
+          context.push('/text-gen', extra: extra);
+        default:
+          context.push('/name-check/execute', extra: extra);
+      }
     }
   }
 }
