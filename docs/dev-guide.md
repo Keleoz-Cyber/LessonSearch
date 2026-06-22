@@ -1,6 +1,6 @@
 # 考勤助手 开发文档
 
-> 版本：0.6.5 | 更新日期：2026-05-05 | 仓库：https://github.com/Keleoz-Cyber/LessonSearch
+> 版本：0.7.0 | 更新日期：2026-06-22 | 仓库：https://github.com/Keleoz-Cyber/LessonSearch
 
 ---
 
@@ -15,14 +15,16 @@
 | 点名 | 按学号顺序逐人点名，支持多班级、撤销上一位 |
 | 记名 | 逐人标记考勤状态（到课/缺勤/迟到/请假/其他），固定两列布局 |
 | 名单提交 | 成员提交记名任务（分开提交），管理员审核 |
-| 周名单汇总 | 管理员审核、导出Excel（含请假/其他列）、发布汇总 |
+| 周名单汇总 | 管理员审核、导出 Excel（含请假/其他列）、发布汇总 |
 | 实名制 | 登录后必须填写真实姓名，路由+首页双重检查 |
 | 数据隔离 | 登出清空本地用户数据 |
-| 实时公告 | 从服务端获取公告内容，Markdown渲染 |
-| 排行榜 | 支持近7天/近30天/总榜，多榜单统计与规则说明 |
+| 实时公告 | 从服务端获取公告内容，Markdown 渲染 |
+| 排行榜 | 支持近 7 天 / 近 30 天 / 总榜，多榜单统计与规则说明 |
 | 登录过期处理 | 401 自动清理登录态并跳转登录页（新客户端） |
 | 同步保护 | 启动自动同步、失败重试、提交前确认、后台静默同步 |
 | 隐私政策 | 应用内查看完整的隐私政策和用户协议 |
+| **查课计划**（v0.7.0+） | 提前排定查课任务，上课前 15 分钟本地通知提醒（纯本地，不依赖第三方推送） |
+| **设计系统**（v0.7.0） | shared/design_system 提供统一的 tokens / colors / typography / 12 个组件，品牌色 #2563EB |
 
 ### 技术栈
 
@@ -266,8 +268,10 @@ attendanceRemoteDSProvider
 attendanceRepositoryProvider
 studentRepositoryProvider
 recordsRepositoryProvider
+dutyPlanRepositoryProvider（v0.7.0+）
     ↓
 syncServiceProvider（自动启动）
+notificationService（v0.7.0+，单例）
 rollCallProvider
 nameCheckProvider
 ```
@@ -276,7 +280,7 @@ nameCheckProvider
 
 ## 四、数据库设计
 
-### 本地 SQLite（Drift）— 8张表
+### 本地 SQLite（Drift）— 9 张表（v0.7.0，schema 4）
 
 #### 用户表 (Users)
 | 字段 | 类型 | 说明 |
@@ -362,12 +366,30 @@ nameCheckProvider
 | id | INT | 自增主键 |
 | entityType | VARCHAR(50) | 实体类型：task / record |
 | entityId | VARCHAR(36) | 实体ID |
-| action | VARCHAR(20) | 操作：create / update |
-| payload | TEXT | JSON数据（可空） |
+| action | VARCHAR(20) | 操作：create / update / delete |
+| payload | TEXT | JSON 数据（可空） |
 | syncStatus | VARCHAR(20) | 同步状态：pending / syncing / synced / failed |
-| retryCount | INT | 重试次数（超过5次放弃） |
+| retryCount | INT | 重试次数（5 次后放弃；999 表示认证过期） |
 | createdAt | DATETIME | 创建时间 |
 | syncedAt | DATETIME | 同步完成时间 |
+
+#### 查课计划表 (DutyPlanRows) — v0.7.0+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | TEXT | UUID 主键 |
+| weekNumber | INT | 周次（与服务端 currentWeekProvider 联动） |
+| weekday | INT | 1-5（周一到周五） |
+| period | INT | 1-8（节次） |
+| classIds | TEXT | JSON 数组：班级 ID 字符串列表 |
+| className | TEXT | 班级显示名缓存（如 `软工2301、计科2302`） |
+| classroom | TEXT | 教室（必填，如 `4213`） |
+| remark | TEXT | 备注（可选） |
+| notificationId | INT | 通知 ID：`weekNumber * 100 + weekday * 10 + period` |
+| reminderEnabled | BOOL | 是否启用提醒 |
+| classStartAt | DATETIME | 上课时间（绝对，用于本地通知调度） |
+| createdAt | DATETIME | 创建时间 |
+
+> 纯本地表，不通过 SyncQueue 同步到服务端（保护学生班级信息隐私）。
 
 ### 服务端 MySQL — 14张表
 

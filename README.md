@@ -6,7 +6,7 @@
 
 **面向学校查课场景的 Flutter + FastAPI 全栈应用**
 
-[![Version](https://img.shields.io/badge/version-v0.6.5-blue)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-v0.7.0-blue)](CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Android-lightgrey)]()
 [![Flutter](https://img.shields.io/badge/Flutter-3.43-02569B?logo=flutter)]()
@@ -14,7 +14,7 @@
 
 **已在高校查课工作中正式投入使用**
 
-点名 · 记名 · 名单提交 · 管理员审核 · 周汇总 · Excel 导出
+点名 · 记名 · 查课计划 · 名单提交 · 管理员审核 · 周汇总 · Excel 导出
 
 </div>
 
@@ -366,8 +366,18 @@ SMTP_PASSWORD=your-password
 
 完整版本更新日志请查看 [CHANGELOG.md](CHANGELOG.md)。
 
-**当前版本亮点：**
+**当前版本（v0.7.0）亮点：**
+
+- 🎨 **设计系统重做**：24 个页面统一改造为商业 SaaS 风格（中性灰 + sky→blue 渐变，品牌色 #2563EB），新建 12 个设计系统组件
+- 📋 **查课计划 + 本地提醒**：提前排定查课任务，上课前 15 分钟系统通知提醒，**纯本地不依赖第三方推送**
+- ⚡ **性能优化**：8 个列表加 RepaintBoundary、Theme.of 缓存、AppCard 动画统一、移除 NoSplash 恢复 Material ripple、列表/详情 Hero 共享元素
+- ✨ **微交互全面升级**：AppButton 按下 scale 反馈、SkeletonCard shimmer 扫光、TweenAnimationBuilder 数字滚动、同步图标真旋转、班级选择 AnimatedSwitcher 弹出
+- 📚 **公共组件提升**：`AppNoticeBox` / `AppStatChip` / `AppStatTile` 三个 helper 提到设计系统层供复用
+- 🌗 **Android 路由用 Material ZoomPageTransitions**，iOS 保持 Cupertino swipe-back
+
+**之前版本：**
 - v0.6.5：记名重复记录根因修复、SyncQueue create/update 区分、服务端防御性 upsert
+- v0.6.0：批量同步、401 保护、退出登录保护、密码登录
 
 ---
 

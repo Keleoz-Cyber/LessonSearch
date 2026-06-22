@@ -1,7 +1,7 @@
 # AGENT.md — AI Agent 协作指南
 
 > 本文档面向接手此项目的 AI Agent。请在开始任何工作前完整阅读此文件。
-> 最后更新：2026-05-05 · 当前版本：v0.6.5
+> 最后更新：2026-06-22 · 当前版本：v0.7.0
 > 
 > 项目：考勤助手（查课 App）· 课堂考勤 Flutter 应用（Android 优先）
 > 仓库：https://github.com/Keleoz-Cyber/LessonSearch
@@ -22,26 +22,27 @@
 | 记名 | 逐人标记考勤状态（到课/缺勤/迟到/请假/其他），固定两列布局 |
 | 查课记录 | 展示每次查课记录，支持查看和编辑，保留修改时间 |
 | 名单提交 | 成员提交记名任务（分开提交），管理员审核 |
-| 周名单汇总 | 管理员审核、导出Excel（含请假/其他列）、发布汇总 |
+| 周名单汇总 | 管理员审核、导出 Excel（含请假/其他列）、发布汇总 |
 | 实名制 | 登录后必须填写真实姓名，路由+首页双重检查 |
 | 数据隔离 | 登出清空本地用户数据 |
-| 实时公告 | 从服务端获取公告内容，Markdown渲染 |
+| 实时公告 | 从服务端获取公告内容，Markdown 渲染 |
 | 排行榜 | 支持近7天/近30天/总榜，多榜单统计与规则说明 |
 | 同步保护 | 启动自动同步、失败重试、提交前确认、后台静默同步、批量同步优化 |
 | 登录过期处理 | 401 时保留本地数据，重新登录后继续同步 |
 | 退出登录保护 | 有未同步数据时阻止退出，避免数据丢失 |
-| 帮助中心 | 内置 FAQ 页面，19个常见问题与解决方案 |
+| 帮助中心 | 内置 FAQ 页面，常见问题与解决方案 |
 | 隐私政策 | 应用内查看完整的隐私政策和用户协议 |
 | 密码登录 | 支持邮箱+密码登录，验证码登录后可在设置页设置密码 |
-| 全新图标 | v0.6.0 重新设计应用图标，浅蓝色调文档+对勾徽章 |
+| **查课计划**（v0.7.0+） | 提前排定本周/未来查课任务，上课前 15 分钟本地通知提醒，纯本地存储，不依赖第三方推送 |
+| **设计系统**（v0.7.0） | shared/design_system 提供 tokens/colors/typography/9 组件，所有页面统一品牌色 #2563EB |
 
 ### 技术栈
 
 | 端 | 技术 |
 |----|------|
-| 客户端 | Flutter 3.43、Riverpod 2.6、go_router 14、Dio、Drift 2.28、flutter_markdown、share_plus |
+| 客户端 | Flutter 3.43、Riverpod 2.6、go_router 14、Dio、Drift 2.28、flutter_markdown、share_plus、**flutter_local_notifications 17.2.4** |
 | 服务端 | FastAPI、SQLAlchemy、PyJWT、bcrypt、MySQL 8、openpyxl |
-| 部署 | 1Panel、Nginx反向代理、systemd、Let's Encrypt HTTPS |
+| 部署 | 1Panel、Nginx 反向代理、systemd、Let's Encrypt HTTPS |
 
 ---
 
@@ -123,12 +124,13 @@ app/lib/
 ├── main.dart
 ├── app.dart
 ├── core/
-│   ├── database/      # Drift表定义（tables.dart）
+│   ├── database/      # Drift 表定义（tables.dart）
 │   ├── network/       # ApiClient
 │   ├── router/        # go_router
 │   ├── sync/          # SyncService
 │   ├── resume/        # 任务恢复检查
 │   ├── announcement/  # 公告系统
+│   ├── notification/  # 本地通知服务（v0.7.0+）
 │   └── feedback/      # 振动/音效反馈
 ├── features/
 │   ├── attendance/    # 点名、记名、文本生成
@@ -137,19 +139,26 @@ app/lib/
 │   ├── records/       # 查课记录
 │   ├── ranking/       # 排行榜
 │   ├── settings/      # 设置、致谢、隐私政策
+│   ├── duty_plan/     # 查课计划 + 本地通知（v0.7.0+）
 │   └── debug/         # 调试工具
 └── shared/
-    └── providers.dart
+    ├── providers.dart
+    ├── widgets/       # 旧版组件（EmptyState/LoadingOverlay/Toast，保留 API）
+    └── design_system/ # 设计系统（v0.7.0+）：tokens/colors/typography/theme/widgets
+                      # widgets: AppButton/AppCard/StatusPill/AppInput/AppTopBar/
+                      #          BottomActionBar/AppSegmentedControl/SyncStatusBanner/
+                      #          SegmentedProgressBar/AppNoticeBox/AppStatChip/
+                      #          AppStatTile/Skeleton
 
 server/
 ├── main.py
 ├── app/
 │   ├── core/          # config, database, security
 │   ├── models/        # user, student, task, submission
-│   ├── schemas/       # Pydantic模型
-│   ├── routers/       # API路由
-│   └── services/     # 业务逻辑
-└── migrations/       # SQL迁移脚本
+│   ├── schemas/       # Pydantic 模型
+│   ├── routers/       # API 路由
+│   └── services/      # 业务逻辑
+└── migrations/        # SQL 迁移脚本
 
 scripts/
 ├── config.py
@@ -195,11 +204,14 @@ scripts/
 | grades | 年级 |
 | majors | 专业 |
 | classes | 班级 |
-| students | 学生（含gender字段） |
+| students | 学生（含 gender 字段） |
 | attendance_tasks | 考勤任务 |
 | attendance_records | 考勤记录 |
 | task_classes | 任务-班级关联 |
 | sync_queue | 同步队列 |
+| **duty_plan_rows（v0.7.0+）** | 查课计划（纯本地，不同步） |
+
+详细表结构见 `docs/dev-guide.md` 第四章。
 
 ### 服务端 MySQL — 14张表
 
@@ -451,10 +463,13 @@ python import_students_2022plus.py --commit --clear
 
 | 文档 | 说明 |
 |------|------|
-| `docs/dev-guide.md` | 完整开发文档（API接口、数据库设计、部署指南） |
+| `docs/dev-guide.md` | 完整开发文档（API 接口、数据库设计、部署指南） |
+| `docs/design-system.md` | 设计系统手册（tokens / 组件 API / 调用模式） |
 | `CHANGELOG.md` | 版本更新历史 |
 | `docs/invitation-codes.md` | 邀请码管理指南 |
 | `docs/incident-2026-04-20-server-overload.md` | 服务器故障报告 |
+| `docs/superpowers/specs/2026-06-19-ui-redesign-design.md` | v0.7.0 UI 重做设计方案 |
+| `docs/superpowers/plans/2026-06-19-ui-redesign-plan.md` | v0.7.0 UI 重做实施计划（已完成） |
 
 ---
 
