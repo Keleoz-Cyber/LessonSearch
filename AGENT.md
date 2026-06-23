@@ -1,7 +1,7 @@
 # AGENT.md — AI Agent 协作指南
 
 > 本文档面向接手此项目的 AI Agent。请在开始任何工作前完整阅读此文件。
-> 最后更新：2026-06-22 · 当前版本：v0.7.0
+> 最后更新：2026-06-23 · 当前版本：v0.7.0+34
 > 
 > 项目：考勤助手（查课 App）· 课堂考勤 Flutter 应用（Android 优先）
 > 仓库：https://github.com/Keleoz-Cyber/LessonSearch

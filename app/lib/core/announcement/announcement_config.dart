@@ -3,24 +3,77 @@
 // ============================================================
 
 /// 公告版本号：每次修改公告内容后 +1，用户才会再次看到
-const int announcementVersion = 35;
+const int announcementVersion = 36;
 
-const String announcementTitle = '考勤助手 v0.6.5';
+const String announcementTitle = '考勤助手 v0.7.0';
 
 const String announcementContent = '''
 本应用用于学习部课堂考勤查课，支持点名和记名两种模式。
 
-## v0.6.5 更新内容
+## v0.7.0 重要更新
 
-- **记名重复记录修复**：重新编辑后不会再出现同一学生多条记录，提交详情异常名单正确显示
-- **同步一致性修复**：本地 upsert 与服务端状态保持一致，不会因为同步动作错误导致数据不一致
-- **去重逻辑优化**：记录详情、提交审核、周汇总均按 taskId+studentId 去重
+### 全新设计系统
+- 视觉全面重做：商业 SaaS 风格、中性灰 + 品牌蓝（#2563EB）
+- 24 个页面统一改造，明暗双主题打磨
+
+### 新功能：查课计划
+- 提前排定本周/未来周查课任务
+- 上课前 15 分钟系统通知提醒
+- **本地存储**，学生数据不外发
+
+### 业务稳定性大修
+- 修复记名汇报文本到课人数虚高（pending 不再算到课）
+- 修复同步失败死循环（401/403/400/422 永久错误正确分类）
+- 修复记名收尾时并发标记丢失
+- 修复 dialog 关闭时偶发红屏
+- 记名页同步失败不再锁死按钮
+- 同步问题项支持右滑跳过
+
+### 性能与体验
+- 列表滚动 FPS 提升、按钮按下反馈、shimmer 加载效果
+- 数字滚动入场、Hero 共享元素、班级选择按年级/专业筛选
 
 请登录后使用，保护学生隐私数据安全。
 ''';
 
 /// 历史更新日志（Markdown格式，设置页查看）
 const String updateNotes = '''
+## v0.7.0 更新内容
+
+### 全新设计系统
+- 设计系统：tokens / colors / typography + 12 个核心组件
+- 24 个页面接入设计系统，品牌色 #2563EB
+- 列表/详情 Hero 共享元素过渡、SkeletonCard shimmer 加载
+- 按钮按下 scale 反馈、Material ripple 恢复、AppCard 长按 haptic
+- AnimatedSwitcher 状态切换淡入淡出、TweenAnimationBuilder 数字滚动
+- Android 路由用 ZoomPageTransitionsBuilder（M3 风格）
+
+### 新功能：查课计划 + 本地提醒
+- 提前排定本周/未来周查课任务（周次/星期/节次/班级/教室/备注）
+- 上课前 15 分钟本地通知提醒
+- **纯本地存储**，不依赖第三方推送 SaaS，保护学生隐私
+- 班级选择支持年级/专业横向筛选 + 按组分组
+- 长按计划卡片可切换提醒或删除
+
+### T0/T1/T2 业务问题修复（23 项）
+- **pending 不再算到课**：汇报文本到课人数不再虚高
+- **401 不阻塞队列**：认证过期不再卡住正常同步项
+- **403 不静默标 synced**：服务端拒绝项可在「同步问题」查看
+- **400/422 不重试**：永久性错误立即标记，避免重试→失败循环
+- **delete 同步项跳过**：服务端无 delete API，本地撤销不再堆积
+- **records_list 过滤 in_progress**：未完成任务不再误导生成文本
+- **TaskResumeChecker 全阶段**：确认页/文案页被杀后可恢复
+- **getSyncIssueCount 与 getPendingSyncItems 口径统一**
+- **同步问题项支持右滑跳过**：永久失败项可手动放弃
+- **finishNameCheck 与 markStudent 并发竞态防护**
+- **dialog 红屏修复**：TextEditingController 延迟 dispose
+- 其他：retryAllFailed 不重置 401 项、prevStudent 事务顺序、记名页同步失败不再锁死按钮
+
+### 业务体验改进
+- 记名页同步失败警告改为非阻塞横条「本次记名仍可继续」
+- 查课计划主动加载班级数据（不再依赖用户先去点名页）
+- 班级选择对话框 StatefulBuilder 实时刷新
+
 ## v0.6.5 更新内容
 
 - **记名重复记录修复**：重新编辑后不再出现同一学生多条记录

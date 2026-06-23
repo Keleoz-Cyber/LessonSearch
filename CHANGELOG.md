@@ -6,6 +6,40 @@
 
 ## v0.7.0
 
+### v0.7.0+34（2026-06-23）业务稳定性大修
+
+> 通过 3 轮深度审计识别 + 修复 23 项 T0/T1/T2 业务问题，覆盖数据正确性、流程卡死、并发竞态、资源泄漏等核心隐患。
+
+**T0 数据正确性（8 项）**：
+- `pending` 状态被计入 `present` — 汇报文本到课人数虚高（text_gen_page / record_detail_page）
+- 已提交任务被远端 403 拒绝后 sync 静默标 `synced` — 本地/服务端永久不一致（单条 + batch 双路径修复）
+- 401 认证过期 `break` 退出整条同步队列 — 后续正常项全部阻塞，改 `continue`
+- `_syncRecord` 缺 `delete` action — delete 同步项被静默跳过
+- `finishNameCheck` 与 `markStudent` 并发竞态 — 加 `isFinishing` 锁
+- `getUnsyncedCount` 用错误的 `'unfinished'` 状态值 — 永远返回 0
+- `getSyncIssueCount` 与 `getPendingSyncItems` 口径不一致 — 已放弃项阻止提交
+
+**T1 流程卡住（8 项）**：
+- `records_list` 显示 `in_progress` 任务 — 用户可进入生成错误汇报文本
+- `TaskResumeChecker` 不恢复 `confirming`/`text_generating` 阶段
+- reconcile 删除记录时未取消未消费的 create/update sync 项
+- `RollCallNotifier.nextStudent` 无事务保护
+- 启动时 `retryAllFailed()` 无条件重置所有 failed（含 401 认证项）
+- 400/422 永久性错误也计作 `failed` 并允许重试 — 形成重试→失败循环
+- sync_issues 无"跳过此项"单条操作 — 右滑 Dismissible + 确认对话框
+- `classroom` 可为 null，老数据升级后显示防护
+
+**T2 极端条件（4 项）**：
+- `prevStudent` 删除记录后无事务保护 — 调整为先 updateTaskStatus 后 deleteRecord
+- 数据库迁移 `catch(_){}` 吞噬异常 — addColumn 只吞 duplicate column
+- `syncNow` while 忙等待无超时 — 加 60s 超时保护
+- `mark()` 闭包捕获过期的 `hasPendingInAllClasses` — await 后重新 ref.read
+
+**Dialog 红屏修复**：
+- `TextEditingController` 在 `Navigator.pop` 后立即 dispose 触发 `_dependents.isEmpty` assertion
+- 修复路径：submission_search 周次选择 / weekly_summary 拒绝理由 / name_check 备注 / record_detail 备注
+- 统一用 `WidgetsBinding.instance.addPostFrameCallback` 延迟到下一帧释放
+
 ### 新功能
 
 - **查课计划 + 本地提醒**（v0.7.0+33）
@@ -124,9 +158,9 @@
 - **docs/design-system.md** - 新建设计系统手册（tokens / 组件 API / 调用模式 / 禁用清单）
 - **删除无用文档** - `app/README.md`（Flutter 默认模板）、`docs/business-flow.md`（合并到 dev-guide）、`docs/business-logic-audit.md`（v0.6.5 审计已过时）
 
-### 已知问题（T0/T1/T2 级，待修复）
+### 已知问题清单（已修复，详见上方"业务稳定性大修"）
 
-> 以下 22 项问题已通过深度审计识别，按优先级排序，将在后续版本修复。
+> 以下 22 项 + 1 项 bonus 问题已通过 3 轮深度审计识别并全部修复。完整修复 commit：`ae16afc` `bc2771c` `1a58728` `08df7a7` `ba8b405` `048d918` `d244bf6` `c659e39`。
 
 **T0 级（数据正确性，7 项）**：
 - **T0-15** `pending` 状态被计入 `present` — `text_gen_page`/`record_detail_page` 生成汇报文本时到课人数虚高

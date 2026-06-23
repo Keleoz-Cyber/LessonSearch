@@ -6,7 +6,7 @@
 
 **面向学校查课场景的 Flutter + FastAPI 全栈应用**
 
-[![Version](https://img.shields.io/badge/version-v0.7.0-blue)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-v0.7.0+34-blue)](CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Android-lightgrey)]()
 [![Flutter](https://img.shields.io/badge/Flutter-3.43-02569B?logo=flutter)]()
