@@ -692,38 +692,44 @@ class _RecordRow extends StatelessWidget {
     );
   }
 
-  void _showRemarkDialog(BuildContext context) {
+  Future<void> _showRemarkDialog(BuildContext context) async {
     final controller = TextEditingController(text: entry.remark);
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('其他状态'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          decoration: const InputDecoration(
-            hintText: '请输入说明',
-            border: OutlineInputBorder(),
+    try {
+      await showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('其他状态'),
+          content: TextField(
+            controller: controller,
+            autofocus: true,
+            decoration: const InputDecoration(
+              hintText: '请输入说明',
+              border: OutlineInputBorder(),
+            ),
           ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('取消'),
+            ),
+            FilledButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+                onStatusChanged(
+                  AttendanceStatus.other,
+                  remark: controller.text.trim(),
+                );
+              },
+              child: const Text('确认'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('取消'),
-          ),
-          FilledButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              onStatusChanged(
-                AttendanceStatus.other,
-                remark: controller.text.trim(),
-              );
-            },
-            child: const Text('确认'),
-          ),
-        ],
-      ),
-    );
+      );
+    } finally {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        controller.dispose();
+      });
+    }
   }
 }
 

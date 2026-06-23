@@ -532,32 +532,38 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
     Future<void> markOther() async {
       if (_focusedIndex == null || _focusedIndex! >= students.length) return;
       final controller = TextEditingController();
-      final result = await showDialog<String>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text('其他状态'),
-          content: TextField(
-            controller: controller,
-            autofocus: true,
-            decoration: const InputDecoration(
-              hintText: '请输入说明（如：迟到、早退…）',
-              border: OutlineInputBorder(),
+      try {
+        final result = await showDialog<String>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('其他状态'),
+            content: TextField(
+              controller: controller,
+              autofocus: true,
+              decoration: const InputDecoration(
+                hintText: '请输入说明（如：迟到、早退…）',
+                border: OutlineInputBorder(),
+              ),
             ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('取消'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(ctx, controller.text.trim()),
+                child: const Text('确认'),
+              ),
+            ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('取消'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(ctx, controller.text.trim()),
-              child: const Text('确认'),
-            ),
-          ],
-        ),
-      );
-      if (result != null && result.isNotEmpty) {
-        await mark(AttendanceStatus.other, remark: result);
+        );
+        if (result != null && result.isNotEmpty) {
+          await mark(AttendanceStatus.other, remark: result);
+        }
+      } finally {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          controller.dispose();
+        });
       }
     }
 
