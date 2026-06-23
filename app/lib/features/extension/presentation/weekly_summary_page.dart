@@ -1607,7 +1607,9 @@ class _PendingSubmissionCard extends ConsumerWidget {
       final note = controller.text.trim();
       if (note.isEmpty) {
         Toast.show(context, '请输入拒绝理由');
-        controller.dispose();
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          controller.dispose();
+        });
         return;
       }
       try {
@@ -1624,7 +1626,9 @@ class _PendingSubmissionCard extends ConsumerWidget {
         Toast.show(context, '操作失败: $e');
       }
     }
-    controller.dispose();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      controller.dispose();
+    });
   }
 
   /// 审核前确认对话框，展示提交摘要信息

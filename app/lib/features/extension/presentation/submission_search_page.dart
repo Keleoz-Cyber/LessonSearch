@@ -422,40 +422,48 @@ class _SubmissionSearchPageState extends ConsumerState<SubmissionSearchPage> {
     final controller = TextEditingController(
       text: _weekNumber?.toString() ?? '',
     );
-    final result = await showDialog<int?>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('选择周次'),
-        content: TextField(
-          controller: controller,
-          keyboardType: TextInputType.number,
-          decoration: const InputDecoration(
-            hintText: '输入周次数字，如 12',
-            border: OutlineInputBorder(),
+    try {
+      final result = await showDialog<int?>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('选择周次'),
+          content: TextField(
+            controller: controller,
+            keyboardType: TextInputType.number,
+            decoration: const InputDecoration(
+              hintText: '输入周次数字，如 12',
+              border: OutlineInputBorder(),
+            ),
+            autofocus: true,
           ),
-          autofocus: true,
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('取消'),
+            ),
+            TextButton(
+              onPressed: () {
+                final text = controller.text.trim();
+                Navigator.pop(ctx, text.isEmpty ? null : int.tryParse(text));
+              },
+              child: const Text('确定'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('取消'),
-          ),
-          TextButton(
-            onPressed: () {
-              final text = controller.text.trim();
-              Navigator.pop(ctx, text.isEmpty ? null : int.tryParse(text));
-            },
-            child: const Text('确定'),
-          ),
-        ],
-      ),
-    );
+      );
 
-    if (result != _weekNumber) {
-      setState(() => _weekNumber = result);
-      _loadData();
+      if (!mounted) return;
+
+      if (result != _weekNumber) {
+        setState(() => _weekNumber = result);
+        _loadData();
+      }
+    } finally {
+      // 延迟到下一帧 dispose，避免 dialog 还在收起时 TextField 依赖未清理
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        controller.dispose();
+      });
     }
-    controller.dispose();
   }
 
   Future<void> _showDateRangePicker() async {
