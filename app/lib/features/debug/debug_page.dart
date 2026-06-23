@@ -3,16 +3,21 @@ import 'dart:io';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/logger/logger_service.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/sync/sync_service.dart';
 import '../../../shared/providers.dart';
+import '../../../shared/widgets/toast.dart';
 import 'sync_tab.dart';
 import 'log_tab.dart';
 import 'release_check_page.dart';
 import '../../../shared/design_system/colors.dart';
+import '../../../shared/design_system/tokens.dart';
+import '../../../shared/design_system/typography.dart';
 
 class DebugPage extends ConsumerStatefulWidget {
   const DebugPage({super.key});
@@ -84,6 +89,7 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
   bool _networkLoading = false;
   String? _networkResult;
   int? _networkLatency;
+  bool _copyingDiagnostic = false;
 
   @override
   void initState() {
@@ -210,6 +216,78 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
         ),
       );
       context.go('/login');
+    }
+  }
+
+  Future<void> _copyDiagnostic() async {
+    setState(() => _copyingDiagnostic = true);
+    try {
+      final auth = ref.read(authServiceProvider);
+      final local = ref.read(attendanceLocalDSProvider);
+      final db = ref.read(databaseProvider);
+      final allLogs = LoggerService.getLogs();
+      final errorLogs =
+          allLogs.where((l) => l.contains('❌') || l.toLowerCase().contains('error')).take(30).toList();
+
+      final pending = await local.getPendingSyncItems();
+      final failed = await local.getFailedSyncItems();
+      final tasks = await db.select(db.attendanceTasks).get();
+      final records = await db.select(db.attendanceRecords).get();
+      final issueCount = await local.getSyncIssueCount();
+
+      final buf = StringBuffer()
+        ..writeln('=== 考勤助手诊断信息 ===')
+        ..writeln('生成时间: ${DateTime.now()}')
+        ..writeln()
+        ..writeln('## 版本')
+        ..writeln('- App: 0.7.0+34')
+        ..writeln('- 平台: ${Platform.operatingSystem} ${Platform.operatingSystemVersion}')
+        ..writeln('- API: ${ApiClient.defaultBaseUrl}')
+        ..writeln()
+        ..writeln('## 用户')
+        ..writeln('- 登录: ${auth.isLoggedIn}')
+        ..writeln('- 用户ID: ${auth.userId ?? "-"}')
+        ..writeln('- 邮箱: ${auth.userEmail ?? "-"}')
+        ..writeln('- 角色: ${auth.userRole}')
+        ..writeln('- 实名: ${auth.userRealName ?? "未填写"}')
+        ..writeln('- Token: ${auth.token != null ? "有效 (${auth.token!.length} 字符)" : "无效"}')
+        ..writeln()
+        ..writeln('## 数据统计')
+        ..writeln('- 任务: ${tasks.length}')
+        ..writeln('- 记录: ${records.length}')
+        ..writeln('- 待同步: ${pending.length}')
+        ..writeln('- 同步失败: ${failed.length}')
+        ..writeln('- IssueCount: $issueCount')
+        ..writeln()
+        ..writeln('## 网络')
+        ..writeln('- 测试结果: ${_networkResult ?? "未测试"}')
+        ..writeln('- 延迟: ${_networkLatency != null ? "${_networkLatency}ms" : "-"}')
+        ..writeln();
+
+      if (failed.isNotEmpty) {
+        buf.writeln('## 失败同步项 (前 10)');
+        for (final f in failed.take(10)) {
+          buf.writeln(
+              '- [${f.entityType}/${f.action}] #${f.entityId} retryCount=${f.retryCount}');
+        }
+        buf.writeln();
+      }
+
+      buf.writeln('## 最近错误日志 (最多 30 条)');
+      if (errorLogs.isEmpty) {
+        buf.writeln('- (无)');
+      } else {
+        for (final l in errorLogs) {
+          buf.writeln(l);
+        }
+      }
+
+      await Clipboard.setData(ClipboardData(text: buf.toString()));
+      if (mounted) Toast.show(context, '诊断信息已复制到剪贴板');
+    } catch (e) {
+      if (mounted) Toast.show(context, '复制失败: $e');
+    } finally {
+      if (mounted) setState(() => _copyingDiagnostic = false);
     }
   }
 
@@ -462,6 +540,33 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
                 ],
               ),
             ),
+          ),
+          const SizedBox(height: 20),
+          _sectionHeader(context, '诊断', Icons.bug_report_outlined),
+          const SizedBox(height: AppSpacing.sm),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: _copyingDiagnostic ? null : _copyDiagnostic,
+              icon: _copyingDiagnostic
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.copy_all, size: 18),
+              label: const Text('复制完整诊断信息'),
+              style: FilledButton.styleFrom(
+                minimumSize: const Size.fromHeight(44),
+                backgroundColor: c.brandPrimary,
+                foregroundColor: c.onBrand,
+              ),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xs + 2),
+          Text(
+            '包含版本/用户/数据/网络/失败同步项/最近错误日志，反馈 bug 时一键发给开发者',
+            style: AppTextStyles.xs.copyWith(color: c.textTertiary),
           ),
           const SizedBox(height: 32),
         ],
