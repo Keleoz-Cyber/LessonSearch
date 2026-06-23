@@ -455,7 +455,7 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
               padding: const EdgeInsets.all(12),
               child: Column(
                 children: [
-                  _InfoRow(label: 'App版本', value: '0.6.5'),
+                  _InfoRow(label: 'App版本', value: '0.7.0+34'),
                   _InfoRow(
                       label: 'API地址', value: ApiClient.defaultBaseUrl),
                   _InfoRow(label: '平台', value: Platform.operatingSystem),

@@ -12,7 +12,7 @@ import '../../../shared/providers.dart';
 import '../../../shared/design_system/colors.dart';
 
 // TODO: 使用 package_info_plus 读取真实 App 版本，避免手动维护
-const _appVersion = '0.6.5';
+const _appVersion = '0.7.0+34';
 
 class ReleaseCheckPage extends ConsumerStatefulWidget {
   const ReleaseCheckPage({super.key});
