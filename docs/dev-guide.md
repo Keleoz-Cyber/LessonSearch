@@ -282,9 +282,9 @@ nameCheckProvider
 
 ## 四、数据库设计
 
-### 本地 SQLite（Drift）— 9 张表（v0.7.1，schema 5）
+### 本地 SQLite（Drift）— 10 张表（v0.7.1，schema 5）
 
-schema 5 为查课计划增加账号归属。历史无归属计划不自动归到当前账号；账号切换后的提醒和本地业务数据按现有迁移及会话隔离逻辑处理，不要通过卸载应用规避迁移。
+schema 5 增加查课计划的提醒状态、错误信息，并将旧版已结束任务及其待同步元数据收尾为 `finished`，保留考勤数据。账号切换通过会话互斥、取消旧提醒和清理账号本地数据实现隔离，不是增加计划归属列。不要通过卸载应用规避迁移。
 
 #### 用户表 (Users)
 | 字段 | 类型 | 说明 |
@@ -390,6 +390,8 @@ schema 5 为查课计划增加账号归属。历史无归属计划不自动归�
 | remark | TEXT | 备注（可选） |
 | notificationId | INT | 通知 ID：`weekNumber * 100 + weekday * 10 + period` |
 | reminderEnabled | BOOL | 是否启用提醒 |
+| reminderStatus | TEXT | 提醒调度状态，默认 unknown |
+| reminderError | TEXT | 提醒调度错误信息（可空） |
 | classStartAt | DATETIME | 上课时间（绝对，用于本地通知调度） |
 | createdAt | DATETIME | 创建时间 |
 
