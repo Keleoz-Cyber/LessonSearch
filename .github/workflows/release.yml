@@ -4,6 +4,13 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Published version to validate without replacing its assets'
+        required: true
+        default: 'v0.7.1'
+        type: string
 
 permissions:
   contents: write
@@ -11,6 +18,8 @@ permissions:
 jobs:
   build:
     runs-on: macos-latest
+    env:
+      RELEASE_TAG: ${{ inputs.release_tag || github.ref_name }}
     
     steps:
     - name: Checkout code
@@ -60,7 +69,7 @@ jobs:
     - name: Check release tag matches package version
       run: |
         PACKAGE_VERSION=$(sed -n 's/^version: \([^+]*\).*/\1/p' app/pubspec.yaml)
-        test "${GITHUB_REF_NAME}" = "v${PACKAGE_VERSION}"
+        test "${RELEASE_TAG}" = "v${PACKAGE_VERSION}"
 
     - name: Analyze and test Flutter
       working-directory: app
@@ -75,6 +84,7 @@ jobs:
         python -m unittest discover -s tests -v
     
     - name: Install iOS dependencies
+      if: github.event_name == 'push'
       run: |
         cd app/ios
         pod install
@@ -85,11 +95,13 @@ jobs:
         flutter build apk --release
     
     - name: Build iOS IPA (unsigned)
+      if: github.event_name == 'push'
       run: |
         cd app
         flutter build ios --release --no-codesign
     
     - name: Create IPA from build
+      if: github.event_name == 'push'
       run: |
         cd app/build/ios/iphoneos
         mkdir -p Payload
@@ -99,7 +111,7 @@ jobs:
     
     - name: Get version from tag
       id: get_version
-      run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+      run: echo "VERSION=${RELEASE_TAG}" >> $GITHUB_OUTPUT
     
     - name: Rename APK
       run: |
@@ -109,6 +121,7 @@ jobs:
     # A locally verified signed release must not be replaced by a later CI build.
     # Unsigned iOS output is build validation only, not an installable public release.
     - name: Publish Android APK if release does not already exist
+      if: github.event_name == 'push'
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         TAG: ${{ steps.get_version.outputs.VERSION }}

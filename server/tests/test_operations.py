@@ -30,7 +30,15 @@ class EnvironmentTest(unittest.TestCase):
             self.assertEqual(environment.select_env_file(server, {}), root / ".env")
             (server / ".env").touch()
             self.assertEqual(environment.select_env_file(server, {}), server / ".env")
-            self.assertEqual(environment.select_env_file(server, {"LESSONSEARCH_ENV_FILE": str(root / "private.env")}), root / "private.env")
+            self.assertEqual(environment.select_env_file(server, {"LESSONSEARCH_ENV_FILE": str(root / "private.env")}), (root / "private.env").resolve())
+
+    @unittest.skipIf(os.name == "nt", "Symlink creation requires elevated privileges on Windows")
+    def test_explicit_env_normalizes_symlinked_parent(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            real = root / "real"; real.mkdir()
+            alias = root / "alias"; alias.symlink_to(real, target_is_directory=True)
+            self.assertEqual(environment.select_env_file(root, {"LESSONSEARCH_ENV_FILE": str(alias / "private.env")}), (real / "private.env").resolve())
 
     def test_raw_password_special_characters_are_not_url_delimiters(self):
         password = "fixture@:/#%+?&password"
