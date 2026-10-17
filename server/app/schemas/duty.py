@@ -47,6 +47,7 @@ class MemberSubmissionStatus(BaseModel):
 
 
 class WeekSubmissionStatusResponse(BaseModel):
+    semester_id: int
     week_number: int
     total_duty: int
     submitted_count: int

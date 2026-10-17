@@ -11,9 +11,10 @@ import '../../../shared/design_system/widgets/status_pill.dart';
 import '../../../shared/providers.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/toast.dart';
+import '../../../shared/widgets/loading_overlay.dart';
 import '../data/submission_service.dart';
 
-final _submissionServiceProvider = Provider<SubmissionService>((ref) {
+final submissionSearchServiceProvider = Provider<SubmissionService>((ref) {
   return SubmissionService(ref.watch(apiClientProvider));
 });
 
@@ -21,7 +22,8 @@ class SubmissionSearchPage extends ConsumerStatefulWidget {
   const SubmissionSearchPage({super.key});
 
   @override
-  ConsumerState<SubmissionSearchPage> createState() => _SubmissionSearchPageState();
+  ConsumerState<SubmissionSearchPage> createState() =>
+      _SubmissionSearchPageState();
 }
 
 class _SubmissionSearchPageState extends ConsumerState<SubmissionSearchPage> {
@@ -29,6 +31,7 @@ class _SubmissionSearchPageState extends ConsumerState<SubmissionSearchPage> {
   final _keywordController = TextEditingController();
 
   int _page = 1;
+  int _requestGeneration = 0;
   final int _pageSize = 20;
   bool _loading = false;
   bool _hasMore = true;
@@ -36,6 +39,9 @@ class _SubmissionSearchPageState extends ConsumerState<SubmissionSearchPage> {
   List<Map<String, dynamic>> _items = [];
 
   // 筛选条件
+  List<dynamic> _semesters = [];
+  int? _semesterId;
+  String _semesterLabel = '当前学期';
   String? _status;
   int? _weekNumber;
   String? _startDate;
@@ -53,6 +59,55 @@ class _SubmissionSearchPageState extends ConsumerState<SubmissionSearchPage> {
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
+    _loadData();
+    _loadSemesters();
+  }
+
+  Future<void> _loadSemesters() async {
+    try {
+      final terms = await ref
+          .read(submissionSearchServiceProvider)
+          .getSemesters();
+      if (mounted) setState(() => _semesters = terms);
+    } catch (_) {
+      if (mounted) Toast.show(context, '学期列表加载失败，可点击学期筛选重试');
+    }
+  }
+
+  Future<void> _showSemesterPicker() async {
+    if (_semesters.isEmpty) await _loadSemesters();
+    if (!mounted) return;
+    final selected = await showModalBottomSheet<({int? id, String label})>(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) => SafeArea(
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                title: const Text('当前学期'),
+                onTap: () => Navigator.pop(ctx, (id: null, label: '当前学期')),
+              ),
+              for (final term in _semesters)
+                ListTile(
+                  title: Text(term['semester_name'] as String? ?? '未知学期'),
+                  subtitle: Text(term['start_date'] as String? ?? ''),
+                  onTap: () => Navigator.pop(ctx, (
+                    id: term['id'] as int?,
+                    label: term['semester_name'] as String? ?? '未知学期',
+                  )),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (!mounted || selected == null || selected.id == _semesterId) return;
+    setState(() {
+      _semesterId = selected.id;
+      _semesterLabel = selected.label;
+    });
     _loadData();
   }
 
@@ -73,20 +128,24 @@ class _SubmissionSearchPageState extends ConsumerState<SubmissionSearchPage> {
   }
 
   Future<void> _loadData() async {
-    if (_loading) return;
+    if (!mounted) return;
+    final generation = ++_requestGeneration;
     setState(() {
       _loading = true;
       _page = 1;
+      _total = 0;
+      _hasMore = true;
       _items = [];
     });
 
     try {
-      final service = ref.read(_submissionServiceProvider);
+      final service = ref.read(submissionSearchServiceProvider);
       final result = await service.adminSearchSubmissions(
         page: _page,
         pageSize: _pageSize,
         status: _status?.isNotEmpty == true ? _status : null,
         weekNumber: _weekNumber,
+        semesterId: _semesterId,
         startDate: _startDate,
         endDate: _endDate,
         keyword: _keywordController.text.trim().isNotEmpty
@@ -98,6 +157,7 @@ class _SubmissionSearchPageState extends ConsumerState<SubmissionSearchPage> {
           .map((e) => e as Map<String, dynamic>)
           .toList();
 
+      if (!mounted || generation != _requestGeneration) return;
       setState(() {
         _items = items;
         _total = result['total'] as int? ?? 0;
@@ -105,23 +165,26 @@ class _SubmissionSearchPageState extends ConsumerState<SubmissionSearchPage> {
         _loading = false;
       });
     } catch (e) {
+      if (!mounted || generation != _requestGeneration) return;
       setState(() => _loading = false);
       if (mounted) Toast.show(context, '加载失败: $e');
     }
   }
 
   Future<void> _loadMore() async {
-    if (_loading || !_hasMore) return;
+    if (_loading || !_hasMore || !mounted) return;
+    final generation = _requestGeneration;
     setState(() => _loading = true);
 
     try {
       final nextPage = _page + 1;
-      final service = ref.read(_submissionServiceProvider);
+      final service = ref.read(submissionSearchServiceProvider);
       final result = await service.adminSearchSubmissions(
         page: nextPage,
         pageSize: _pageSize,
         status: _status?.isNotEmpty == true ? _status : null,
         weekNumber: _weekNumber,
+        semesterId: _semesterId,
         startDate: _startDate,
         endDate: _endDate,
         keyword: _keywordController.text.trim().isNotEmpty
@@ -133,6 +196,7 @@ class _SubmissionSearchPageState extends ConsumerState<SubmissionSearchPage> {
           .map((e) => e as Map<String, dynamic>)
           .toList();
 
+      if (!mounted || generation != _requestGeneration) return;
       setState(() {
         _items.addAll(items);
         _page = nextPage;
@@ -140,6 +204,7 @@ class _SubmissionSearchPageState extends ConsumerState<SubmissionSearchPage> {
         _loading = false;
       });
     } catch (e) {
+      if (!mounted || generation != _requestGeneration) return;
       setState(() => _loading = false);
       if (mounted) Toast.show(context, '加载失败: $e');
     }
@@ -178,8 +243,9 @@ class _SubmissionSearchPageState extends ConsumerState<SubmissionSearchPage> {
                   const Spacer(),
                   Text(
                     '第 $_page 页',
-                    style: AppTextStyles.withTabular(AppTextStyles.sm)
-                        .copyWith(color: c.textTertiary),
+                    style: AppTextStyles.withTabular(
+                      AppTextStyles.sm,
+                    ).copyWith(color: c.textTertiary),
                   ),
                 ],
               ),
@@ -263,9 +329,7 @@ class _SubmissionSearchPageState extends ConsumerState<SubmissionSearchPage> {
       ),
       decoration: BoxDecoration(
         color: c.bgSurface,
-        border: Border(
-          bottom: BorderSide(color: c.borderSubtle),
-        ),
+        border: Border(bottom: BorderSide(color: c.borderSubtle)),
       ),
       child: Column(
         children: [
@@ -274,11 +338,7 @@ class _SubmissionSearchPageState extends ConsumerState<SubmissionSearchPage> {
             controller: _keywordController,
             decoration: InputDecoration(
               hintText: '搜索提交人、班级...',
-              prefixIcon: Icon(
-                Icons.search,
-                size: 18,
-                color: c.textSecondary,
-              ),
+              prefixIcon: Icon(Icons.search, size: 18, color: c.textSecondary),
               suffixIcon: IconButton(
                 icon: Icon(Icons.close, size: 18, color: c.textTertiary),
                 tooltip: '清除',
@@ -298,6 +358,12 @@ class _SubmissionSearchPageState extends ConsumerState<SubmissionSearchPage> {
             child: Row(
               children: [
                 _buildFilterChip(
+                  label: _semesterLabel,
+                  active: _semesterId != null,
+                  onTap: _showSemesterPicker,
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                _buildFilterChip(
                   label: _statusOptions.firstWhere(
                     (o) => o['value'] == (_status ?? ''),
                     orElse: () => _statusOptions.first,
@@ -307,9 +373,7 @@ class _SubmissionSearchPageState extends ConsumerState<SubmissionSearchPage> {
                 ),
                 const SizedBox(width: AppSpacing.sm),
                 _buildFilterChip(
-                  label: _weekNumber != null
-                      ? '第 $_weekNumber 周'
-                      : '全部周次',
+                  label: _weekNumber != null ? '第 $_weekNumber 周' : '全部周次',
                   active: _weekNumber != null,
                   onTap: () => _showWeekPicker(),
                 ),
@@ -325,6 +389,8 @@ class _SubmissionSearchPageState extends ConsumerState<SubmissionSearchPage> {
                 _ResetChip(
                   onPressed: () {
                     setState(() {
+                      _semesterId = null;
+                      _semesterLabel = '当前学期';
                       _status = null;
                       _weekNumber = null;
                       _startDate = null;
@@ -399,7 +465,8 @@ class _SubmissionSearchPageState extends ConsumerState<SubmissionSearchPage> {
           children: _statusOptions.map((option) {
             return ListTile(
               title: Text(option['label']!),
-              trailing: _status == option['value'] ||
+              trailing:
+                  _status == option['value'] ||
                       (_status == null && option['value'] == '')
                   ? const Icon(Icons.check)
                   : null,
@@ -410,7 +477,7 @@ class _SubmissionSearchPageState extends ConsumerState<SubmissionSearchPage> {
       ),
     );
 
-    if (result != null) {
+    if (result != null && mounted) {
       setState(() {
         _status = result.isEmpty ? null : result;
       });
@@ -423,7 +490,7 @@ class _SubmissionSearchPageState extends ConsumerState<SubmissionSearchPage> {
       text: _weekNumber?.toString() ?? '',
     );
     try {
-      final result = await showDialog<int?>(
+      final result = await showDialog<({int? week})>(
         context: context,
         builder: (ctx) => AlertDialog(
           title: const Text('选择周次'),
@@ -444,7 +511,9 @@ class _SubmissionSearchPageState extends ConsumerState<SubmissionSearchPage> {
             TextButton(
               onPressed: () {
                 final text = controller.text.trim();
-                Navigator.pop(ctx, text.isEmpty ? null : int.tryParse(text));
+                final value = int.tryParse(text);
+                if (text.isNotEmpty && (value == null || value < 1)) return;
+                Navigator.pop(ctx, (week: value));
               },
               child: const Text('确定'),
             ),
@@ -454,8 +523,8 @@ class _SubmissionSearchPageState extends ConsumerState<SubmissionSearchPage> {
 
       if (!mounted) return;
 
-      if (result != _weekNumber) {
-        setState(() => _weekNumber = result);
+      if (result != null && result.week != _weekNumber) {
+        setState(() => _weekNumber = result.week);
         _loadData();
       }
     } finally {
@@ -477,7 +546,7 @@ class _SubmissionSearchPageState extends ConsumerState<SubmissionSearchPage> {
       lastDate: DateTime.now(),
       helpText: '选择开始日期',
     );
-    if (start == null) return;
+    if (start == null || !mounted) return;
 
     // 计算结束日期的 initialDate，保证在 [start, now] 范围内
     DateTime endInitialDate;
@@ -501,7 +570,7 @@ class _SubmissionSearchPageState extends ConsumerState<SubmissionSearchPage> {
       lastDate: DateTime.now(),
       helpText: '选择结束日期',
     );
-    if (end == null) return;
+    if (end == null || !mounted) return;
 
     setState(() {
       _startDate = DateFormat('yyyy-MM-dd').format(start);
@@ -557,8 +626,7 @@ class _SubmissionSearchPageState extends ConsumerState<SubmissionSearchPage> {
                 DateFormat('yyyy-MM-dd HH:mm').format(submittedAt),
               ),
               _buildDetailRow('周次', '第 ${item['week_number']} 周'),
-              if (classNames.isNotEmpty)
-                _buildDetailRow('班级', classNames),
+              if (classNames.isNotEmpty) _buildDetailRow('班级', classNames),
               _buildDetailRow('记录数量', '$recordCount 条'),
               const SizedBox(height: AppSpacing.sm),
               Row(
@@ -653,25 +721,13 @@ class _SubmissionSearchPageState extends ConsumerState<SubmissionSearchPage> {
   Future<void> _showStudentDetail(Map<String, dynamic> item) async {
     final submissionId = item['id'] as int;
 
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => const AlertDialog(
-        content: Row(
-          children: [
-            CircularProgressIndicator(),
-            SizedBox(width: 20),
-            Text('正在加载学生明细...'),
-          ],
-        ),
-      ),
-    );
+    final loadingDialog = LoadingDialogHandle.show(context);
 
     try {
-      final service = ref.read(_submissionServiceProvider);
+      final service = ref.read(submissionSearchServiceProvider);
       final data = await service.getSubmissionRecords(submissionId);
 
-      if (mounted) Navigator.of(context, rootNavigator: true).pop();
+      if (!loadingDialog.close() || !context.mounted) return;
 
       if (!mounted) return;
 
@@ -684,88 +740,100 @@ class _SubmissionSearchPageState extends ConsumerState<SubmissionSearchPage> {
       final submissionStatus = data['status'] as String?;
       final isRejected = submissionStatus == 'rejected';
 
-      final absentRecords = records.where((r) => r['status'] == 'absent').toList();
+      final absentRecords = records
+          .where((r) => r['status'] == 'absent')
+          .toList();
       final lateRecords = records.where((r) => r['status'] == 'late').toList();
-      final leaveRecords = records.where((r) => r['status'] == 'leave').toList();
-      final otherRecords = records.where((r) => r['status'] == 'other').toList();
+      final leaveRecords = records
+          .where((r) => r['status'] == 'leave')
+          .toList();
+      final otherRecords = records
+          .where((r) => r['status'] == 'other')
+          .toList();
 
       showDialog(
         context: context,
         builder: (ctx) {
           final c = ctx.colors;
           return AlertDialog(
-          title: Text('学生明细 (${records.length}人)'),
-          content: SizedBox(
-            width: double.maxFinite,
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (isRejected) ...[
-                    AppNoticeBox(
-                      color: c.stateDanger,
-                      icon: Icons.cancel,
-                      title: '已拒绝',
-                      body: '审核人: ${item['reviewer_name']}',
-                    ),
-                    if (item['review_note'] != null) ...[
-                      const SizedBox(height: AppSpacing.sm),
-                      Text(
-                        '拒绝原因: ${item['review_note']}',
-                        style: AppTextStyles.sm.copyWith(color: c.stateDanger),
+            title: Text('学生明细 (${records.length}人)'),
+            content: SizedBox(
+              width: double.maxFinite,
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (isRejected) ...[
+                      AppNoticeBox(
+                        color: c.stateDanger,
+                        icon: Icons.cancel,
+                        title: '已拒绝',
+                        body: '审核人: ${item['reviewer_name']}',
                       ),
-                    ],
-                    const SizedBox(height: AppSpacing.lg),
-                  ],
-                  if (recordCount == 0)
-                    EmptyState.noLinkedRecords()
-                  else if (lateCount + absentCount + leaveCount + otherCount == 0)
-                    EmptyState.noAbnormalRecords()
-                  else ...[
-                    Wrap(
-                      spacing: AppSpacing.sm,
-                      runSpacing: AppSpacing.sm,
-                      children: [
-                        if (lateCount > 0)
-                          _buildMiniStat('迟到', lateCount, c.stateWarning),
-                        if (absentCount > 0)
-                          _buildMiniStat('缺勤', absentCount, c.stateDanger),
-                        if (leaveCount > 0)
-                          _buildMiniStat('请假', leaveCount, c.stateInfo),
-                        if (otherCount > 0)
-                          _buildMiniStat('其他', otherCount, c.textTertiary),
+                      if (item['review_note'] != null) ...[
+                        const SizedBox(height: AppSpacing.sm),
+                        Text(
+                          '拒绝原因: ${item['review_note']}',
+                          style: AppTextStyles.sm.copyWith(
+                            color: c.stateDanger,
+                          ),
+                        ),
                       ],
-                    ),
-                    const SizedBox(height: AppSpacing.lg),
-                    if (absentRecords.isNotEmpty) ...[
-                      _buildRecordGroup('缺勤', absentRecords, c.stateDanger),
+                      const SizedBox(height: AppSpacing.lg),
                     ],
-                    if (lateRecords.isNotEmpty) ...[
-                      _buildRecordGroup('迟到', lateRecords, c.stateWarning),
-                    ],
-                    if (leaveRecords.isNotEmpty) ...[
-                      _buildRecordGroup('请假', leaveRecords, c.stateInfo),
-                    ],
-                    if (otherRecords.isNotEmpty) ...[
-                      _buildRecordGroup('其他', otherRecords, c.textTertiary),
+                    if (recordCount == 0)
+                      EmptyState.noLinkedRecords()
+                    else if (lateCount +
+                            absentCount +
+                            leaveCount +
+                            otherCount ==
+                        0)
+                      EmptyState.noAbnormalRecords()
+                    else ...[
+                      Wrap(
+                        spacing: AppSpacing.sm,
+                        runSpacing: AppSpacing.sm,
+                        children: [
+                          if (lateCount > 0)
+                            _buildMiniStat('迟到', lateCount, c.stateWarning),
+                          if (absentCount > 0)
+                            _buildMiniStat('缺勤', absentCount, c.stateDanger),
+                          if (leaveCount > 0)
+                            _buildMiniStat('请假', leaveCount, c.stateInfo),
+                          if (otherCount > 0)
+                            _buildMiniStat('其他', otherCount, c.textTertiary),
+                        ],
+                      ),
+                      const SizedBox(height: AppSpacing.lg),
+                      if (absentRecords.isNotEmpty) ...[
+                        _buildRecordGroup('缺勤', absentRecords, c.stateDanger),
+                      ],
+                      if (lateRecords.isNotEmpty) ...[
+                        _buildRecordGroup('迟到', lateRecords, c.stateWarning),
+                      ],
+                      if (leaveRecords.isNotEmpty) ...[
+                        _buildRecordGroup('请假', leaveRecords, c.stateInfo),
+                      ],
+                      if (otherRecords.isNotEmpty) ...[
+                        _buildRecordGroup('其他', otherRecords, c.textTertiary),
+                      ],
                     ],
                   ],
-                ],
+                ),
               ),
             ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('关闭'),
-            ),
-          ],
-        );
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('关闭'),
+              ),
+            ],
+          );
         },
       );
     } catch (e) {
-      if (mounted) Navigator.of(context, rootNavigator: true).pop();
+      loadingDialog.close();
       if (mounted) Toast.show(context, '加载学生明细失败: $e');
     }
   }
@@ -797,13 +865,15 @@ class _SubmissionSearchPageState extends ConsumerState<SubmissionSearchPage> {
           ),
         ),
         const SizedBox(height: 4),
-        ...records.map((r) => Padding(
-          padding: const EdgeInsets.symmetric(vertical: 1),
-          child: Text(
-            '  ${r['student_name']} (${r['student_no']}) ${r['class_name']}',
-            style: const TextStyle(fontSize: 12),
+        ...records.map(
+          (r) => Padding(
+            padding: const EdgeInsets.symmetric(vertical: 1),
+            child: Text(
+              '  ${r['student_name']} (${r['student_no']}) ${r['class_name']}',
+              style: const TextStyle(fontSize: 12),
+            ),
           ),
-        )),
+        ),
         const SizedBox(height: 12),
       ],
     );
@@ -814,10 +884,7 @@ class _SubmissionCard extends StatelessWidget {
   final Map<String, dynamic> item;
   final VoidCallback onTap;
 
-  const _SubmissionCard({
-    required this.item,
-    required this.onTap,
-  });
+  const _SubmissionCard({required this.item, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -875,8 +942,9 @@ class _SubmissionCard extends StatelessWidget {
               const SizedBox(width: AppSpacing.sm),
               Text(
                 DateFormat('MM-dd HH:mm').format(submittedAt),
-                style: AppTextStyles.withTabular(AppTextStyles.xs)
-                    .copyWith(color: c.textTertiary),
+                style: AppTextStyles.withTabular(
+                  AppTextStyles.xs,
+                ).copyWith(color: c.textTertiary),
               ),
             ],
           ),
@@ -948,4 +1016,3 @@ class _ResetChip extends StatelessWidget {
       return (StatusPillVariant.neutral, status);
   }
 }
-

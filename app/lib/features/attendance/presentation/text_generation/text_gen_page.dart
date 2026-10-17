@@ -32,6 +32,7 @@ class _TextGenPageState extends ConsumerState<TextGenPage>
   String _groupReport = '';
   List<ClassStats> _classStatsList = [];
   bool _generated = false;
+  bool _finishing = false;
 
   @override
   void initState() {
@@ -146,7 +147,11 @@ class _TextGenPageState extends ConsumerState<TextGenPage>
         .join('、');
   }
 
-  void _copyAndOpenApp(String text, bool isWechat, {bool confirm = false}) async {
+  void _copyAndOpenApp(
+    String text,
+    bool isWechat, {
+    bool confirm = false,
+  }) async {
     final c = context.colors;
     if (confirm) {
       final result = await showDialog<bool>(
@@ -171,13 +176,14 @@ class _TextGenPageState extends ConsumerState<TextGenPage>
           ],
         ),
       );
-      if (result != true) return;
+      if (result != true || !mounted) return;
     }
 
     Clipboard.setData(ClipboardData(text: text));
     if (mounted) Toast.show(context, '已复制到剪贴板');
 
     await Future.delayed(const Duration(milliseconds: 300));
+    if (!mounted) return;
 
     final uri = Uri.parse(isWechat ? 'weixin://' : 'mqq://');
     if (await canLaunchUrl(uri)) {
@@ -190,11 +196,19 @@ class _TextGenPageState extends ConsumerState<TextGenPage>
   }
 
   Future<void> _finish() async {
-    final weekData = await ref.read(currentWeekProvider.future);
-    final weekNumber = weekData['week_number'] as int;
-    ref.invalidate(weekNameCheckTasksProvider(weekNumber));
-    ref.invalidate(submittedTaskIdsProvider);
-    context.go('/');
+    if (_finishing) return;
+    setState(() => _finishing = true);
+    try {
+      await ref.read(nameCheckProvider.notifier).completeWorkflow();
+      if (!mounted) return;
+      ref.invalidate(weekNameCheckTasksProvider);
+      ref.invalidate(submittedTaskIdsProvider);
+      context.go('/');
+    } catch (_) {
+      if (mounted) Toast.show(context, '保存完成状态失败，请重试');
+    } finally {
+      if (mounted) setState(() => _finishing = false);
+    }
   }
 
   Future<bool> _onWillPop() async {
@@ -226,13 +240,10 @@ class _TextGenPageState extends ConsumerState<TextGenPage>
       canPop: false,
       onPopInvokedWithResult: (didPop, _) async {
         if (didPop) return;
+        if (_finishing) return;
         final shouldPop = await _onWillPop();
         if (shouldPop && context.mounted) {
-          final weekData = await ref.read(currentWeekProvider.future);
-          final weekNumber = weekData['week_number'] as int;
-          ref.invalidate(weekNameCheckTasksProvider(weekNumber));
-          ref.invalidate(submittedTaskIdsProvider);
-          context.go('/');
+          await _finish();
         }
       },
       child: Scaffold(
@@ -272,7 +283,8 @@ class _TextGenPageState extends ConsumerState<TextGenPage>
         bottomNavigationBar: BottomActionBar(
           primary: AppButton.gradient(
             label: '完成',
-            onPressed: _finish,
+            onPressed: _finishing ? null : _finish,
+            loading: _finishing,
             size: AppButtonSize.lg,
             fullWidth: true,
           ),
@@ -358,30 +370,30 @@ class _TextGenPageState extends ConsumerState<TextGenPage>
                           style: AppTextStyles.h3.copyWith(
                             color: c.textPrimary,
                           ),
-                        overflow: TextOverflow.ellipsis,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: AppSpacing.sm),
-                    AppButton.primary(
-                      label: '复制',
-                      onPressed: () => _copyAndOpenApp(text, false),
-                      leadingIcon: Icons.copy,
-                      size: AppButtonSize.sm,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                SelectableText(
-                  text,
-                  style: AppTextStyles.body.copyWith(
-                    color: c.textPrimary,
-                    height: 1.5,
+                      const SizedBox(width: AppSpacing.sm),
+                      AppButton.primary(
+                        label: '复制',
+                        onPressed: () => _copyAndOpenApp(text, false),
+                        leadingIcon: Icons.copy,
+                        size: AppButtonSize.sm,
+                      ),
+                    ],
                   ),
-                ),
-              ],
+                  const SizedBox(height: AppSpacing.sm),
+                  SelectableText(
+                    text,
+                    style: AppTextStyles.body.copyWith(
+                      color: c.textPrimary,
+                      height: 1.5,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
-        ),
         );
       },
     );

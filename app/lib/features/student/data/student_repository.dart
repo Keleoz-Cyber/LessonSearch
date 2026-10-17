@@ -16,6 +16,7 @@ class StudentRepository {
   static const _keyClassVersionPrefix = 'sync_class_version_';
   static const _keyClassStudentIdsPrefix = 'sync_class_student_ids_';
   static const _keyDataVersion = 'data_version';
+  Future<void>? _baseSync;
 
   StudentRepository(this._db, this._api, this._prefs);
 
@@ -32,7 +33,15 @@ class StudentRepository {
     return names;
   }
 
-  Future<void> syncBaseData() async {
+  Future<void> syncBaseData() {
+    final running = _baseSync;
+    if (running != null) return running;
+    final future = _syncBaseData();
+    _baseSync = future;
+    return future.whenComplete(() => _baseSync = null);
+  }
+
+  Future<void> _syncBaseData() async {
     final gradesJson = await _api.getGrades();
     final majorsJson = await _api.getMajors();
     final classesJson = await _api.getClasses();
@@ -124,7 +133,8 @@ class StudentRepository {
       final localVersion = _prefs.getInt(_keyDataVersion) ?? 0;
 
       if (serverVersion > localVersion) {
-        await _clearBaseData();
+        // Download and commit the replacement snapshot before changing the
+        // version. Keep cached students/classes referenced by historical tasks.
         await syncBaseData();
         await _prefs.setInt(_keyDataVersion, serverVersion);
         return true;
@@ -133,13 +143,6 @@ class StudentRepository {
     } catch (_) {
       return false;
     }
-  }
-
-  Future<void> _clearBaseData() async {
-    await _db.delete(_db.students).go();
-    await _db.delete(_db.classes).go();
-    await _db.delete(_db.majors).go();
-    await _db.delete(_db.grades).go();
   }
 
   Future<bool> checkBaseDataUpdate() async {

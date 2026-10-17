@@ -9,10 +9,12 @@ import 'remote/attendance_remote_ds.dart';
 /// 所有业务操作通过此类进行，页面层不直接操作数据库或 API。
 class AttendanceRepository {
   final AttendanceLocalDataSource _local;
-  final AttendanceRemoteDataSource _remote;
   static const _uuid = Uuid();
 
-  AttendanceRepository(this._local, this._remote);
+  AttendanceRepository(this._local, AttendanceRemoteDataSource remote);
+
+  Future<T> transaction<T>(Future<T> Function() action) =>
+      _local.transaction(action);
 
   // ============================================================
   // 任务
@@ -25,12 +27,13 @@ class AttendanceRepository {
     int? selectedGradeId,
     int? selectedMajorId,
     int? userId,
-  }) async {
+  }) => _local.transaction(() async {
     final now = DateTime.now();
     final task = AttendanceTask(
       id: _uuid.v4(),
       userId: userId,
       type: type,
+      phase: TaskPhase.executing,
       classIds: classIds,
       selectedGradeId: selectedGradeId,
       selectedMajorId: selectedMajorId,
@@ -47,7 +50,7 @@ class AttendanceRepository {
     );
 
     return task;
-  }
+  });
 
   /// 更新任务状态：写入 Drift + 入队同步
   Future<AttendanceTask> updateTaskStatus(
@@ -56,8 +59,9 @@ class AttendanceRepository {
     TaskPhase? phase,
     int? currentClassIndex,
     int? currentStudentIndex,
-  }) async {
-    final updated = task.copyWith(
+  }) => _local.transaction(() async {
+    final current = await _local.getTask(task.id) ?? task;
+    final updated = current.copyWith(
       status: status,
       phase: phase,
       currentClassIndex: currentClassIndex,
@@ -80,7 +84,7 @@ class AttendanceRepository {
     );
 
     return updated;
-  }
+  });
 
   /// 获取任务
   Future<AttendanceTask?> getTask(String taskId) {
@@ -91,6 +95,9 @@ class AttendanceRepository {
   Future<List<AttendanceTask>> getInProgressTasks() {
     return _local.getTasksByStatus(TaskStatus.inProgress);
   }
+
+  Future<List<AttendanceTask>> getResumableTasks() =>
+      _local.getResumableTasks();
 
   /// 获取已完成的记名任务（用于提交审核）
   Future<List<AttendanceTask>> getCompletedNameCheckTasks() {
@@ -108,7 +115,7 @@ class AttendanceRepository {
     required int classId,
     AttendanceStatus status = AttendanceStatus.pending,
     String? remark,
-  }) async {
+  }) => _local.transaction(() async {
     final now = DateTime.now();
     final record = AttendanceRecord(
       taskId: taskId,
@@ -132,19 +139,19 @@ class AttendanceRepository {
         'student_id': studentId,
         'class_id': classId,
         'status': status.value,
-        'remark': ?remark,
+        'remark': remark,
       },
     );
 
     return saved;
-  }
+  });
 
   /// 更新考勤记录状态：写入 Drift + 入队同步
   Future<void> updateRecordStatus(
     int recordId,
     AttendanceStatus status, {
     String? remark,
-  }) async {
+  }) => _local.transaction(() async {
     // 先获取记录信息（用于同步）
     final record = await _local.getRecordById(recordId);
     if (record == null) return;
@@ -158,21 +165,23 @@ class AttendanceRepository {
         'task_id': record.taskId,
         'student_id': record.studentId,
         'status': status.value,
-        'remark': ?remark,
+        'remark': remark,
       },
     );
-  }
+  });
 
   /// 删除单条考勤记录（用于点名撤销）
-  Future<void> deleteRecord(int recordId) async {
+  Future<void> deleteRecord(int recordId) => _local.transaction(() async {
+    final record = await _local.getRecordById(recordId);
+    if (record == null) return;
     await _local.deleteRecord(recordId);
     await _local.enqueueSync(
       entityType: 'record',
       entityId: recordId.toString(),
       action: 'delete',
-      payload: {},
+      payload: {'task_id': record.taskId, 'student_id': record.studentId},
     );
-  }
+  });
 
   /// 获取任务的所有记录
   Future<List<AttendanceRecord>> getRecordsByTask(String taskId) {
@@ -180,12 +189,12 @@ class AttendanceRepository {
   }
 
   /// 批量创建/更新考勤记录（用于 finishNameCheck 等场景）
-  /// 按 taskId+studentId upsert，返回 Map<studentId, recordId>
+  /// 按 taskId+studentId upsert，返回 `Map<studentId, recordId>`
   Future<Map<int, int>> createRecordsBatch({
     required String taskId,
     required List<({int studentId, int classId, AttendanceStatus status})>
     items,
-  }) async {
+  }) => _local.transaction(() async {
     final now = DateTime.now();
     final records = items
         .map(
@@ -223,5 +232,5 @@ class AttendanceRepository {
     await _local.enqueueSyncBatch(syncItems);
 
     return recordIdMap;
-  }
+  });
 }

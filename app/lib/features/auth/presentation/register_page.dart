@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,6 +10,8 @@ import '../../../shared/design_system/typography.dart';
 import '../../../shared/design_system/widgets/app_button.dart';
 import '../../../shared/providers.dart';
 import '../../../shared/widgets/toast.dart';
+import '../../../core/auth/account_session.dart';
+import '../../../core/network/error_message.dart';
 
 class RegisterPage extends ConsumerStatefulWidget {
   const RegisterPage({super.key});
@@ -25,9 +28,11 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
   bool _isLoading = false;
   bool _isSendingCode = false;
   int _countdown = 0;
+  Timer? _countdownTimer;
 
   @override
   void dispose() {
+    _countdownTimer?.cancel();
     _emailController.dispose();
     _codeController.dispose();
     _invitationCodeController.dispose();
@@ -35,6 +40,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
   }
 
   Future<void> _sendCode() async {
+    if (_isSendingCode || _countdown > 0) return;
     final email = _emailController.text.trim();
     if (email.isEmpty || !email.contains('@')) {
       Toast.show(context, '请输入正确的邮箱地址');
@@ -46,34 +52,30 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
     try {
       final apiClient = ref.read(apiClientProvider);
       await apiClient.sendVerificationCode(email);
-
+      if (!mounted) return;
       Toast.show(context, '验证码已发送');
 
       setState(() => _countdown = 60);
-      while (_countdown > 0) {
-        await Future.delayed(const Duration(seconds: 1));
-        if (!mounted) break;
-        setState(() => _countdown--);
-      }
+      _countdownTimer?.cancel();
+      _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+        if (!mounted || _countdown <= 1) {
+          timer.cancel();
+          if (mounted) setState(() => _countdown = 0);
+        } else {
+          setState(() => _countdown--);
+        }
+      });
     } on DioException catch (e) {
-      final status = e.response?.statusCode;
-      String hint = '发送失败';
-      if (status == 429) {
-        hint = '请求过于频繁，请稍后再试';
-      } else if (status == 500) {
-        hint = '服务器错误，请检查SMTP配置';
-      } else {
-        hint = e.response?.data['detail'] ?? '发送失败';
-      }
-      Toast.show(context, hint);
+      if (mounted) Toast.show(context, dioErrorMessage(e, fallback: '发送失败'));
     } on Exception {
-      Toast.show(context, '网络错误，请稍后重试');
+      if (mounted) Toast.show(context, '网络错误，请稍后重试');
     } finally {
       if (mounted) setState(() => _isSendingCode = false);
     }
   }
 
   Future<void> _register() async {
+    if (_isLoading) return;
     final email = _emailController.text.trim();
     final code = _codeController.text.trim();
     final invitationCode = _invitationCodeController.text.trim();
@@ -87,7 +89,6 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
 
     try {
       final apiClient = ref.read(apiClientProvider);
-      final authService = ref.read(authServiceProvider);
 
       final response = await apiClient.register(
         email: email,
@@ -95,25 +96,13 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
         invitationCode: invitationCode,
       );
 
-      await authService.saveAuth(
-        token: response['token'],
-        userId: response['user']['id'],
-        email: response['user']['email'],
-        nickname: response['user']['nickname'],
-        realName: response['user']['real_name'],
-        role: response['user']['role'],
-      );
-
-      ref.invalidate(authServiceProvider);
-      ref.invalidate(isLoggedInProvider);
-      ref.invalidate(userEmailProvider);
-      ref.invalidate(apiClientProvider);
-
+      if (!mounted) return;
+      await finalizeAuthentication(ref, response);
       if (mounted) {
         context.go('/real-name');
       }
     } on DioException catch (e) {
-      final detail = e.response?.data['detail'] ?? '';
+      final detail = dioErrorMessage(e, fallback: '注册失败');
       String hint = '注册失败';
       if (detail.contains('邀请码无效')) {
         hint = '邀请码无效';
@@ -126,12 +115,65 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
       } else if (detail.isNotEmpty) {
         hint = detail;
       }
-      Toast.show(context, hint);
+      if (mounted) Toast.show(context, hint);
+    } on AccountSessionException catch (e) {
+      if (mounted) Toast.show(context, e.message);
     } on Exception {
-      Toast.show(context, '网络错误，请稍后重试');
+      if (mounted) Toast.show(context, '网络错误，请稍后重试');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  Widget _buildCodeInput() {
+    final c = context.colors;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final stacked =
+            constraints.maxWidth < 300 ||
+            MediaQuery.textScalerOf(context).scale(1) > 1.3;
+        final input = TextField(
+          controller: _codeController,
+          decoration: InputDecoration(
+            hintText: '6 位数字',
+            prefixIcon: Icon(
+              Icons.shield_outlined,
+              size: 18,
+              color: c.textSecondary,
+            ),
+            counterText: '',
+          ),
+          keyboardType: TextInputType.number,
+          maxLength: 6,
+          style: AppTextStyles.body.copyWith(color: c.textPrimary),
+        );
+        final send = AppButton.secondary(
+          label: _countdown > 0 ? '${_countdown}s' : '发送',
+          onPressed: _countdown > 0 || _isSendingCode ? null : _sendCode,
+          loading: _isSendingCode,
+          size: AppButtonSize.lg,
+          fullWidth: stacked,
+        );
+        if (stacked) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              input,
+              const SizedBox(height: AppSpacing.md),
+              send,
+            ],
+          );
+        }
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(child: input),
+            const SizedBox(width: AppSpacing.md),
+            send,
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -168,40 +210,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
             const SizedBox(height: AppSpacing.lg),
 
             _FieldLabel(label: '验证码'),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _codeController,
-                    decoration: InputDecoration(
-                      hintText: '6 位数字',
-                      prefixIcon: Icon(
-                        Icons.shield_outlined,
-                        size: 18,
-                        color: c.textSecondary,
-                      ),
-                      counterText: '',
-                    ),
-                    keyboardType: TextInputType.number,
-                    maxLength: 6,
-                    style: AppTextStyles.body.copyWith(color: c.textPrimary),
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.md),
-                SizedBox(
-                  height: 48,
-                  child: AppButton.secondary(
-                    label: _countdown > 0 ? '${_countdown}s' : '发送',
-                    onPressed: _countdown > 0 || _isSendingCode
-                        ? null
-                        : _sendCode,
-                    loading: _isSendingCode,
-                    size: AppButtonSize.lg,
-                  ),
-                ),
-              ],
-            ),
+            _buildCodeInput(),
             const SizedBox(height: AppSpacing.lg),
 
             _FieldLabel(label: '邀请码'),
@@ -228,8 +237,10 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
             ),
             const SizedBox(height: AppSpacing.lg),
 
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+            Wrap(
+              alignment: WrapAlignment.center,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: AppSpacing.xs,
               children: [
                 Text(
                   '已有账户？',

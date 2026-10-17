@@ -11,6 +11,7 @@ class Submission(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    semester_id = Column(Integer, ForeignKey("week_config.id"), nullable=False, index=True)
     week_number = Column(Integer, nullable=False)
     status = Column(String(20), default="pending")  # pending/approved/rejected/cancelled
     reviewer_id = Column(Integer, ForeignKey("users.id"), nullable=True)
@@ -45,6 +46,7 @@ class SubmissionSnapshot(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     submission_id = Column(Integer, ForeignKey("submissions.id"), nullable=False, unique=True)
+    semester_id = Column(Integer, ForeignKey("week_config.id"), nullable=False, index=True)
     week_number = Column(Integer, nullable=False)
     user_id = Column(Integer, nullable=False)
     class_names = Column(String(200), nullable=True)

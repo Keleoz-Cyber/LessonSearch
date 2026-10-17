@@ -11,14 +11,49 @@ import '../../../../shared/design_system/widgets/bottom_action_bar.dart';
 import '../../../../shared/design_system/widgets/status_pill.dart';
 import '../../../../shared/providers.dart';
 import '../../../../shared/widgets/empty_state.dart';
+import '../../../../shared/widgets/toast.dart';
 import '../../../attendance/domain/models.dart';
 
 /// 记名确认页：展示异常名单（未到/请假/其他），按班级分组
-class ConfirmationPage extends ConsumerWidget {
+class ConfirmationPage extends ConsumerStatefulWidget {
   const ConfirmationPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ConfirmationPage> createState() => _ConfirmationPageState();
+}
+
+class _ConfirmationPageState extends ConsumerState<ConfirmationPage> {
+  bool _advancing = false;
+
+  Future<void> _advance(String taskId) async {
+    if (_advancing) return;
+    setState(() => _advancing = true);
+    try {
+      await ref.read(nameCheckProvider.notifier).advanceToTextGeneration();
+      if (!mounted) return;
+      await context.push('/text-gen', extra: {'taskId': taskId});
+    } catch (_) {
+      if (mounted) Toast.show(context, '保存阶段失败，请重试');
+    } finally {
+      if (mounted) setState(() => _advancing = false);
+    }
+  }
+
+  Future<void> _resumeEditing() async {
+    if (_advancing) return;
+    setState(() => _advancing = true);
+    try {
+      await ref.read(nameCheckProvider.notifier).resumeEditing();
+      if (mounted) context.pop();
+    } catch (_) {
+      if (mounted) Toast.show(context, '恢复编辑失败，请重试');
+    } finally {
+      if (mounted) setState(() => _advancing = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final state = ref.watch(nameCheckProvider);
     final task = state.task;
 
@@ -72,9 +107,8 @@ class ConfirmationPage extends ConsumerWidget {
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, result) {
-        if (didPop) return;
-        ref.read(nameCheckProvider.notifier).resumeEditing();
-        context.pop();
+        if (didPop || _advancing) return;
+        _resumeEditing();
       },
       child: Scaffold(
         backgroundColor: c.bgCanvas,
@@ -95,9 +129,7 @@ class ConfirmationPage extends ConsumerWidget {
                       padding: const EdgeInsets.all(AppSpacing.lg),
                       children: abnormalByClass.entries.map((entry) {
                         return Padding(
-                          padding: const EdgeInsets.only(
-                            bottom: AppSpacing.md,
-                          ),
+                          padding: const EdgeInsets.only(bottom: AppSpacing.md),
                           child: AppCard(
                             padding: const EdgeInsets.all(AppSpacing.lg),
                             child: Column(
@@ -137,17 +169,15 @@ class ConfirmationPage extends ConsumerWidget {
             BottomActionBar(
               primary: AppButton.gradient(
                 label: '确认名单',
-                onPressed: () {
-                  context.push('/text-gen', extra: {'taskId': task.id});
-                },
+                onPressed: _advancing ? null : () => _advance(task.id),
+                loading: _advancing,
                 size: AppButtonSize.lg,
                 fullWidth: true,
               ),
               secondary: AppButton.secondary(
                 label: '重新编辑',
                 onPressed: () {
-                  ref.read(nameCheckProvider.notifier).resumeEditing();
-                  context.pop();
+                  _resumeEditing();
                 },
                 size: AppButtonSize.lg,
               ),
@@ -226,7 +256,7 @@ class _AbnormalEntry {
     AttendanceStatus.absent => '缺勤',
     AttendanceStatus.late_ => '迟到',
     AttendanceStatus.leave => '请假',
-    AttendanceStatus.other => remark ?? '其他',
+    AttendanceStatus.other => '其他',
     _ => '',
   };
 
@@ -249,29 +279,51 @@ class _AbnormalRow extends StatelessWidget {
     final c = context.colors;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs + 2),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Expanded(
-            flex: 3,
-            child: Text(
-              entry.name,
-              overflow: TextOverflow.ellipsis,
-              style: AppTextStyles.bodyMedium.copyWith(color: c.textPrimary),
-            ),
+          Row(
+            children: [
+              Expanded(
+                flex: 3,
+                child: Text(
+                  entry.name,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    color: c.textPrimary,
+                  ),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                flex: 4,
+                child: Text(
+                  entry.studentNo,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.withTabular(
+                    AppTextStyles.sm,
+                  ).copyWith(color: c.textSecondary),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              StatusPill(label: entry.statusLabel, variant: entry.pillVariant),
+            ],
           ),
-          const SizedBox(width: AppSpacing.sm),
-          Expanded(
-            flex: 4,
-            child: Text(
-              entry.studentNo,
-              overflow: TextOverflow.ellipsis,
-              style: AppTextStyles.withTabular(
-                AppTextStyles.sm,
-              ).copyWith(color: c.textSecondary),
+          if (entry.status == AttendanceStatus.other &&
+              entry.remark?.isNotEmpty == true)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Tooltip(
+                message: entry.remark!,
+                child: Text(
+                  entry.remark!,
+                  style: AppTextStyles.xs.copyWith(
+                    color: context.colors.textSecondary,
+                  ),
+                ),
+              ),
             ),
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          StatusPill(label: entry.statusLabel, variant: entry.pillVariant),
         ],
       ),
     );

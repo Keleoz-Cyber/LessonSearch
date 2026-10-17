@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:drift/drift.dart';
 
 import '../../../../core/database/app_database.dart';
+import '../../../../core/database/tables.dart' show AttendanceTasks;
 import '../../domain/models.dart' as domain;
 
 /// record upsert 结果
@@ -14,8 +15,15 @@ class UpsertResult {
 /// 封装 Drift 数据库操作，负责 Drift 数据类 <-> 领域模型的转换
 class AttendanceLocalDataSource {
   final AppDatabase _db;
+  final int? userId;
 
-  AttendanceLocalDataSource(this._db);
+  AttendanceLocalDataSource(this._db, {this.userId});
+
+  Future<T> transaction<T>(Future<T> Function() action) =>
+      _db.transaction(action);
+
+  Expression<bool> _ownerFilter(AttendanceTasks t) =>
+      userId == null ? const Constant(true) : t.userId.equals(userId!);
 
   // ============================================================
   // 任务
@@ -72,7 +80,7 @@ class AttendanceLocalDataSource {
   Future<domain.AttendanceTask?> getTask(String taskId) async {
     final row = await (_db.select(
       _db.attendanceTasks,
-    )..where((t) => t.id.equals(taskId))).getSingleOrNull();
+    )..where((t) => t.id.equals(taskId) & _ownerFilter(t))).getSingleOrNull();
     if (row == null) return null;
 
     final classIds = await _getTaskClassIds(taskId);
@@ -84,7 +92,7 @@ class AttendanceLocalDataSource {
   ) async {
     final rows =
         await (_db.select(_db.attendanceTasks)
-              ..where((t) => t.status.equals(status.value))
+              ..where((t) => t.status.equals(status.value) & _ownerFilter(t))
               ..orderBy([(t) => OrderingTerm.desc(t.createdAt)]))
             .get();
 
@@ -102,7 +110,8 @@ class AttendanceLocalDataSource {
               ..where(
                 (t) =>
                     t.status.equals(domain.TaskStatus.completed.value) &
-                    t.type.equals('name_check'),
+                    t.type.equals('name_check') &
+                    _ownerFilter(t),
               )
               ..orderBy([(t) => OrderingTerm.desc(t.createdAt)]))
             .get();
@@ -113,6 +122,28 @@ class AttendanceLocalDataSource {
       tasks.add(_mapRowToTask(row, classIds));
     }
     return tasks;
+  }
+
+  Future<List<domain.AttendanceTask>> getResumableTasks() async {
+    final rows =
+        await (_db.select(_db.attendanceTasks)
+              ..where(
+                (t) =>
+                    _ownerFilter(t) &
+                    (t.status.isNotIn(['completed', 'abandoned']) |
+                        (t.type.equals('name_check') &
+                            t.status.equals('completed') &
+                            t.phase.isIn([
+                              'executing',
+                              'confirming',
+                              'text_generating',
+                            ]))),
+              )
+              ..orderBy([(t) => OrderingTerm.desc(t.updatedAt)]))
+            .get();
+    return Future.wait(
+      rows.map((r) async => _mapRowToTask(r, await _getTaskClassIds(r.id))),
+    );
   }
 
   Future<List<int>> _getTaskClassIds(String taskId) async {
@@ -148,21 +179,26 @@ class AttendanceLocalDataSource {
 
   Future<UpsertResult> insertRecord(domain.AttendanceRecord record) async {
     // 按 taskId + studentId 唯一性检查，已存在则更新而非插入
-    final existing = await (_db.select(_db.attendanceRecords)
-          ..where((r) =>
-              r.taskId.equals(record.taskId) &
-              r.studentId.equals(record.studentId))
-          ..limit(1))
-        .getSingleOrNull();
+    final existing =
+        await (_db.select(_db.attendanceRecords)
+              ..where(
+                (r) =>
+                    r.taskId.equals(record.taskId) &
+                    r.studentId.equals(record.studentId),
+              )
+              ..limit(1))
+            .getSingleOrNull();
 
     if (existing != null) {
-      await (_db.update(_db.attendanceRecords)
-            ..where((r) => r.id.equals(existing.id)))
-          .write(AttendanceRecordsCompanion(
-        status: Value(record.status.value),
-        remark: Value(record.remark),
-        updatedAt: Value(DateTime.now()),
-      ));
+      await (_db.update(
+        _db.attendanceRecords,
+      )..where((r) => r.id.equals(existing.id))).write(
+        AttendanceRecordsCompanion(
+          status: Value(record.status.value),
+          remark: Value(record.remark),
+          updatedAt: Value(DateTime.now()),
+        ),
+      );
       return UpsertResult(id: existing.id, created: false);
     }
 
@@ -183,7 +219,7 @@ class AttendanceLocalDataSource {
   }
 
   /// 批量创建考勤记录（事务内执行），按 taskId+studentId upsert
-  /// 返回 Map<studentId, UpsertResult>
+  /// 返回 `Map<studentId, UpsertResult>`
   Future<Map<int, UpsertResult>> insertRecordsBatch(
     List<domain.AttendanceRecord> records,
   ) async {
@@ -220,19 +256,18 @@ class AttendanceLocalDataSource {
     )..where((r) => r.id.equals(recordId))).go();
     // 取消该 record 的未消费 sync 项（pending create/update）
     // 避免删除后又把已删的数据同步到服务端
-    await (_db.update(
-      _db.syncQueue,
-    )..where(
-        (s) =>
-            s.entityType.equals('record') &
-            s.entityId.equals(recordId.toString()) &
-            s.syncStatus.equals('pending'),
-      )).write(
-      const SyncQueueCompanion(
-        syncStatus: Value('synced'),
-        syncedAt: Value(null),
-      ),
-    );
+    await (_db.update(_db.syncQueue)..where(
+          (s) =>
+              s.entityType.equals('record') &
+              s.entityId.equals(recordId.toString()) &
+              s.syncStatus.isIn(['pending', 'failed']),
+        ))
+        .write(
+          const SyncQueueCompanion(
+            syncStatus: Value('synced'),
+            syncedAt: Value(null),
+          ),
+        );
   }
 
   /// 获取单个考勤记录
@@ -245,6 +280,7 @@ class AttendanceLocalDataSource {
   }
 
   Future<List<domain.AttendanceRecord>> getRecordsByTask(String taskId) async {
+    if (userId != null && await getTask(taskId) == null) return [];
     final rows =
         await (_db.select(_db.attendanceRecords)
               ..where((r) => r.taskId.equals(taskId))
@@ -270,9 +306,9 @@ class AttendanceLocalDataSource {
       entry.value.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
       for (var i = 1; i < entry.value.length; i++) {
         final toRemove = entry.value[i];
-        await (_db.delete(_db.attendanceRecords)
-              ..where((r) => r.id.equals(toRemove.id)))
-            .go();
+        await (_db.delete(
+          _db.attendanceRecords,
+        )..where((r) => r.id.equals(toRemove.id))).go();
         removed++;
       }
     }
@@ -301,54 +337,59 @@ class AttendanceLocalDataSource {
     required String entityId,
     required String action,
     Map<String, dynamic>? payload,
-  }) async {
-    // 如果是 update 操作，检查是否有未同步的 create 条目
-    if (action == 'update') {
-      final pendingCreate =
-          await (_db.select(_db.syncQueue)..where(
+  }) => _db.transaction(() async {
+    // Also collapse duplicate rows left by older app versions. Merge in id
+    // order so a stale failed create can never overwrite a newer update.
+    final candidates =
+        await (_db.select(_db.syncQueue)
+              ..where(
                 (s) =>
                     s.entityType.equals(entityType) &
                     s.entityId.equals(entityId) &
-                    s.action.equals('create') &
-                    s.syncStatus.equals('pending'),
-              ))
-              .getSingleOrNull();
-
-      if (pendingCreate != null) {
-        // 更新 create 条目的 payload 为最新状态，不新增 update 条目
-        final existingPayload = pendingCreate.payload != null
-            ? jsonDecode(pendingCreate.payload!) as Map<String, dynamic>
-            : <String, dynamic>{};
-        final mergedPayload = {...existingPayload, ...?payload};
-        await (_db.update(
-          _db.syncQueue,
-        )..where((s) => s.id.equals(pendingCreate.id))).write(
-          SyncQueueCompanion(payload: Value(jsonEncode(mergedPayload))),
-        );
-        return;
+                    s.syncStatus.isIn(['pending', 'failed']) &
+                    (action == 'create' || action == 'update'
+                        ? s.action.isIn(['create', 'update'])
+                        : s.action.equals(action)),
+              )
+              ..orderBy([(s) => OrderingTerm.asc(s.id)]))
+            .get();
+    if (candidates.isNotEmpty) {
+      final existing = candidates.first;
+      final merged = <String, dynamic>{};
+      for (final candidate in candidates) {
+        if (candidate.payload == null) continue;
+        try {
+          merged.addAll(jsonDecode(candidate.payload!) as Map<String, dynamic>);
+        } catch (_) {
+          // The new edit repairs this payload; do not drop the user's latest
+          // valid data just because a legacy predecessor is malformed.
+        }
       }
-    }
-
-    // 检查是否已存在相同的 pending item
-    final existing =
-        await (_db.select(_db.syncQueue)..where(
-              (s) =>
-                  s.entityType.equals(entityType) &
-                  s.entityId.equals(entityId) &
-                  s.action.equals(action) &
-                  s.syncStatus.equals('pending'),
-            ))
-            .getSingleOrNull();
-
-    if (existing != null) {
-      // 更新已有记录的 payload
+      merged.addAll(payload ?? {});
+      final mergedAction =
+          action == 'create' || candidates.any((s) => s.action == 'create')
+          ? 'create'
+          : action;
       await (_db.update(
         _db.syncQueue,
       )..where((s) => s.id.equals(existing.id))).write(
         SyncQueueCompanion(
-          payload: Value(payload != null ? jsonEncode(payload) : null),
+          action: Value(mergedAction),
+          payload: Value(jsonEncode(merged)),
+          syncStatus: const Value('pending'),
+          retryCount: const Value(0),
         ),
       );
+      if (candidates.length > 1) {
+        await (_db.update(
+          _db.syncQueue,
+        )..where((s) => s.id.isIn(candidates.skip(1).map((s) => s.id)))).write(
+          SyncQueueCompanion(
+            syncStatus: const Value('synced'),
+            syncedAt: Value(DateTime.now()),
+          ),
+        );
+      }
     } else {
       await _db
           .into(_db.syncQueue)
@@ -361,24 +402,18 @@ class AttendanceLocalDataSource {
             ),
           );
     }
-  }
+  });
 
   /// 批量入队同步（事务内执行）
   Future<void> enqueueSyncBatch(List<Map<String, dynamic>> items) async {
     await _db.transaction(() async {
       for (final item in items) {
-        await _db
-            .into(_db.syncQueue)
-            .insert(
-              SyncQueueCompanion.insert(
-                entityType: item['entityType'] as String,
-                entityId: item['entityId'] as String,
-                action: item['action'] as String,
-                payload: Value(
-                  item['payload'] != null ? jsonEncode(item['payload']) : null,
-                ),
-              ),
-            );
+        await enqueueSync(
+          entityType: item['entityType'] as String,
+          entityId: item['entityId'] as String,
+          action: item['action'] as String,
+          payload: item['payload'] as Map<String, dynamic>?,
+        );
       }
     });
   }
@@ -393,6 +428,43 @@ class AttendanceLocalDataSource {
           )
           ..orderBy([(s) => OrderingTerm.asc(s.id)]))
         .get();
+  }
+
+  Future<List<SyncQueueData>> claimPendingSyncItems() =>
+      _db.transaction(() async {
+        final items = await getPendingSyncItems();
+        if (items.isNotEmpty) {
+          await (_db.update(_db.syncQueue)
+                ..where((s) => s.id.isIn(items.map((i) => i.id))))
+              .write(const SyncQueueCompanion(syncStatus: Value('syncing')));
+        }
+        return items;
+      });
+
+  Future<void> releaseClaims(Iterable<int> ids) async {
+    if (ids.isEmpty) return;
+    await (_db.update(_db.syncQueue)
+          ..where((s) => s.id.isIn(ids) & s.syncStatus.equals('syncing')))
+        .write(const SyncQueueCompanion(syncStatus: Value('pending')));
+  }
+
+  Future<int?> getSyncItemOwner(SyncQueueData item) async {
+    String? taskId;
+    if (item.entityType == 'task') {
+      taskId = item.entityId;
+    } else {
+      try {
+        taskId =
+            (jsonDecode(item.payload ?? '{}')
+                    as Map<String, dynamic>)['task_id']
+                as String?;
+      } catch (_) {}
+    }
+    if (taskId == null) return null;
+    final task = await (_db.select(
+      _db.attendanceTasks,
+    )..where((t) => t.id.equals(taskId!))).getSingleOrNull();
+    return task?.userId;
   }
 
   Future<void> markSynced(int syncId) async {
@@ -429,25 +501,24 @@ class AttendanceLocalDataSource {
   Future<void> retryAllFailed() async {
     // 只重置非认证过期的 failed 项（排除 retryCount=999 的 401 项）
     // 401 项需要用户重新登录后通过 resetAuthFailedSyncItems() 重置
-    await (_db.update(
-      _db.syncQueue,
-    )..where(
-        (s) => s.syncStatus.equals('failed') & s.retryCount.isSmallerThanValue(999),
-      )).write(
-      const SyncQueueCompanion(
-        syncStatus: Value('pending'),
-        retryCount: Value(0),
-      ),
-    );
+    await (_db.update(_db.syncQueue)..where(
+          (s) =>
+              s.syncStatus.equals('failed') &
+              s.retryCount.isSmallerThanValue(999),
+        ))
+        .write(
+          const SyncQueueCompanion(
+            syncStatus: Value('pending'),
+            retryCount: Value(0),
+          ),
+        );
   }
 
   /// 重置因 401（认证过期）标记为 failed(retryCount=999) 的同步项，恢复为 pending
   /// 在重新登录成功后调用，让这些项能继续同步
   Future<int> resetAuthFailedSyncItems() async {
     final stmt = _db.update(_db.syncQueue)
-      ..where(
-        (s) => s.syncStatus.equals('failed') & s.retryCount.equals(999),
-      );
+      ..where((s) => s.syncStatus.equals('failed') & s.retryCount.equals(999));
     final companion = const SyncQueueCompanion(
       syncStatus: Value('pending'),
       retryCount: Value(0),
@@ -461,7 +532,8 @@ class AttendanceLocalDataSource {
   Future<int> resetGivenUpSyncItems() async {
     final stmt = _db.update(_db.syncQueue)
       ..where(
-        (s) => s.syncStatus.equals('failed') &
+        (s) =>
+            s.syncStatus.equals('failed') &
             s.retryCount.isBiggerOrEqualValue(5) &
             s.retryCount.isSmallerThanValue(999),
       );
@@ -493,22 +565,13 @@ class AttendanceLocalDataSource {
         continue;
       }
 
-      // 1. syncing 残留项重置为 pending（不 continue，继续后续校验）
-      if (item.syncStatus == 'syncing') {
-        await (_db.update(_db.syncQueue)
-              ..where((s) => s.id.equals(item.id)))
-            .write(const SyncQueueCompanion(
-          syncStatus: Value('pending'),
-        ));
-        fixedSyncing++;
-        // 不 continue，继续检查 payload 是否有问题
-      }
+      if (item.syncStatus == 'syncing' || item.syncStatus == 'synced') continue;
 
       // 只处理 pending 和 failed（非 999）的 record/update
       if (item.entityType == 'record' && item.action == 'update') {
         // 2. payload 为空或解析失败
         if (item.payload == null || item.payload!.isEmpty) {
-          await markSynced(item.id);
+          await markSyncFailed(item.id, retryCount: 998);
           skippedBadPayload++;
           continue;
         }
@@ -517,18 +580,22 @@ class AttendanceLocalDataSource {
           final payload = jsonDecode(item.payload!) as Map<String, dynamic>;
 
           // 3. record/update 缺少必要字段
-          final hasTaskId = payload.containsKey('task_id') && payload['task_id'] != null;
-          final hasStudentId = payload.containsKey('student_id') && payload['student_id'] != null;
-          final hasStatus = payload.containsKey('status') && payload['status'] != null;
+          final hasTaskId =
+              payload.containsKey('task_id') && payload['task_id'] != null;
+          final hasStudentId =
+              payload.containsKey('student_id') &&
+              payload['student_id'] != null;
+          final hasStatus =
+              payload.containsKey('status') && payload['status'] != null;
 
           if (!hasTaskId || !hasStudentId || !hasStatus) {
-            await markSynced(item.id);
+            await markSyncFailed(item.id, retryCount: 998);
             skippedIncomplete++;
             continue;
           }
         } catch (_) {
           // JSON 解析失败，标记为 synced
-          await markSynced(item.id);
+          await markSyncFailed(item.id, retryCount: 998);
           skippedBadPayload++;
           continue;
         }
@@ -537,13 +604,17 @@ class AttendanceLocalDataSource {
 
     // 4. 清理 7 天前已 synced 的历史队列项
     final sevenDaysAgo = DateTime.now().subtract(const Duration(days: 7));
-    final oldSynced = await (_db.select(_db.syncQueue)
-          ..where((s) =>
-              s.syncStatus.equals('synced') &
-              s.createdAt.isSmallerThanValue(sevenDaysAgo)))
-        .get();
+    final oldSynced =
+        await (_db.select(_db.syncQueue)..where(
+              (s) =>
+                  s.syncStatus.equals('synced') &
+                  s.createdAt.isSmallerThanValue(sevenDaysAgo),
+            ))
+            .get();
     for (final item in oldSynced) {
-      await (_db.delete(_db.syncQueue)..where((s) => s.id.equals(item.id))).go();
+      await (_db.delete(
+        _db.syncQueue,
+      )..where((s) => s.id.equals(item.id))).go();
       cleanedSynced++;
     }
 
@@ -562,10 +633,7 @@ class AttendanceLocalDataSource {
   /// 获取同步问题数量（pending + failed，包括所有 failed）
   Future<int> getSyncIssueCount() async {
     final all = await _db.select(_db.syncQueue).get();
-    return all.where((s) =>
-      s.syncStatus == 'pending' ||
-      (s.syncStatus == 'failed' && s.retryCount < 5)
-    ).length;
+    return all.where((s) => s.syncStatus != 'synced').length;
   }
 
   /// 判断是否存在 syncStatus == 'failed' 的记录
@@ -577,8 +645,7 @@ class AttendanceLocalDataSource {
   /// 返回 pending + failed，用于同步问题详情页展示
   Future<List<SyncQueueData>> getSyncIssueItems() async {
     return await (_db.select(_db.syncQueue)
-          ..where((s) =>
-            s.syncStatus.equals('pending') | s.syncStatus.equals('failed'))
+          ..where((s) => s.syncStatus.isNotIn(['synced']))
           ..orderBy([(s) => OrderingTerm.asc(s.id)]))
         .get();
   }

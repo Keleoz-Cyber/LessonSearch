@@ -33,7 +33,9 @@ class _SyncTabState extends ConsumerState<SyncTab> {
     try {
       final local = ref.read(attendanceLocalDSProvider);
       final pending = await local.getPendingSyncItems();
+      if (!mounted) return;
       final failed = await local.getFailedSyncItems();
+      if (!mounted) return;
       if (!mounted) return;
       setState(() {
         _pending = pending;
@@ -41,6 +43,7 @@ class _SyncTabState extends ConsumerState<SyncTab> {
         _loading = false;
       });
     } catch (_) {
+      if (!mounted) return;
       if (mounted) setState(() => _loading = false);
     }
   }
@@ -50,6 +53,7 @@ class _SyncTabState extends ConsumerState<SyncTab> {
     try {
       final sync = ref.read(syncServiceProvider);
       final result = await sync.processQueueWithStats();
+      if (!mounted) return;
       if (mounted) {
         Toast.show(
           context,
@@ -57,6 +61,7 @@ class _SyncTabState extends ConsumerState<SyncTab> {
         );
       }
     } catch (e) {
+      if (!mounted) return;
       if (mounted) Toast.show(context, '同步失败: $e');
     } finally {
       if (mounted) {
@@ -70,11 +75,14 @@ class _SyncTabState extends ConsumerState<SyncTab> {
     try {
       final local = ref.read(attendanceLocalDSProvider);
       await local.retryAllFailed();
+      if (!mounted) return;
       if (mounted) {
         Toast.show(context, '已重置失败记录');
         await _load();
+        if (!mounted) return;
       }
     } catch (e) {
+      if (!mounted) return;
       if (mounted) Toast.show(context, '重试失败: $e');
     }
   }
@@ -87,24 +95,30 @@ class _SyncTabState extends ConsumerState<SyncTab> {
         content: const Text('确定清空同步队列？不会删除本地任务数据。'),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('取消')),
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('取消'),
+          ),
           FilledButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('确认')),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('确认'),
+          ),
         ],
       ),
     );
+    if (!mounted) return;
     if (confirm != true) return;
 
     try {
       final local = ref.read(attendanceLocalDSProvider);
       await local.clearSyncQueue();
+      if (!mounted) return;
       if (mounted) {
         Toast.show(context, '已清空');
         await _load();
+        if (!mounted) return;
       }
     } catch (e) {
+      if (!mounted) return;
       if (mounted) Toast.show(context, '清空失败: $e');
     }
   }
@@ -113,7 +127,9 @@ class _SyncTabState extends ConsumerState<SyncTab> {
     try {
       final db = ref.read(databaseProvider);
       await (db.delete(db.syncQueue)..where((t) => t.id.equals(id))).go();
+      if (!mounted) return;
       await _load();
+      if (!mounted) return;
     } catch (_) {}
   }
 
@@ -125,7 +141,12 @@ class _SyncTabState extends ConsumerState<SyncTab> {
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.md, AppSpacing.lg, 0),
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.lg,
+            AppSpacing.md,
+            AppSpacing.lg,
+            0,
+          ),
           child: Wrap(
             spacing: AppSpacing.sm,
             runSpacing: AppSpacing.sm,
@@ -137,7 +158,8 @@ class _SyncTabState extends ConsumerState<SyncTab> {
                     ? const SizedBox(
                         width: 16,
                         height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2))
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
                     : const Icon(Icons.sync, size: 18),
                 label: const Text('立即同步'),
               ),
@@ -146,7 +168,9 @@ class _SyncTabState extends ConsumerState<SyncTab> {
                   onPressed: _retryFailed,
                   icon: const Icon(Icons.refresh, size: 18),
                   label: Text('重试(${_failed.length})'),
-                  style: OutlinedButton.styleFrom(foregroundColor: c.stateDanger),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: c.stateDanger,
+                  ),
                 ),
               IconButton(
                 onPressed: _load,
@@ -162,11 +186,16 @@ class _SyncTabState extends ConsumerState<SyncTab> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.check_circle_outline,
-                          size: 48, color: c.textTertiary),
+                      Icon(
+                        Icons.check_circle_outline,
+                        size: 48,
+                        color: c.textTertiary,
+                      ),
                       const SizedBox(height: AppSpacing.sm),
-                      Text('同步队列为空',
-                          style: AppTextStyles.sm.copyWith(color: c.textTertiary)),
+                      Text(
+                        '同步队列为空',
+                        style: AppTextStyles.sm.copyWith(color: c.textTertiary),
+                      ),
                     ],
                   ),
                 )
@@ -175,24 +204,34 @@ class _SyncTabState extends ConsumerState<SyncTab> {
                   children: [
                     if (_pending.isNotEmpty) ...[
                       _subHeader(
-                          '待同步 (${_pending.length})', Icons.cloud_upload, c.stateWarning),
+                        '待同步 (${_pending.length})',
+                        Icons.cloud_upload,
+                        c.stateWarning,
+                      ),
                       const SizedBox(height: AppSpacing.xs),
-                      ..._pending.map((item) => _SyncItemTile(
-                            item: item,
-                            highlightColor: c.stateWarning,
-                            onDelete: () => _deleteItem(item.id),
-                          )),
+                      ..._pending.map(
+                        (item) => _SyncItemTile(
+                          item: item,
+                          highlightColor: c.stateWarning,
+                          onDelete: () => _deleteItem(item.id),
+                        ),
+                      ),
                     ],
                     if (_failed.isNotEmpty) ...[
                       const SizedBox(height: AppSpacing.lg),
                       _subHeader(
-                          '失败 (${_failed.length})', Icons.error_outline, c.stateDanger),
+                        '失败 (${_failed.length})',
+                        Icons.error_outline,
+                        c.stateDanger,
+                      ),
                       const SizedBox(height: AppSpacing.xs),
-                      ..._failed.map((item) => _SyncItemTile(
-                            item: item,
-                            highlightColor: c.stateDanger,
-                            onDelete: () => _deleteItem(item.id),
-                          )),
+                      ..._failed.map(
+                        (item) => _SyncItemTile(
+                          item: item,
+                          highlightColor: c.stateDanger,
+                          onDelete: () => _deleteItem(item.id),
+                        ),
+                      ),
                     ],
                   ],
                 ),
@@ -220,9 +259,13 @@ Widget _subHeader(String title, IconData icon, Color color) {
     children: [
       Icon(icon, size: 16, color: color),
       const SizedBox(width: AppSpacing.xs + 2),
-      Text(title,
-          style: AppTextStyles.sm.copyWith(
-              fontWeight: FontWeight.w600, color: color)),
+      Text(
+        title,
+        style: AppTextStyles.sm.copyWith(
+          fontWeight: FontWeight.w600,
+          color: color,
+        ),
+      ),
     ],
   );
 }
@@ -263,7 +306,10 @@ class _SyncItemTile extends StatelessWidget {
         border: Border.all(color: highlightColor.withValues(alpha: 0.2)),
       ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.sm,
+        ),
         child: Row(
           children: [
             Container(
@@ -286,7 +332,9 @@ class _SyncItemTile extends StatelessWidget {
                     children: [
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: AppSpacing.xs + 2, vertical: 2),
+                          horizontal: AppSpacing.xs + 2,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
                           color: highlightColor.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(AppRadius.sm),
@@ -294,24 +342,38 @@ class _SyncItemTile extends StatelessWidget {
                         child: Text(
                           item.action.toUpperCase(),
                           style: AppTextStyles.xs.copyWith(
-                              fontWeight: FontWeight.w600, color: highlightColor),
+                            fontWeight: FontWeight.w600,
+                            color: highlightColor,
+                          ),
                         ),
                       ),
-                      Text(item.entityType,
-                          style: AppTextStyles.sm.copyWith(
-                              fontWeight: FontWeight.w500, color: c.textPrimary)),
-                      Text('#${item.entityId}',
-                          style: AppTextStyles.xs.copyWith(color: c.textTertiary)),
+                      Text(
+                        item.entityType,
+                        style: AppTextStyles.sm.copyWith(
+                          fontWeight: FontWeight.w500,
+                          color: c.textPrimary,
+                        ),
+                      ),
+                      Text(
+                        '#${item.entityId}',
+                        style: AppTextStyles.xs.copyWith(color: c.textTertiary),
+                      ),
                       if (item.retryCount > 0)
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: AppSpacing.xs + 2, vertical: 2),
+                            horizontal: AppSpacing.xs + 2,
+                            vertical: 2,
+                          ),
                           decoration: BoxDecoration(
                             color: c.stateDanger.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(AppRadius.sm),
                           ),
-                          child: Text('x${item.retryCount}',
-                              style: AppTextStyles.xs.copyWith(color: c.stateDanger)),
+                          child: Text(
+                            'x${item.retryCount}',
+                            style: AppTextStyles.xs.copyWith(
+                              color: c.stateDanger,
+                            ),
+                          ),
                         ),
                     ],
                   ),
@@ -319,7 +381,9 @@ class _SyncItemTile extends StatelessWidget {
                   Text(
                     _formatPayload(item.payload),
                     style: AppTextStyles.xs.copyWith(
-                        fontFamily: 'monospace', color: c.textTertiary),
+                      fontFamily: 'monospace',
+                      color: c.textTertiary,
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),

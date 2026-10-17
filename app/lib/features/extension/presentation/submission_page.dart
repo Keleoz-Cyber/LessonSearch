@@ -135,6 +135,7 @@ class _SubmissionPageState extends ConsumerState<SubmissionPage>
 
     // 进入页面时强制同步并刷新职务状态
     Future.microtask(() {
+      if (!mounted) return;
       ref.read(syncServiceProvider).syncNow();
       ref.invalidate(myDutyProvider);
     });
@@ -161,6 +162,7 @@ class _SubmissionPageState extends ConsumerState<SubmissionPage>
   }
 
   Future<void> _submit(int weekNumber) async {
+    if (_loading || !mounted) return;
     if (_selectedTaskIds.isEmpty) {
       Toast.show(context, '请选择要提交的任务');
       return;
@@ -172,24 +174,26 @@ class _SubmissionPageState extends ConsumerState<SubmissionPage>
     // 同步失败则阻止提交，避免数据不一致
     try {
       final syncService = ref.read(syncServiceProvider);
-      
+
       // 先等待当前同步完成
       var result = await syncService.syncNow();
+      if (!mounted) return;
       if (result.failed > 0) {
         setState(() => _loading = false);
         Toast.show(context, '同步失败 ${result.failed} 项，请检查网络后重试');
         return;
       }
-      
+
       // 最终保险检查：只要存在 pending 或 failed，都阻止提交
       final localDS = ref.read(attendanceLocalDSProvider);
       final issueCount = await localDS.getSyncIssueCount();
+      if (!mounted) return;
       if (issueCount > 0) {
         setState(() => _loading = false);
         Toast.show(context, '有 $issueCount 条同步问题未处理，请先到同步问题详情处理');
         return;
       }
-      
+
       LoggerService.sync('提交前同步完成: 所有记录已同步到服务端');
 
       // 再次校验：选中的任务是否仍然存在、completed、且未删除
@@ -197,6 +201,7 @@ class _SubmissionPageState extends ConsumerState<SubmissionPage>
       final invalidTasks = <String>[];
       for (final taskId in _selectedTaskIds) {
         final task = await repo.getTask(taskId);
+        if (!mounted) return;
         if (task == null || task.status != TaskStatus.completed) {
           invalidTasks.add(taskId);
         }
@@ -217,37 +222,33 @@ class _SubmissionPageState extends ConsumerState<SubmissionPage>
       final fixFailedTasks = <String>[];
       for (final taskId in _selectedTaskIds) {
         final localTask = await repo.getTask(taskId);
+        if (!mounted) return;
         if (localTask != null && localTask.status == TaskStatus.completed) {
           try {
             final remoteTask = await remoteDS.getTask(taskId);
+            if (!mounted) return;
             final remoteStatus = remoteTask['status'] as String?;
             if (remoteStatus != 'completed') {
               LoggerService.sync(
                 '提交前修复任务状态: $taskId 服务端 $remoteStatus → completed',
               );
-              await remoteDS.updateTask(
-                taskId,
-                status: TaskStatus.completed,
-              );
+              await remoteDS.updateTask(taskId, status: TaskStatus.completed);
+              if (!mounted) return;
             }
           } catch (e) {
-            LoggerService.sync(
-              '提交前修复任务状态失败: $taskId - $e',
-              isError: true,
-            );
+            if (!mounted) return;
+            LoggerService.sync('提交前修复任务状态失败: $taskId - $e', isError: true);
             fixFailedTasks.add(taskId);
           }
         }
       }
       if (fixFailedTasks.isNotEmpty) {
         setState(() => _loading = false);
-        Toast.show(
-          context,
-          '任务状态尚未同步完成，请先同步后再提交',
-        );
+        Toast.show(context, '任务状态尚未同步完成，请先同步后再提交');
         return;
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() => _loading = false);
       LoggerService.sync('同步失败: $e', isError: true);
       Toast.show(context, '同步失败，请检查网络后重试');
@@ -262,17 +263,30 @@ class _SubmissionPageState extends ConsumerState<SubmissionPage>
 
       for (final taskId in _selectedTaskIds) {
         final task = await repo.getTask(taskId);
+        if (!mounted) return;
         if (task == null) continue;
 
         final records = await repo.getRecordsByTask(taskId);
+        if (!mounted) return;
         final classNames = await studentRepo.getClassNames(task.classIds);
+        if (!mounted) return;
 
         final total = records.length;
-        final present = records.where((r) => r.status == AttendanceStatus.present).length;
-        final absent = records.where((r) => r.status == AttendanceStatus.absent).length;
-        final late = records.where((r) => r.status == AttendanceStatus.late_).length;
-        final leave = records.where((r) => r.status == AttendanceStatus.leave).length;
-        final other = records.where((r) => r.status == AttendanceStatus.other).length;
+        final present = records
+            .where((r) => r.status == AttendanceStatus.present)
+            .length;
+        final absent = records
+            .where((r) => r.status == AttendanceStatus.absent)
+            .length;
+        final late = records
+            .where((r) => r.status == AttendanceStatus.late_)
+            .length;
+        final leave = records
+            .where((r) => r.status == AttendanceStatus.leave)
+            .length;
+        final other = records
+            .where((r) => r.status == AttendanceStatus.other)
+            .length;
 
         tasksConfirmData.add({
           'task_id': taskId,
@@ -286,6 +300,7 @@ class _SubmissionPageState extends ConsumerState<SubmissionPage>
         });
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() => _loading = false);
       LoggerService.sync('获取确认数据失败: $e', isError: true);
       Toast.show(context, '获取任务数据失败，请重试');
@@ -298,10 +313,9 @@ class _SubmissionPageState extends ConsumerState<SubmissionPage>
     final confirmed = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
-      builder: (ctx) => _SubmissionConfirmDialog(
-        tasksData: tasksConfirmData,
-      ),
+      builder: (ctx) => _SubmissionConfirmDialog(tasksData: tasksConfirmData),
     );
+    if (!mounted) return;
 
     if (confirmed != true) {
       return;
@@ -312,6 +326,7 @@ class _SubmissionPageState extends ConsumerState<SubmissionPage>
     {
       final localDS = ref.read(attendanceLocalDSProvider);
       final issueCount = await localDS.getSyncIssueCount();
+      if (!mounted) return;
       if (issueCount > 0) {
         if (mounted) {
           Toast.show(context, '检测到 $issueCount 条同步问题，请处理后再提交');
@@ -322,16 +337,14 @@ class _SubmissionPageState extends ConsumerState<SubmissionPage>
       final invalid = <String>[];
       for (final taskId in _selectedTaskIds) {
         final task = await repo.getTask(taskId);
+        if (!mounted) return;
         if (task == null || task.status != TaskStatus.completed) {
           invalid.add(taskId);
         }
       }
       if (invalid.isNotEmpty) {
         if (mounted) {
-          Toast.show(
-            context,
-            '${invalid.length} 个任务状态已变化，请重新选择后提交',
-          );
+          Toast.show(context, '${invalid.length} 个任务状态已变化，请重新选择后提交');
           setState(() {
             _selectedTaskIds.removeWhere((id) => invalid.contains(id));
           });
@@ -362,8 +375,10 @@ class _SubmissionPageState extends ConsumerState<SubmissionPage>
           weekNumber: weekNumber,
           taskIds: [taskId],
         );
+        if (!mounted) return;
         successCount++;
       } catch (e) {
+        if (!mounted) return;
         failCount++;
         // 优先取 Exception("提交失败: detail") 的 detail 部分
         final raw = e.toString();
@@ -389,7 +404,9 @@ class _SubmissionPageState extends ConsumerState<SubmissionPage>
             final dc = ctx.colors;
             return AlertDialog(
               icon: Icon(
-                failCount > 0 ? Icons.error_outline : Icons.check_circle_outline,
+                failCount > 0
+                    ? Icons.error_outline
+                    : Icons.check_circle_outline,
                 color: failCount > 0 ? dc.stateDanger : dc.stateSuccess,
                 size: 40,
               ),
@@ -430,6 +447,7 @@ class _SubmissionPageState extends ConsumerState<SubmissionPage>
             );
           },
         );
+        if (!mounted) return;
       }
       _selectedTaskIds = [];
       ref.invalidate(submittedTaskIdsProvider);
@@ -451,65 +469,44 @@ class _SubmissionPageState extends ConsumerState<SubmissionPage>
     final showBottomBar =
         hasDuty && weekNumber != null && _tabController.index == 0;
 
-    return Scaffold(
-      backgroundColor: context.colors.bgCanvas,
-      appBar: AppBar(
-        title: const Text('名单提交'),
-      ),
-      bottomNavigationBar: showBottomBar
-          ? BottomActionBar(
-              hintText: _selectedTaskIds.isEmpty
-                  ? '请选择要提交的任务'
-                  : '已选择 ${_selectedTaskIds.length} 个任务',
-              primary: _SubmitButton(
-                loading: _loading,
-                issueCount: ref.watch(syncIssueCountProvider),
-                syncState: ref.watch(syncStateProvider),
-                onSubmit: () => _submit(weekNumber),
-              ),
-            )
-          : null,
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-            child: AppSegmentedControl<int>(
-              items: const [
-                AppSegmentedItem(value: 0, label: '提交任务'),
-                AppSegmentedItem(value: 1, label: '我的提交'),
-              ],
-              value: _tabController.index,
-              onChanged: (i) {
-                _tabController.animateTo(i);
-                setState(() {});
-              },
-            ),
-          ),
-          Expanded(
-            child: currentWeekAsync.when(
-              loading: () => const LoadingOverlay(
-                isLoading: true,
-                child: SizedBox.expand(),
-              ),
-              error: (e, _) => Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.error_outline, size: 48, color: context.colors.textTertiary),
-                    const SizedBox(height: 16),
-                    Text('加载失败: $e'),
-                    const SizedBox(height: 16),
-                    FilledButton(
-                      onPressed: () => ref.invalidate(currentWeekProvider),
-                      child: const Text('重试'),
-                    ),
+    return PopScope(
+      canPop: !_loading,
+      child: Scaffold(
+        backgroundColor: context.colors.bgCanvas,
+        appBar: AppBar(title: const Text('名单提交')),
+        bottomNavigationBar: showBottomBar
+            ? BottomActionBar(
+                hintText: _selectedTaskIds.isEmpty
+                    ? '请选择要提交的任务'
+                    : '已选择 ${_selectedTaskIds.length} 个任务',
+                primary: _SubmitButton(
+                  loading: _loading,
+                  issueCount: ref.watch(syncIssueCountProvider),
+                  syncState: ref.watch(syncStateProvider),
+                  onSubmit: () => _submit(weekNumber),
+                ),
+              )
+            : null,
+        body: AbsorbPointer(
+          absorbing: _loading,
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                child: AppSegmentedControl<int>(
+                  items: const [
+                    AppSegmentedItem(value: 0, label: '提交任务'),
+                    AppSegmentedItem(value: 1, label: '我的提交'),
                   ],
+                  value: _tabController.index,
+                  onChanged: (i) {
+                    _tabController.animateTo(i);
+                    setState(() {});
+                  },
                 ),
               ),
-              data: (weekData) {
-                final wn = weekData['week_number'] as int;
-
-                return myDutyAsync.when(
+              Expanded(
+                child: currentWeekAsync.when(
                   loading: () => const LoadingOverlay(
                     isLoading: true,
                     child: SizedBox.expand(),
@@ -518,42 +515,75 @@ class _SubmissionPageState extends ConsumerState<SubmissionPage>
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.error_outline, size: 48, color: context.colors.textTertiary),
+                        Icon(
+                          Icons.error_outline,
+                          size: 48,
+                          color: context.colors.textTertiary,
+                        ),
                         const SizedBox(height: 16),
-                        Text('加载职务状态失败: $e'),
+                        Text('加载失败: $e'),
                         const SizedBox(height: 16),
                         FilledButton(
-                          onPressed: () => ref.invalidate(myDutyProvider),
+                          onPressed: () => ref.invalidate(currentWeekProvider),
                           child: const Text('重试'),
                         ),
                       ],
                     ),
                   ),
-                  data: (duty) {
-                    final hasDutyInner = duty['has_duty'] as bool? ?? false;
+                  data: (weekData) {
+                    final wn = weekData['week_number'] as int;
 
-                    if (!hasDutyInner) {
-                      return _buildNoDutyView(context);
-                    }
-
-                    return TabBarView(
-                      controller: _tabController,
-                      children: [
-                        _SubmitTaskTab(
-                          weekNumber: wn,
-                          selectedTaskIds: _selectedTaskIds,
-                          onSelectionChanged: (ids) =>
-                              setState(() => _selectedTaskIds = ids),
+                    return myDutyAsync.when(
+                      loading: () => const LoadingOverlay(
+                        isLoading: true,
+                        child: SizedBox.expand(),
+                      ),
+                      error: (e, _) => Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.error_outline,
+                              size: 48,
+                              color: context.colors.textTertiary,
+                            ),
+                            const SizedBox(height: 16),
+                            Text('加载职务状态失败: $e'),
+                            const SizedBox(height: 16),
+                            FilledButton(
+                              onPressed: () => ref.invalidate(myDutyProvider),
+                              child: const Text('重试'),
+                            ),
+                          ],
                         ),
-                        _MySubmissionsTab(),
-                      ],
+                      ),
+                      data: (duty) {
+                        final hasDutyInner = duty['has_duty'] as bool? ?? false;
+
+                        if (!hasDutyInner) {
+                          return _buildNoDutyView(context);
+                        }
+
+                        return TabBarView(
+                          controller: _tabController,
+                          children: [
+                            _SubmitTaskTab(
+                              weekNumber: wn,
+                              selectedTaskIds: _selectedTaskIds,
+                              onSelectionChanged: (ids) =>
+                                  setState(() => _selectedTaskIds = ids),
+                            ),
+                            _MySubmissionsTab(),
+                          ],
+                        );
+                      },
                     );
                   },
-                );
-              },
-            ),
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -565,13 +595,19 @@ class _SubmissionPageState extends ConsumerState<SubmissionPage>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.info_outline, size: 64, color: context.colors.textTertiary),
+            Icon(
+              Icons.info_outline,
+              size: 64,
+              color: context.colors.textTertiary,
+            ),
             const SizedBox(height: 24),
             const Text('您没有被分配查课职务', style: TextStyle(fontSize: 18)),
             const SizedBox(height: 8),
             Text(
               '无需提交考勤记录',
-              style: AppTextStyles.sm.copyWith(color: context.colors.textSecondary),
+              style: AppTextStyles.sm.copyWith(
+                color: context.colors.textSecondary,
+              ),
             ),
             const SizedBox(height: 24),
             FilledButton(
@@ -621,13 +657,13 @@ class _SubmitTaskTab extends ConsumerWidget {
               final state = isSyncFailed
                   ? SyncBannerState.failed
                   : syncState == SyncState.syncing
-                      ? SyncBannerState.syncing
-                      : SyncBannerState.unknown;
+                  ? SyncBannerState.syncing
+                  : SyncBannerState.unknown;
               final title = isSyncFailed
                   ? '$count 条同步失败，请先处理后再提交'
                   : syncState == SyncState.syncing
-                      ? '正在自动同步 $count 条记录'
-                      : '$count 条记录待同步';
+                  ? '正在自动同步 $count 条记录'
+                  : '$count 条记录待同步';
               return Padding(
                 padding: const EdgeInsets.only(bottom: 16),
                 child: SyncStatusBanner(state: state, title: title),
@@ -643,26 +679,30 @@ class _SubmitTaskTab extends ConsumerWidget {
               children: [
                 Text(
                   '第 $weekNumber 周',
-                  style: AppTextStyles.h2.copyWith(color: context.colors.textPrimary),
+                  style: AppTextStyles.h2.copyWith(
+                    color: context.colors.textPrimary,
+                  ),
                 ),
                 const SizedBox(height: AppSpacing.sm),
-                  adminsAsync.when(
-                    loading: () => const Text('加载管理员列表...'),
-                    error: (e, _) => const Text('待审核管理员'),
-                    data: (admins) {
-                      if (admins.isEmpty) return const Text('待审核管理员');
-                      final names = admins
-                          .map((a) => a['real_name'] ?? a['email'])
-                          .join('、');
-                      return Text(
-                        '待审核管理员: $names',
-                        style: AppTextStyles.sm.copyWith(color: context.colors.textSecondary),
-                      );
-                    },
-                  ),
-                ],
-              ),
+                adminsAsync.when(
+                  loading: () => const Text('加载管理员列表...'),
+                  error: (e, _) => const Text('待审核管理员'),
+                  data: (admins) {
+                    if (admins.isEmpty) return const Text('待审核管理员');
+                    final names = admins
+                        .map((a) => a['real_name'] ?? a['email'])
+                        .join('、');
+                    return Text(
+                      '待审核管理员: $names',
+                      style: AppTextStyles.sm.copyWith(
+                        color: context.colors.textSecondary,
+                      ),
+                    );
+                  },
+                ),
+              ],
             ),
+          ),
           const SizedBox(height: 16),
           Text('本周记名任务', style: AppTextStyles.h3),
           const SizedBox(height: 8),
@@ -672,7 +712,11 @@ class _SubmitTaskTab extends ConsumerWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.error_outline, size: 48, color: context.colors.textTertiary),
+                  Icon(
+                    Icons.error_outline,
+                    size: 48,
+                    color: context.colors.textTertiary,
+                  ),
                   const SizedBox(height: 16),
                   Text('加载失败: $e'),
                 ],
@@ -697,7 +741,9 @@ class _SubmitTaskTab extends ConsumerWidget {
             '• 只有记名任务需要提交\n'
             '• 只能提交本周任务\n'
             '• 已提交的任务不可重复提交',
-            style: AppTextStyles.sm.copyWith(color: context.colors.textSecondary),
+            style: AppTextStyles.sm.copyWith(
+              color: context.colors.textSecondary,
+            ),
           ),
         ],
       ),
@@ -746,7 +792,9 @@ class _SubmitTaskTab extends ConsumerWidget {
                 children: [
                   Text(
                     classNames,
-                    style: AppTextStyles.bodyMedium.copyWith(color: c.textPrimary),
+                    style: AppTextStyles.bodyMedium.copyWith(
+                      color: c.textPrimary,
+                    ),
                   ),
                   const SizedBox(height: 4),
                   Text(
@@ -782,9 +830,7 @@ class _SubmitButton extends ConsumerWidget {
     if (loading) {
       return FilledButton(
         onPressed: null,
-        style: FilledButton.styleFrom(
-          minimumSize: const Size.fromHeight(48),
-        ),
+        style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
         child: const SizedBox(
           width: 24,
           height: 24,
@@ -857,9 +903,7 @@ class _SubmitButton extends ConsumerWidget {
             ],
             Flexible(
               child: Text(
-                isSyncing
-                    ? '正在同步 $count 条记录...'
-                    : '有 $count 条记录待同步，请等待',
+                isSyncing ? '正在同步 $count 条记录...' : '有 $count 条记录待同步，请等待',
                 overflow: TextOverflow.ellipsis,
               ),
             ),
@@ -871,9 +915,7 @@ class _SubmitButton extends ConsumerWidget {
     // 正常状态：可以提交
     return FilledButton(
       onPressed: onSubmit,
-      style: FilledButton.styleFrom(
-        minimumSize: const Size.fromHeight(48),
-      ),
+      style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
       child: const Text('提交审核'),
     );
   }
@@ -898,7 +940,11 @@ class _MySubmissionsTab extends ConsumerWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.error_outline, size: 48, color: context.colors.textTertiary),
+                  Icon(
+                    Icons.error_outline,
+                    size: 48,
+                    color: context.colors.textTertiary,
+                  ),
                   const SizedBox(height: 16),
                   Text('加载失败: $e'),
                   const SizedBox(height: 16),
@@ -993,72 +1039,84 @@ class _SubmissionCard extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: 6),
-              Row(
-                children: [
-                  StatusPill(
-                    label: _getStatusText(),
-                    variant: _getStatusVariant(),
-                  ),
-                  const SizedBox(width: 12),
-                  Text(
-                    '第 ${submission['week_number']} 周',
-                    style: AppTextStyles.sm.copyWith(color: context.colors.textSecondary),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    '· $recordCount 条记录',
-                    style: AppTextStyles.sm.copyWith(color: context.colors.textSecondary),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Text(
-                DateFormat('yyyy-MM-dd HH:mm').format(submittedAt),
-                style: AppTextStyles.bodyMedium.copyWith(color: context.colors.textSecondary),
-              ),
-              if (reviewerName != null) ...[
-                const SizedBox(height: 4),
+            Row(
+              children: [
+                StatusPill(
+                  label: _getStatusText(),
+                  variant: _getStatusVariant(),
+                ),
+                const SizedBox(width: 12),
                 Text(
-                  '审核人: $reviewerName',
-                  style: AppTextStyles.sm.copyWith(color: context.colors.textSecondary),
-                ),
-              ],
-              if (submission['review_note'] != null) ...[
-                const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(8),
+                  '第 ${submission['week_number']} 周',
+                  style: AppTextStyles.sm.copyWith(
+                    color: context.colors.textSecondary,
                   ),
-                  child: Text(
-                    '备注: ${submission['review_note']}',
-                    style: AppTextStyles.sm,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  '· $recordCount 条记录',
+                  style: AppTextStyles.sm.copyWith(
+                    color: context.colors.textSecondary,
                   ),
                 ),
               ],
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Icon(Icons.visibility, size: 16, color: context.colors.textTertiary),
-                  const SizedBox(width: 4),
-                  Text(
-                    '点击查看详情',
-                    style: AppTextStyles.sm.copyWith(color: context.colors.textTertiary),
-                  ),
-                  const Spacer(),
-                  if (canCancel)
-                    OutlinedButton.icon(
-                      icon: const Icon(Icons.cancel, size: 18),
-                      label: const Text('撤回'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: context.colors.stateDanger,
-                        visualDensity: VisualDensity.compact,
-                      ),
-                  onPressed: () => _showCancelDialog(context, ref),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              DateFormat('yyyy-MM-dd HH:mm').format(submittedAt),
+              style: AppTextStyles.bodyMedium.copyWith(
+                color: context.colors.textSecondary,
+              ),
+            ),
+            if (reviewerName != null) ...[
+              const SizedBox(height: 4),
+              Text(
+                '审核人: $reviewerName',
+                style: AppTextStyles.sm.copyWith(
+                  color: context.colors.textSecondary,
                 ),
+              ),
+            ],
+            if (submission['review_note'] != null) ...[
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  '备注: ${submission['review_note']}',
+                  style: AppTextStyles.sm,
+                ),
+              ),
+            ],
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Icon(
+                  Icons.visibility,
+                  size: 16,
+                  color: context.colors.textTertiary,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  '点击查看详情',
+                  style: AppTextStyles.sm.copyWith(
+                    color: context.colors.textTertiary,
+                  ),
+                ),
+                const Spacer(),
+                if (canCancel)
+                  OutlinedButton.icon(
+                    icon: const Icon(Icons.cancel, size: 18),
+                    label: const Text('撤回'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: context.colors.stateDanger,
+                      visualDensity: VisualDensity.compact,
+                    ),
+                    onPressed: () => _showCancelDialog(context, ref),
+                  ),
               ],
             ),
           ],
@@ -1070,25 +1128,13 @@ class _SubmissionCard extends ConsumerWidget {
   Future<void> _showDetailDialog(BuildContext context, WidgetRef ref) async {
     final submissionId = submission['id'] as int;
 
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => const AlertDialog(
-        content: Row(
-          children: [
-            CircularProgressIndicator(),
-            SizedBox(width: 20),
-            Text('加载详情...'),
-          ],
-        ),
-      ),
-    );
+    final loadingDialog = LoadingDialogHandle.show(context);
 
     try {
       final service = ref.read(submissionServiceProvider);
       final data = await service.getSubmissionRecords(submissionId);
 
-      Navigator.of(context, rootNavigator: true).pop();
+      if (!loadingDialog.close() || !context.mounted) return;
 
       final status = data['status'] as String?;
       if (status == 'cancelled') {
@@ -1100,8 +1146,11 @@ class _SubmissionCard extends ConsumerWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.cancel_outlined,
-                      size: 48, color: ctx.colors.textTertiary),
+                  Icon(
+                    Icons.cancel_outlined,
+                    size: 48,
+                    color: ctx.colors.textTertiary,
+                  ),
                   const SizedBox(height: 16),
                   const Text('该提交已被撤销'),
                 ],
@@ -1164,8 +1213,11 @@ class _SubmissionCard extends ConsumerWidget {
                         children: [
                           Row(
                             children: [
-                              Icon(Icons.cancel,
-                                  color: c.stateDanger, size: 18),
+                              Icon(
+                                Icons.cancel,
+                                color: c.stateDanger,
+                                size: 18,
+                              ),
                               const SizedBox(width: AppSpacing.sm),
                               Text(
                                 '已拒绝',
@@ -1180,16 +1232,18 @@ class _SubmissionCard extends ConsumerWidget {
                             const SizedBox(height: AppSpacing.xs),
                             Text(
                               '审核人 · ${submission['reviewer_name']}',
-                              style: AppTextStyles.sm
-                                  .copyWith(color: c.stateDanger),
+                              style: AppTextStyles.sm.copyWith(
+                                color: c.stateDanger,
+                              ),
                             ),
                           ],
                           if (submission['review_note'] != null) ...[
                             const SizedBox(height: AppSpacing.xs),
                             Text(
                               '拒绝原因 · ${submission['review_note']}',
-                              style: AppTextStyles.sm
-                                  .copyWith(color: c.stateDanger),
+                              style: AppTextStyles.sm.copyWith(
+                                color: c.stateDanger,
+                              ),
                             ),
                           ],
                         ],
@@ -1213,83 +1267,83 @@ class _SubmissionCard extends ConsumerWidget {
                   else if (lateCount + absentCount + leaveCount + otherCount ==
                       0)
                     EmptyState.noAbnormalRecords(),
-                if (absentRecords.isNotEmpty) ...[
-                  const Text(
-                    '缺勤名单:',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 8),
-                  ...absentRecords.map(
-                    (r) => Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 2),
-                      child: Text(
-                        '- ${r['student_name']} (${r['student_no']}) ${r['class_name']}',
+                  if (absentRecords.isNotEmpty) ...[
+                    const Text(
+                      '缺勤名单:',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    ...absentRecords.map(
+                      (r) => Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        child: Text(
+                          '- ${r['student_name']} (${r['student_no']}) ${r['class_name']}',
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                ],
-                if (lateRecords.isNotEmpty) ...[
-                  const Text(
-                    '迟到名单:',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 8),
-                  ...lateRecords.map(
-                    (r) => Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 2),
-                      child: Text(
-                        '- ${r['student_name']} (${r['student_no']}) ${r['class_name']}',
+                    const SizedBox(height: 12),
+                  ],
+                  if (lateRecords.isNotEmpty) ...[
+                    const Text(
+                      '迟到名单:',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    ...lateRecords.map(
+                      (r) => Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        child: Text(
+                          '- ${r['student_name']} (${r['student_no']}) ${r['class_name']}',
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                ],
-                if (leaveRecords.isNotEmpty) ...[
-                  const Text(
-                    '请假名单:',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 8),
-                  ...leaveRecords.map(
-                    (r) => Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 2),
-                      child: Text(
-                        '- ${r['student_name']} (${r['student_no']}) ${r['class_name']}',
+                    const SizedBox(height: 12),
+                  ],
+                  if (leaveRecords.isNotEmpty) ...[
+                    const Text(
+                      '请假名单:',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    ...leaveRecords.map(
+                      (r) => Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        child: Text(
+                          '- ${r['student_name']} (${r['student_no']}) ${r['class_name']}',
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                ],
-                if (otherRecords.isNotEmpty) ...[
-                  const Text(
-                    '其他名单:',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 8),
-                  ...otherRecords.map(
-                    (r) => Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 2),
-                      child: Text(
-                        '- ${r['student_name']} (${r['student_no']}) ${r['class_name']}',
+                    const SizedBox(height: 12),
+                  ],
+                  if (otherRecords.isNotEmpty) ...[
+                    const Text(
+                      '其他名单:',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    ...otherRecords.map(
+                      (r) => Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        child: Text(
+                          '- ${r['student_name']} (${r['student_no']}) ${r['class_name']}',
+                        ),
                       ),
                     ),
-                  ),
+                  ],
                 ],
-              ],
+              ),
             ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('关闭'),
-            ),
-          ],
-        );
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('关闭'),
+              ),
+            ],
+          );
         },
       );
     } catch (e) {
-      Navigator.of(context, rootNavigator: true).pop();
+      loadingDialog.close();
       Toast.show(context, '加载详情失败: $e');
     }
   }
@@ -1330,18 +1384,22 @@ class _SubmissionCard extends ConsumerWidget {
         );
       },
     );
+    if (!context.mounted) return;
 
     if (confirmed == true) {
       try {
         final service = ref.read(submissionServiceProvider);
         await service.cancelSubmission(submission['id'] as int);
+        if (!context.mounted) return;
         ref.invalidate(mySubmissionsProvider);
         ref.invalidate(submittedTaskIdsProvider);
         Toast.show(context, '已撤回');
       } on DioException catch (e) {
-        final message = e.response?.data['detail'] ?? '撤回失败';
+        if (!context.mounted) return;
+        final message = Toast.errorMessage(e.response?.data, fallback: '撤回失败');
         Toast.show(context, message);
       } catch (e) {
+        if (!context.mounted) return;
         Toast.show(context, '撤回失败: $e');
       }
     }
@@ -1394,14 +1452,18 @@ class _SubmissionConfirmDialog extends StatelessWidget {
                   ),
                   child: Row(
                     children: [
-                      Icon(Icons.warning_amber,
-                          color: c.stateWarning, size: 20),
+                      Icon(
+                        Icons.warning_amber,
+                        color: c.stateWarning,
+                        size: 20,
+                      ),
                       const SizedBox(width: AppSpacing.sm),
                       Expanded(
                         child: Text(
                           '注意：部分任务存在异常记录，请确认状态是否正确',
-                          style: AppTextStyles.sm
-                              .copyWith(color: c.stateWarning),
+                          style: AppTextStyles.sm.copyWith(
+                            color: c.stateWarning,
+                          ),
                         ),
                       ),
                     ],
@@ -1459,10 +1521,14 @@ class _SubmissionConfirmDialog extends StatelessWidget {
               children: [
                 _buildStatChip('共$total人', context.colors.textTertiary),
                 _buildStatChip('到$present', context.colors.stateSuccess),
-                if (absent > 0) _buildStatChip('缺$absent', context.colors.stateDanger),
-                if (late > 0) _buildStatChip('迟$late', context.colors.stateWarning),
-                if (leave > 0) _buildStatChip('假$leave', context.colors.stateInfo),
-                if (other > 0) _buildStatChip('他$other', context.colors.brandPrimary),
+                if (absent > 0)
+                  _buildStatChip('缺$absent', context.colors.stateDanger),
+                if (late > 0)
+                  _buildStatChip('迟$late', context.colors.stateWarning),
+                if (leave > 0)
+                  _buildStatChip('假$leave', context.colors.stateInfo),
+                if (other > 0)
+                  _buildStatChip('他$other', context.colors.brandPrimary),
               ],
             ),
           ],
@@ -1481,7 +1547,11 @@ class _SubmissionConfirmDialog extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w500),
+        style: TextStyle(
+          color: color,
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+        ),
       ),
     );
   }

@@ -1,14 +1,18 @@
 from fastapi import FastAPI
-from datetime import datetime
+from fastapi.responses import JSONResponse
+from contextlib import closing
+from datetime import datetime, timezone
+from sqlalchemy import text
 from routers import grades, majors, classes, students, tasks, records, auth, app_version, sync, data_version
 from app.routers import week, user, submission, duty, announcement, ranking
-from app.core.database import Base, get_db
-from app.models import *
+from app.core.database import get_db
+from app.services.schema_readiness import check_schema
+from app.version import API_VERSION, API_CAPABILITIES
 
 app = FastAPI(
     title="考勤助手 API",
     description="考勤助手 App 服务端接口",
-    version="0.6.5",
+    version=API_VERSION,
 )
 
 app.include_router(auth.router, prefix="/api")
@@ -35,8 +39,9 @@ app.include_router(data_version.router, prefix="/api")
 def health():
     return {
         "status": "ok",
-        "timestamp": datetime.utcnow().isoformat(),
-        "version": "0.6.5",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "version": API_VERSION,
+        "capabilities": API_CAPABILITIES,
     }
 
 
@@ -44,9 +49,25 @@ def health():
 @app.get("/api/health/db")
 def health_db():
     try:
-        from sqlalchemy import text
-        db = next(get_db())
-        db.execute(text("SELECT 1"))
+        with closing(get_db()) as sessions:
+            db = next(sessions)
+            db.execute(text("SELECT 1"))
         return {"status": "ok", "database": "connected"}
-    except Exception as e:
-        return {"status": "error", "database": str(e)}
+    except Exception:
+        # Connection exceptions may contain usernames, hosts or SQL parameters.
+        return JSONResponse(status_code=503, content={"status": "error", "database": "unavailable"})
+
+
+@app.get("/health/ready")
+@app.get("/api/health/ready")
+def health_ready():
+    try:
+        with closing(get_db()) as sessions:
+            db = next(sessions)
+            db.execute(text("SELECT 1"))
+            schema = check_schema(db.connection())
+        if not schema["ready"]:
+            return JSONResponse(status_code=503, content={"status": "not_ready", "schema": "upgrade_required"})
+        return {"status": "ok", "schema": "ready", "version": API_VERSION}
+    except Exception:
+        return JSONResponse(status_code=503, content={"status": "not_ready", "database": "unavailable"})

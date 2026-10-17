@@ -19,15 +19,15 @@ class StatusPill extends StatelessWidget {
   });
 
   const StatusPill.success({super.key, required this.label, this.icon})
-      : variant = StatusPillVariant.success;
+    : variant = StatusPillVariant.success;
   const StatusPill.warning({super.key, required this.label, this.icon})
-      : variant = StatusPillVariant.warning;
+    : variant = StatusPillVariant.warning;
   const StatusPill.danger({super.key, required this.label, this.icon})
-      : variant = StatusPillVariant.danger;
+    : variant = StatusPillVariant.danger;
   const StatusPill.info({super.key, required this.label, this.icon})
-      : variant = StatusPillVariant.info;
+    : variant = StatusPillVariant.info;
   const StatusPill.neutral({super.key, required this.label, this.icon})
-      : variant = StatusPillVariant.neutral;
+    : variant = StatusPillVariant.neutral;
 
   @override
   Widget build(BuildContext context) {
@@ -39,6 +39,16 @@ class StatusPill extends StatelessWidget {
       StatusPillVariant.info => c.stateInfo,
       StatusPillVariant.neutral => c.textSecondary,
     };
+
+    final textColor = Theme.of(context).brightness == Brightness.light
+        ? switch (variant) {
+            StatusPillVariant.success => const Color(0xFF065F46),
+            StatusPillVariant.warning => const Color(0xFF92400E),
+            StatusPillVariant.danger => const Color(0xFF991B1B),
+            StatusPillVariant.info => const Color(0xFF075985),
+            StatusPillVariant.neutral => c.textSecondary,
+          }
+        : c.textPrimary;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -53,10 +63,7 @@ class StatusPill extends StatelessWidget {
             Icon(icon, size: 12, color: color),
             const SizedBox(width: 4),
           ],
-          Text(
-            label,
-            style: AppTextStyles.xs.copyWith(color: color),
-          ),
+          Text(label, style: AppTextStyles.xs.copyWith(color: textColor)),
         ],
       ),
     );

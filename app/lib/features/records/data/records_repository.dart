@@ -39,6 +39,7 @@ class TaskSummary {
 
 /// 记录详情中的学生条目
 class RecordEntry {
+  static const _unset = Object();
   final int recordId;
   final String studentName;
   final String studentNo;
@@ -55,14 +56,17 @@ class RecordEntry {
     this.remark,
   });
 
-  RecordEntry copyWith({domain.AttendanceStatus? status, String? remark}) {
+  RecordEntry copyWith({
+    domain.AttendanceStatus? status,
+    Object? remark = _unset,
+  }) {
     return RecordEntry(
       recordId: recordId,
       studentName: studentName,
       studentNo: studentNo,
       className: className,
       status: status ?? this.status,
-      remark: remark ?? this.remark,
+      remark: identical(remark, _unset) ? this.remark : remark as String?,
     );
   }
 }
@@ -71,15 +75,20 @@ class RecordEntry {
 class RecordsRepository {
   final AppDatabase _db;
   final AttendanceLocalDataSource _localDS;
+  final int? userId;
 
-  RecordsRepository(this._db, this._localDS);
+  RecordsRepository(this._db, this._localDS, {this.userId});
 
   /// 获取所有已完成/已放弃的任务摘要
   Future<List<TaskSummary>> getTaskSummaries() async {
     final tasks =
         await (_db.select(_db.attendanceTasks)
               ..where(
-                (t) => t.status.isIn(['completed', 'abandoned']),
+                (t) =>
+                    t.status.isIn(['completed', 'abandoned']) &
+                    (userId == null
+                        ? const Constant(true)
+                        : t.userId.equals(userId!)),
               )
               ..orderBy([(t) => OrderingTerm.desc(t.createdAt)]))
             .get();
@@ -155,6 +164,7 @@ class RecordsRepository {
 
   /// 获取任务的所有记录详情（去重：同一 studentId 保留最新 updatedAt/id）
   Future<List<RecordEntry>> getRecordEntries(String taskId) async {
+    if (await _localDS.getTask(taskId) == null) return [];
     final records =
         await (_db.select(_db.attendanceRecords)
               ..where((r) => r.taskId.equals(taskId))
@@ -170,13 +180,10 @@ class RecordsRepository {
       } else {
         final existingTime = existing.updatedAt;
         final newTime = r.updatedAt;
-        if ((existingTime == null || newTime.isAfter(existingTime))) {
+        if (newTime.isAfter(existingTime)) {
           deduped[r.studentId] = r;
-        } else if (existingTime != null &&
-            newTime.isAtSameMomentAs(existingTime) &&
+        } else if (newTime.isAtSameMomentAs(existingTime) &&
             r.id > existing.id) {
-          deduped[r.studentId] = r;
-        } else if (newTime == null && existingTime == null && r.id > existing.id) {
           deduped[r.studentId] = r;
         }
       }
@@ -211,7 +218,11 @@ class RecordsRepository {
     int recordId,
     domain.AttendanceStatus status, {
     String? remark,
-  }) async {
+  }) => _db.transaction(() async {
+    final existing = await _localDS.getRecordById(recordId);
+    if (existing == null || await _localDS.getTask(existing.taskId) == null) {
+      throw StateError('记录不存在或不属于当前账号');
+    }
     await (_db.update(
       _db.attendanceRecords,
     )..where((r) => r.id.equals(recordId))).write(
@@ -243,16 +254,20 @@ class RecordsRepository {
         },
       );
       LoggerService.sync('updateRecord: sync enqueued');
+      await (_db.update(_db.attendanceTasks)
+            ..where((t) => t.id.equals(record.taskId)))
+          .write(AttendanceTasksCompanion(updatedAt: Value(DateTime.now())));
     } else {
       LoggerService.sync(
         'updateRecord: record not found after update',
         isError: true,
       );
     }
-  }
+  });
 
   /// 获取任务关联的所有班级学生（用于点名记录显示全员）
   Future<List<RecordEntry>> getFullRollCallEntries(String taskId) async {
+    if (await _localDS.getTask(taskId) == null) return [];
     // 获取任务关联的班级
     final taskClasses =
         await (_db.select(_db.taskClasses)
@@ -300,20 +315,23 @@ class RecordsRepository {
   }
 
   /// 放弃任务：标记为 abandoned 并同步到服务端
-  Future<void> deleteTask(String taskId) async {
+  Future<void> deleteTask(String taskId) => _db.transaction(() async {
+    if (await _localDS.getTask(taskId) == null) {
+      throw StateError('任务不存在或不属于当前账号');
+    }
     // 检查是否已经是 abandoned
-    final task = await (_db.select(_db.attendanceTasks)
-          ..where((t) => t.id.equals(taskId)))
-        .getSingleOrNull();
+    final task = await (_db.select(
+      _db.attendanceTasks,
+    )..where((t) => t.id.equals(taskId))).getSingleOrNull();
     if (task?.status == 'abandoned') {
       LoggerService.sync('任务已经是 abandoned，无需重复操作: $taskId');
       return;
     }
 
     // 1. 更新任务状态为 abandoned
-    await (_db.update(_db.attendanceTasks)
-          ..where((t) => t.id.equals(taskId)))
-        .write(
+    await (_db.update(
+      _db.attendanceTasks,
+    )..where((t) => t.id.equals(taskId))).write(
       AttendanceTasksCompanion(
         status: const Value('abandoned'),
         updatedAt: Value(DateTime.now()),
@@ -329,5 +347,5 @@ class RecordsRepository {
     );
 
     LoggerService.sync('任务已标记为 abandoned: $taskId');
-  }
+  });
 }

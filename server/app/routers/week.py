@@ -15,7 +15,13 @@ router = APIRouter(prefix="/week", tags=["week"])
 
 def get_current_week_config(db: Session) -> WeekConfig | None:
     """获取当前活跃的周次配置"""
-    return db.query(WeekConfig).filter(WeekConfig.is_active == True).first()
+    return db.query(WeekConfig).filter(WeekConfig.is_active == True).order_by(WeekConfig.id.desc()).first()
+
+
+def _config_response(config: WeekConfig) -> dict:
+    return {"id": config.id, "semester_id": config.id, "start_date": config.start_date,
+            "semester_name": config.semester_name, "is_active": config.is_active,
+            "created_at": config.created_at}
 
 
 def calculate_week_number(config: WeekConfig, current_date: datetime) -> int:
@@ -45,6 +51,7 @@ async def get_current_week(db: Session = Depends(get_db)):
     week_end = week_start + timedelta(days=6)
     
     return {
+        "semester_id": config.id,
         "week_number": week_number,
         "start_date": week_start,
         "end_date": week_end,
@@ -66,7 +73,12 @@ async def get_week_config(db: Session = Depends(get_db)):
             "created_at": None
         }
     
-    return config
+    return _config_response(config)
+
+
+@router.get("/semesters", response_model=list[WeekConfigResponse])
+async def get_semesters(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    return [_config_response(c) for c in db.query(WeekConfig).order_by(WeekConfig.start_date.desc()).all()]
 
 
 @router.put("/config", response_model=WeekConfigResponse)
@@ -80,7 +92,12 @@ async def update_week_config(
         raise HTTPException(status_code=403, detail="需要管理员权限")
     
     # 获取当前活跃配置
-    config = get_current_week_config(db)
+    # Keep old semester identities immutable: changing start_date starts a new
+    # term instead of relabelling all existing week-numbered data.
+    configs = db.query(WeekConfig).order_by(WeekConfig.id).with_for_update().all()
+    config = next((c for c in configs if c.start_date == body.start_date), None)
+    for old in configs:
+        old.is_active = False
     
     if not config:
         # 创建新配置
@@ -91,12 +108,11 @@ async def update_week_config(
         )
         db.add(config)
     else:
-        # 更新配置
-        config.start_date = body.start_date
+        config.is_active = True
         if body.semester_name is not None:
             config.semester_name = body.semester_name
     
     db.commit()
     db.refresh(config)
     
-    return config
+    return _config_response(config)

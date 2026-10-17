@@ -7,13 +7,26 @@ import '../design_system/tokens.dart';
 import '../design_system/typography.dart';
 
 class Toast {
+  static String errorMessage(dynamic data, {String fallback = '操作失败'}) {
+    if (data is Map && data['detail'] is String) {
+      return data['detail'] as String;
+    }
+    return fallback;
+  }
+
   static void show(BuildContext context, String message) {
-    final overlay = Overlay.of(context);
+    if (!context.mounted) return;
+    final overlay = Overlay.maybeOf(context);
+    if (overlay == null) return;
     late OverlayEntry entry;
 
     entry = OverlayEntry(
-      builder: (ctx) =>
-          _ToastWidget(message: message, onDismiss: () => entry.remove()),
+      builder: (ctx) => _ToastWidget(
+        message: message,
+        onDismiss: () {
+          if (entry.mounted) entry.remove();
+        },
+      ),
     );
 
     overlay.insert(entry);
@@ -32,6 +45,7 @@ class _ToastWidget extends StatefulWidget {
 
 class _ToastWidgetState extends State<_ToastWidget>
     with SingleTickerProviderStateMixin {
+  Timer? _dismissTimer;
   late AnimationController _controller;
   late Animation<double> _fadeAnim;
   late Animation<Offset> _slideAnim;
@@ -51,19 +65,18 @@ class _ToastWidgetState extends State<_ToastWidget>
 
     _controller.forward();
 
-    Future.delayed(const Duration(milliseconds: 1500), () {
+    _dismissTimer = Timer(const Duration(milliseconds: 1500), () {
       if (mounted) {
         _controller.reverse().then((_) {
-          widget.onDismiss();
+          if (mounted) widget.onDismiss();
         });
-      } else {
-        widget.onDismiss();
       }
     });
   }
 
   @override
   void dispose() {
+    _dismissTimer?.cancel();
     _controller.dispose();
     super.dispose();
   }

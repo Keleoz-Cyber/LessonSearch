@@ -58,7 +58,7 @@ class _RankingPageState extends ConsumerState<RankingPage>
   static const _periods = [
     AppSegmentedItem(value: '7d', label: '近 7 天'),
     AppSegmentedItem(value: '30d', label: '近 30 天'),
-    AppSegmentedItem(value: 'total', label: '总榜'),
+    AppSegmentedItem(value: 'total', label: '本学期总榜'),
   ];
 
   static const _rankTypes = [
@@ -418,13 +418,13 @@ class _RankingPageState extends ConsumerState<RankingPage>
     String periodText;
     if (_periodType == '7d') {
       periodText =
-          '统计最近 7 天的考勤数据。分数 = 异常加权人次 ÷ (班级人数 × 查课次数)，每日凌晨 2 点自动更新';
+          '统计当前学期截至昨日最近 7 天的考勤数据。分数 = 异常加权人次 ÷ (班级人数 × 查课次数)，每日凌晨 2 点自动更新';
     } else if (_periodType == '30d') {
       periodText =
-          '统计最近 30 天的考勤数据。分数 = 异常加权人次 ÷ (班级人数 × 查课次数)，每日凌晨 2 点自动更新';
+          '统计当前学期截至昨日最近 30 天的考勤数据。分数 = 异常加权人次 ÷ (班级人数 × 查课次数)，每日凌晨 2 点自动更新';
     } else {
       periodText =
-          '统计所有历史考勤数据。分数 = 异常加权人次 ÷ (班级人数 × 查课次数)，每日凌晨 2 点自动更新';
+          '统计当前学期截至昨日的考勤数据。分数 = 异常加权人次 ÷ (班级人数 × 查课次数)，每日凌晨 2 点自动更新';
     }
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,

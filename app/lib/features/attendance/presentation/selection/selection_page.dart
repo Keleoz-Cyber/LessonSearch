@@ -31,6 +31,7 @@ class _SelectionPageState extends ConsumerState<SelectionPage> {
   final Set<int> _selectedClassIds = {};
 
   bool _loading = true;
+  int _classGeneration = 0;
   String? _error;
 
   bool get _isNameCheck => widget.taskType == TaskType.nameCheck;
@@ -49,12 +50,14 @@ class _SelectionPageState extends ConsumerState<SelectionPage> {
       await repo.ensureBaseData();
       final grades = await repo.getGrades();
       final majors = await repo.getMajors();
+      if (!mounted) return;
       setState(() {
         _grades = grades;
         _majors = majors;
         _loading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _error = _formatError(e);
         _loading = false;
@@ -75,6 +78,7 @@ class _SelectionPageState extends ConsumerState<SelectionPage> {
   }
 
   Future<void> _onGradeChanged(GradeInfo? grade) async {
+    _classGeneration++;
     setState(() {
       _selectedGrade = grade;
       _selectedMajor = null;
@@ -84,9 +88,11 @@ class _SelectionPageState extends ConsumerState<SelectionPage> {
   }
 
   Future<void> _onMajorChanged(MajorInfo? major) async {
+    final generation = ++_classGeneration;
     setState(() {
       _selectedMajor = major;
       _selectedClassIds.clear();
+      _classes = [];
     });
     if (_selectedGrade != null && major != null) {
       final repo = ref.read(studentRepositoryProvider);
@@ -94,6 +100,7 @@ class _SelectionPageState extends ConsumerState<SelectionPage> {
         gradeId: _selectedGrade!.id,
         majorId: major.id,
       );
+      if (!mounted || generation != _classGeneration) return;
       setState(() => _classes = classes);
     }
   }
@@ -132,11 +139,7 @@ class _SelectionPageState extends ConsumerState<SelectionPage> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(
-                  Icons.error_outline,
-                  size: 32,
-                  color: c.stateDanger,
-                ),
+                Icon(Icons.error_outline, size: 32, color: c.stateDanger),
                 const SizedBox(height: AppSpacing.lg),
                 Text(
                   _error!,
@@ -179,9 +182,7 @@ class _SelectionPageState extends ConsumerState<SelectionPage> {
                 0,
               ),
               child: DropdownButtonFormField<GradeInfo>(
-                decoration: const InputDecoration(
-                  labelText: '年级',
-                ),
+                decoration: const InputDecoration(labelText: '年级'),
                 initialValue: _selectedGrade,
                 items: _grades
                     .map((g) => DropdownMenuItem(value: g, child: Text(g.name)))
@@ -199,9 +200,7 @@ class _SelectionPageState extends ConsumerState<SelectionPage> {
                 0,
               ),
               child: DropdownButtonFormField<MajorInfo>(
-                decoration: const InputDecoration(
-                  labelText: '专业',
-                ),
+                decoration: const InputDecoration(labelText: '专业'),
                 initialValue: _selectedMajor,
                 items: _majors
                     .map(

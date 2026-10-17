@@ -1,24 +1,28 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+from typing import Literal
 from datetime import datetime
+
+
+AttendanceStatus = Literal["pending", "present", "absent", "late", "leave", "other"]
 
 
 class RecordCreate(BaseModel):
     student_id: int
     class_id: int
-    status: str = "pending"
-    remark: str | None = None
+    status: AttendanceStatus = "pending"
+    remark: str | None = Field(default=None, max_length=200)
 
 
 class RecordUpdate(BaseModel):
-    status: str
-    remark: str | None = None
+    status: AttendanceStatus
+    remark: str | None = Field(default=None, max_length=200)
 
 
 class RecordBatchUpdateItem(BaseModel):
     task_id: str
     student_id: int
-    status: str
-    remark: str | None = None
+    status: AttendanceStatus
+    remark: str | None = Field(default=None, max_length=200)
 
 
 class RecordBatchUpdateResult(BaseModel):

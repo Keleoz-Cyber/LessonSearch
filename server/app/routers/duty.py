@@ -11,8 +11,22 @@ from app.core.database import get_db
 from app.core.security import get_current_user
 from app.models import User, DutyAssignment, Submission, SubmissionRecord, AttendanceRecord
 from app.schemas.duty import DutyAssignmentResponse, DutyAssignmentListResponse, CreateDutyAssignmentRequest, WeekSubmissionStatusResponse, MemberSubmissionStatus
+from app.services.semesters import resolve_semester, semester_end
 
 router = APIRouter(prefix="/duties", tags=["duties"])
+
+VALID_SUBMISSION_STATUSES = ("pending", "approved")
+
+
+def _semester_duties(db, semester):
+    end = semester_end(db, semester)
+    query = db.query(DutyAssignment).filter(
+        (DutyAssignment.is_active.is_(True)) |
+        (DutyAssignment.deactivated_at >= datetime.combine(semester.start_date, datetime.min.time()))
+    )
+    if end is not None:
+        query = query.filter(DutyAssignment.assigned_at < datetime.combine(end, datetime.min.time()))
+    return query.all()
 
 
 @router.get("/", response_model=DutyAssignmentListResponse)
@@ -81,6 +95,7 @@ async def get_my_duty(
 @router.get("/unsubmitted", response_model=List[DutyAssignmentResponse])
 async def get_unsubmitted_users(
     week_number: int,
+    semester_id: int | None = None,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -88,15 +103,15 @@ async def get_unsubmitted_users(
     if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="需要管理员权限")
     
-    active_duties = db.query(DutyAssignment).filter(
-        DutyAssignment.is_active == True
-    ).all()
+    semester = resolve_semester(db, semester_id)
+    active_duties = _semester_duties(db, semester)
     
     active_user_ids = [d.user_id for d in active_duties]
     
     submitted_user_ids = db.query(Submission.user_id).filter(
+        Submission.semester_id == semester.id,
         Submission.week_number == week_number,
-        Submission.status.in_(["pending", "approved"])
+        Submission.status.in_(VALID_SUBMISSION_STATUSES)
     ).all()
     
     submitted_user_ids = [u[0] for u in submitted_user_ids]
@@ -106,10 +121,7 @@ async def get_unsubmitted_users(
     result = []
     for uid in unsubmitted_ids:
         user = db.query(User).filter(User.id == uid).first()
-        duty = db.query(DutyAssignment).filter(
-            DutyAssignment.user_id == uid,
-            DutyAssignment.is_active == True
-        ).first()
+        duty = next((d for d in active_duties if d.user_id == uid), None)
         
         if user and duty:
             assigner = db.query(User).filter(User.id == duty.assigned_by).first()
@@ -132,6 +144,7 @@ async def get_unsubmitted_users(
 @router.get("/week-submissions", response_model=WeekSubmissionStatusResponse)
 async def get_week_submission_status(
     week_number: int,
+    semester_id: int | None = None,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -139,9 +152,8 @@ async def get_week_submission_status(
     if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="需要管理员权限")
     
-    active_duties = db.query(DutyAssignment).filter(
-        DutyAssignment.is_active == True
-    ).all()
+    semester = resolve_semester(db, semester_id)
+    active_duties = _semester_duties(db, semester)
     
     submitted_members = []
     not_submitted_members = []
@@ -152,8 +164,10 @@ async def get_week_submission_status(
             continue
         
         submissions = db.query(Submission).filter(
+            Submission.semester_id == semester.id,
             Submission.user_id == duty.user_id,
-            Submission.week_number == week_number
+            Submission.week_number == week_number,
+            Submission.status != "cancelled",
         ).all()
         
         status = MemberSubmissionStatus(
@@ -161,7 +175,7 @@ async def get_week_submission_status(
             user_name=user.real_name,
             user_email=user.email,
             has_duty=True,
-            submitted=len(submissions) > 0,
+            submitted=any(s.status in VALID_SUBMISSION_STATUSES for s in submissions),
             submission_count=len(submissions),
             pending_count=len([s for s in submissions if s.status == "pending"]),
             approved_count=len([s for s in submissions if s.status == "approved"]),
@@ -174,6 +188,7 @@ async def get_week_submission_status(
             not_submitted_members.append(status)
     
     return WeekSubmissionStatusResponse(
+        semester_id=semester.id,
         week_number=week_number,
         total_duty=len(active_duties),
         submitted_count=len(submitted_members),

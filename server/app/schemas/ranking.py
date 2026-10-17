@@ -29,6 +29,7 @@ class RankingSummaryResponse(BaseModel):
 
 
 class RankingListResponse(BaseModel):
+    semester_id: Optional[int] = None
     period_type: str
     rank_type: str
     summary: RankingSummaryResponse

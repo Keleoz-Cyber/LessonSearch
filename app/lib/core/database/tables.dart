@@ -121,6 +121,8 @@ class DutyPlanRows extends Table {
   TextColumn get remark => text().nullable()();
   IntColumn get notificationId => integer()();
   BoolColumn get reminderEnabled => boolean().withDefault(const Constant(true))();
+  TextColumn get reminderStatus => text().withDefault(const Constant('unknown'))();
+  TextColumn get reminderError => text().nullable()();
   DateTimeColumn get classStartAt => dateTime()(); // 上课开始时间（绝对）
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 

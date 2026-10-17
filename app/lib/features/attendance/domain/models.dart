@@ -33,7 +33,8 @@ enum TaskPhase {
   selecting('selecting'),
   executing('executing'),
   confirming('confirming'),
-  textGenerating('text_generating');
+  textGenerating('text_generating'),
+  finished('finished');
 
   final String value;
   const TaskPhase(this.value);
@@ -135,6 +136,7 @@ class AttendanceTask {
 }
 
 class AttendanceRecord {
+  static const _unset = Object();
   final int? id;
   final String taskId;
   final int studentId;
@@ -158,7 +160,7 @@ class AttendanceRecord {
   AttendanceRecord copyWith({
     int? id,
     AttendanceStatus? status,
-    String? remark,
+    Object? remark = _unset,
     DateTime? updatedAt,
   }) {
     return AttendanceRecord(
@@ -167,7 +169,7 @@ class AttendanceRecord {
       studentId: studentId,
       classId: classId,
       status: status ?? this.status,
-      remark: remark ?? this.remark,
+      remark: identical(remark, _unset) ? this.remark : remark as String?,
       createdAt: createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );

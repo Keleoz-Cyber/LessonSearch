@@ -1,7 +1,7 @@
 """
 排行榜缓存模型
 """
-from sqlalchemy import Column, Integer, String, DECIMAL, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, DECIMAL, DateTime, ForeignKey, UniqueConstraint
 from sqlalchemy.sql import func
 
 from app.core.database import Base
@@ -11,6 +11,7 @@ class RankingCache(Base):
     __tablename__ = "ranking_cache"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
+    semester_id = Column(Integer, ForeignKey("week_config.id"), nullable=False, index=True)
     period_type = Column(String(10), nullable=False)  # '7d', '30d', 'total'
     rank_type = Column(String(10), nullable=False)    # 'score', 'rate', 'count'
     class_id = Column(Integer, ForeignKey("classes.id"), nullable=False)
@@ -28,8 +29,10 @@ class RankingCache(Base):
 
 class RankingSummary(Base):
     __tablename__ = "ranking_summary"
+    __table_args__ = (UniqueConstraint("semester_id", "period_type", "rank_type", name="uk_semester_period_rank"),)
 
     id = Column(Integer, primary_key=True, autoincrement=True)
+    semester_id = Column(Integer, ForeignKey("week_config.id"), nullable=False, index=True)
     period_type = Column(String(10), nullable=False)
     rank_type = Column(String(10), nullable=False)
     avg_value = Column(DECIMAL(10, 4), nullable=False)

@@ -3793,6 +3793,29 @@ class $DutyPlanRowsTable extends DutyPlanRows
     ),
     defaultValue: const Constant(true),
   );
+  static const VerificationMeta _reminderStatusMeta = const VerificationMeta(
+    'reminderStatus',
+  );
+  @override
+  late final GeneratedColumn<String> reminderStatus = GeneratedColumn<String>(
+    'reminder_status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('unknown'),
+  );
+  static const VerificationMeta _reminderErrorMeta = const VerificationMeta(
+    'reminderError',
+  );
+  @override
+  late final GeneratedColumn<String> reminderError = GeneratedColumn<String>(
+    'reminder_error',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _classStartAtMeta = const VerificationMeta(
     'classStartAt',
   );
@@ -3828,6 +3851,8 @@ class $DutyPlanRowsTable extends DutyPlanRows
     remark,
     notificationId,
     reminderEnabled,
+    reminderStatus,
+    reminderError,
     classStartAt,
     createdAt,
   ];
@@ -3918,6 +3943,24 @@ class $DutyPlanRowsTable extends DutyPlanRows
         ),
       );
     }
+    if (data.containsKey('reminder_status')) {
+      context.handle(
+        _reminderStatusMeta,
+        reminderStatus.isAcceptableOrUnknown(
+          data['reminder_status']!,
+          _reminderStatusMeta,
+        ),
+      );
+    }
+    if (data.containsKey('reminder_error')) {
+      context.handle(
+        _reminderErrorMeta,
+        reminderError.isAcceptableOrUnknown(
+          data['reminder_error']!,
+          _reminderErrorMeta,
+        ),
+      );
+    }
     if (data.containsKey('class_start_at')) {
       context.handle(
         _classStartAtMeta,
@@ -3984,6 +4027,14 @@ class $DutyPlanRowsTable extends DutyPlanRows
         DriftSqlType.bool,
         data['${effectivePrefix}reminder_enabled'],
       )!,
+      reminderStatus: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}reminder_status'],
+      )!,
+      reminderError: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}reminder_error'],
+      ),
       classStartAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}class_start_at'],
@@ -4012,6 +4063,8 @@ class DutyPlanRow extends DataClass implements Insertable<DutyPlanRow> {
   final String? remark;
   final int notificationId;
   final bool reminderEnabled;
+  final String reminderStatus;
+  final String? reminderError;
   final DateTime classStartAt;
   final DateTime createdAt;
   const DutyPlanRow({
@@ -4025,6 +4078,8 @@ class DutyPlanRow extends DataClass implements Insertable<DutyPlanRow> {
     this.remark,
     required this.notificationId,
     required this.reminderEnabled,
+    required this.reminderStatus,
+    this.reminderError,
     required this.classStartAt,
     required this.createdAt,
   });
@@ -4047,6 +4102,10 @@ class DutyPlanRow extends DataClass implements Insertable<DutyPlanRow> {
     }
     map['notification_id'] = Variable<int>(notificationId);
     map['reminder_enabled'] = Variable<bool>(reminderEnabled);
+    map['reminder_status'] = Variable<String>(reminderStatus);
+    if (!nullToAbsent || reminderError != null) {
+      map['reminder_error'] = Variable<String>(reminderError);
+    }
     map['class_start_at'] = Variable<DateTime>(classStartAt);
     map['created_at'] = Variable<DateTime>(createdAt);
     return map;
@@ -4070,6 +4129,10 @@ class DutyPlanRow extends DataClass implements Insertable<DutyPlanRow> {
           : Value(remark),
       notificationId: Value(notificationId),
       reminderEnabled: Value(reminderEnabled),
+      reminderStatus: Value(reminderStatus),
+      reminderError: reminderError == null && nullToAbsent
+          ? const Value.absent()
+          : Value(reminderError),
       classStartAt: Value(classStartAt),
       createdAt: Value(createdAt),
     );
@@ -4091,6 +4154,8 @@ class DutyPlanRow extends DataClass implements Insertable<DutyPlanRow> {
       remark: serializer.fromJson<String?>(json['remark']),
       notificationId: serializer.fromJson<int>(json['notificationId']),
       reminderEnabled: serializer.fromJson<bool>(json['reminderEnabled']),
+      reminderStatus: serializer.fromJson<String>(json['reminderStatus']),
+      reminderError: serializer.fromJson<String?>(json['reminderError']),
       classStartAt: serializer.fromJson<DateTime>(json['classStartAt']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
     );
@@ -4109,6 +4174,8 @@ class DutyPlanRow extends DataClass implements Insertable<DutyPlanRow> {
       'remark': serializer.toJson<String?>(remark),
       'notificationId': serializer.toJson<int>(notificationId),
       'reminderEnabled': serializer.toJson<bool>(reminderEnabled),
+      'reminderStatus': serializer.toJson<String>(reminderStatus),
+      'reminderError': serializer.toJson<String?>(reminderError),
       'classStartAt': serializer.toJson<DateTime>(classStartAt),
       'createdAt': serializer.toJson<DateTime>(createdAt),
     };
@@ -4125,6 +4192,8 @@ class DutyPlanRow extends DataClass implements Insertable<DutyPlanRow> {
     Value<String?> remark = const Value.absent(),
     int? notificationId,
     bool? reminderEnabled,
+    String? reminderStatus,
+    Value<String?> reminderError = const Value.absent(),
     DateTime? classStartAt,
     DateTime? createdAt,
   }) => DutyPlanRow(
@@ -4138,6 +4207,10 @@ class DutyPlanRow extends DataClass implements Insertable<DutyPlanRow> {
     remark: remark.present ? remark.value : this.remark,
     notificationId: notificationId ?? this.notificationId,
     reminderEnabled: reminderEnabled ?? this.reminderEnabled,
+    reminderStatus: reminderStatus ?? this.reminderStatus,
+    reminderError: reminderError.present
+        ? reminderError.value
+        : this.reminderError,
     classStartAt: classStartAt ?? this.classStartAt,
     createdAt: createdAt ?? this.createdAt,
   );
@@ -4159,6 +4232,12 @@ class DutyPlanRow extends DataClass implements Insertable<DutyPlanRow> {
       reminderEnabled: data.reminderEnabled.present
           ? data.reminderEnabled.value
           : this.reminderEnabled,
+      reminderStatus: data.reminderStatus.present
+          ? data.reminderStatus.value
+          : this.reminderStatus,
+      reminderError: data.reminderError.present
+          ? data.reminderError.value
+          : this.reminderError,
       classStartAt: data.classStartAt.present
           ? data.classStartAt.value
           : this.classStartAt,
@@ -4179,6 +4258,8 @@ class DutyPlanRow extends DataClass implements Insertable<DutyPlanRow> {
           ..write('remark: $remark, ')
           ..write('notificationId: $notificationId, ')
           ..write('reminderEnabled: $reminderEnabled, ')
+          ..write('reminderStatus: $reminderStatus, ')
+          ..write('reminderError: $reminderError, ')
           ..write('classStartAt: $classStartAt, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
@@ -4197,6 +4278,8 @@ class DutyPlanRow extends DataClass implements Insertable<DutyPlanRow> {
     remark,
     notificationId,
     reminderEnabled,
+    reminderStatus,
+    reminderError,
     classStartAt,
     createdAt,
   );
@@ -4214,6 +4297,8 @@ class DutyPlanRow extends DataClass implements Insertable<DutyPlanRow> {
           other.remark == this.remark &&
           other.notificationId == this.notificationId &&
           other.reminderEnabled == this.reminderEnabled &&
+          other.reminderStatus == this.reminderStatus &&
+          other.reminderError == this.reminderError &&
           other.classStartAt == this.classStartAt &&
           other.createdAt == this.createdAt);
 }
@@ -4229,6 +4314,8 @@ class DutyPlanRowsCompanion extends UpdateCompanion<DutyPlanRow> {
   final Value<String?> remark;
   final Value<int> notificationId;
   final Value<bool> reminderEnabled;
+  final Value<String> reminderStatus;
+  final Value<String?> reminderError;
   final Value<DateTime> classStartAt;
   final Value<DateTime> createdAt;
   final Value<int> rowid;
@@ -4243,6 +4330,8 @@ class DutyPlanRowsCompanion extends UpdateCompanion<DutyPlanRow> {
     this.remark = const Value.absent(),
     this.notificationId = const Value.absent(),
     this.reminderEnabled = const Value.absent(),
+    this.reminderStatus = const Value.absent(),
+    this.reminderError = const Value.absent(),
     this.classStartAt = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -4258,6 +4347,8 @@ class DutyPlanRowsCompanion extends UpdateCompanion<DutyPlanRow> {
     this.remark = const Value.absent(),
     required int notificationId,
     this.reminderEnabled = const Value.absent(),
+    this.reminderStatus = const Value.absent(),
+    this.reminderError = const Value.absent(),
     required DateTime classStartAt,
     this.createdAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -4279,6 +4370,8 @@ class DutyPlanRowsCompanion extends UpdateCompanion<DutyPlanRow> {
     Expression<String>? remark,
     Expression<int>? notificationId,
     Expression<bool>? reminderEnabled,
+    Expression<String>? reminderStatus,
+    Expression<String>? reminderError,
     Expression<DateTime>? classStartAt,
     Expression<DateTime>? createdAt,
     Expression<int>? rowid,
@@ -4294,6 +4387,8 @@ class DutyPlanRowsCompanion extends UpdateCompanion<DutyPlanRow> {
       if (remark != null) 'remark': remark,
       if (notificationId != null) 'notification_id': notificationId,
       if (reminderEnabled != null) 'reminder_enabled': reminderEnabled,
+      if (reminderStatus != null) 'reminder_status': reminderStatus,
+      if (reminderError != null) 'reminder_error': reminderError,
       if (classStartAt != null) 'class_start_at': classStartAt,
       if (createdAt != null) 'created_at': createdAt,
       if (rowid != null) 'rowid': rowid,
@@ -4311,6 +4406,8 @@ class DutyPlanRowsCompanion extends UpdateCompanion<DutyPlanRow> {
     Value<String?>? remark,
     Value<int>? notificationId,
     Value<bool>? reminderEnabled,
+    Value<String>? reminderStatus,
+    Value<String?>? reminderError,
     Value<DateTime>? classStartAt,
     Value<DateTime>? createdAt,
     Value<int>? rowid,
@@ -4326,6 +4423,8 @@ class DutyPlanRowsCompanion extends UpdateCompanion<DutyPlanRow> {
       remark: remark ?? this.remark,
       notificationId: notificationId ?? this.notificationId,
       reminderEnabled: reminderEnabled ?? this.reminderEnabled,
+      reminderStatus: reminderStatus ?? this.reminderStatus,
+      reminderError: reminderError ?? this.reminderError,
       classStartAt: classStartAt ?? this.classStartAt,
       createdAt: createdAt ?? this.createdAt,
       rowid: rowid ?? this.rowid,
@@ -4365,6 +4464,12 @@ class DutyPlanRowsCompanion extends UpdateCompanion<DutyPlanRow> {
     if (reminderEnabled.present) {
       map['reminder_enabled'] = Variable<bool>(reminderEnabled.value);
     }
+    if (reminderStatus.present) {
+      map['reminder_status'] = Variable<String>(reminderStatus.value);
+    }
+    if (reminderError.present) {
+      map['reminder_error'] = Variable<String>(reminderError.value);
+    }
     if (classStartAt.present) {
       map['class_start_at'] = Variable<DateTime>(classStartAt.value);
     }
@@ -4390,6 +4495,8 @@ class DutyPlanRowsCompanion extends UpdateCompanion<DutyPlanRow> {
           ..write('remark: $remark, ')
           ..write('notificationId: $notificationId, ')
           ..write('reminderEnabled: $reminderEnabled, ')
+          ..write('reminderStatus: $reminderStatus, ')
+          ..write('reminderError: $reminderError, ')
           ..write('classStartAt: $classStartAt, ')
           ..write('createdAt: $createdAt, ')
           ..write('rowid: $rowid')
@@ -8032,6 +8139,8 @@ typedef $$DutyPlanRowsTableCreateCompanionBuilder =
       Value<String?> remark,
       required int notificationId,
       Value<bool> reminderEnabled,
+      Value<String> reminderStatus,
+      Value<String?> reminderError,
       required DateTime classStartAt,
       Value<DateTime> createdAt,
       Value<int> rowid,
@@ -8048,6 +8157,8 @@ typedef $$DutyPlanRowsTableUpdateCompanionBuilder =
       Value<String?> remark,
       Value<int> notificationId,
       Value<bool> reminderEnabled,
+      Value<String> reminderStatus,
+      Value<String?> reminderError,
       Value<DateTime> classStartAt,
       Value<DateTime> createdAt,
       Value<int> rowid,
@@ -8109,6 +8220,16 @@ class $$DutyPlanRowsTableFilterComposer
 
   ColumnFilters<bool> get reminderEnabled => $composableBuilder(
     column: $table.reminderEnabled,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get reminderStatus => $composableBuilder(
+    column: $table.reminderStatus,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get reminderError => $composableBuilder(
+    column: $table.reminderError,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -8182,6 +8303,16 @@ class $$DutyPlanRowsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get reminderStatus => $composableBuilder(
+    column: $table.reminderStatus,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get reminderError => $composableBuilder(
+    column: $table.reminderError,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get classStartAt => $composableBuilder(
     column: $table.classStartAt,
     builder: (column) => ColumnOrderings(column),
@@ -8238,6 +8369,16 @@ class $$DutyPlanRowsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<String> get reminderStatus => $composableBuilder(
+    column: $table.reminderStatus,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get reminderError => $composableBuilder(
+    column: $table.reminderError,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<DateTime> get classStartAt => $composableBuilder(
     column: $table.classStartAt,
     builder: (column) => column,
@@ -8288,6 +8429,8 @@ class $$DutyPlanRowsTableTableManager
                 Value<String?> remark = const Value.absent(),
                 Value<int> notificationId = const Value.absent(),
                 Value<bool> reminderEnabled = const Value.absent(),
+                Value<String> reminderStatus = const Value.absent(),
+                Value<String?> reminderError = const Value.absent(),
                 Value<DateTime> classStartAt = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -8302,6 +8445,8 @@ class $$DutyPlanRowsTableTableManager
                 remark: remark,
                 notificationId: notificationId,
                 reminderEnabled: reminderEnabled,
+                reminderStatus: reminderStatus,
+                reminderError: reminderError,
                 classStartAt: classStartAt,
                 createdAt: createdAt,
                 rowid: rowid,
@@ -8318,6 +8463,8 @@ class $$DutyPlanRowsTableTableManager
                 Value<String?> remark = const Value.absent(),
                 required int notificationId,
                 Value<bool> reminderEnabled = const Value.absent(),
+                Value<String> reminderStatus = const Value.absent(),
+                Value<String?> reminderError = const Value.absent(),
                 required DateTime classStartAt,
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -8332,6 +8479,8 @@ class $$DutyPlanRowsTableTableManager
                 remark: remark,
                 notificationId: notificationId,
                 reminderEnabled: reminderEnabled,
+                reminderStatus: reminderStatus,
+                reminderError: reminderError,
                 classStartAt: classStartAt,
                 createdAt: createdAt,
                 rowid: rowid,

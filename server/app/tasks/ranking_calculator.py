@@ -1,332 +1,180 @@
-"""
-排行榜计算任务
-每天凌晨2点执行，计算并缓存排行榜数据
-"""
+"""Build semester-scoped rankings atomically; import never runs the job."""
 from datetime import datetime, timedelta
-from sqlalchemy.orm import Session
-from sqlalchemy import and_, func
-from typing import List, Dict, Tuple
+import json
 import logging
 
+from sqlalchemy import func
+
 from app.core.database import SessionLocal
-from app.models import (
-    AttendanceRecord,
-    AttendanceTask,
-    Student,
-    Submission,
-    SubmissionRecord,
-    Class,
-    Grade,
-    Major,
-    RankingCache,
-    RankingSummary,
-)
+from app.models import (AttendanceRecord, Student, Submission, SubmissionRecord,
+                        SubmissionSnapshot, Class, RankingCache, RankingSummary, WeekConfig)
+from app.services.semesters import resolve_semester
 
 logger = logging.getLogger(__name__)
-
-# 状态权重配置
-WEIGHTS = {
-    "absent": 1.0,
-    "leave": 0.5,
-    "late": 0.3,
-    "other": 0.2,
-}
-
+WEIGHTS = {"absent": 1.0, "leave": 0.5, "late": 0.3, "other": 0.2}
 PERIOD_TYPES = ["7d", "30d", "total"]
 RANK_TYPES = ["score", "rate", "count"]
 
 
-def calculate_rankings():
-    """计算所有排行榜"""
-    logger.info("开始计算排行榜...")
-    db = SessionLocal()
-
-    try:
-        # 清空旧缓存
-        db.query(RankingCache).delete()
-        db.query(RankingSummary).delete()
-        db.commit()
-
-        today = datetime.now().date()
-        yesterday = today - timedelta(days=1)
-
-        for period_type in PERIOD_TYPES:
-            for rank_type in RANK_TYPES:
-                logger.info(f"计算 {period_type} {rank_type} 榜单...")
-
-                # 获取统计周期
-                period_start, period_end = get_period_range(period_type, yesterday)
-                prev_start, prev_end = get_previous_period_range(period_type, yesterday)
-
-                # 获取所有班级的统计数据
-                class_stats = calculate_class_stats(
-                    db, period_start, period_end, rank_type
-                )
-
-                if not class_stats:
-                    # 无数据，写入空概览
-                    save_empty_summary(db, period_type, rank_type)
-                    continue
-
-                # 计算上一个周期的数据（用于趋势）
-                prev_stats = calculate_class_stats(db, prev_start, prev_end, rank_type)
-
-                # 排序并生成排名
-                sorted_stats = sort_and_rank(class_stats, rank_type)
-                prev_sorted = sort_and_rank(prev_stats, rank_type) if prev_stats else {}
-
-                # 保存榜单数据
-                save_ranking_cache(db, period_type, rank_type, sorted_stats, prev_sorted)
-                save_ranking_summary(
-                    db, period_type, rank_type, sorted_stats, prev_stats
-                )
-
-        db.commit()
-        logger.info("排行榜计算完成")
-
-    except Exception as e:
-        logger.error(f"排行榜计算失败: {e}")
-        db.rollback()
-        raise
-    finally:
-        db.close()
+def get_period_range(period_type, yesterday):
+    """Half-open windows, e.g. seven complete dates ending yesterday."""
+    end = datetime.combine(yesterday + timedelta(days=1), datetime.min.time())
+    if period_type in ("7d", "30d"):
+        return end - timedelta(days=7 if period_type == "7d" else 30), end
+    return datetime(1970, 1, 1), end
 
 
-def get_period_range(period_type: str, yesterday: datetime) -> Tuple[datetime, datetime]:
-    """获取统计周期范围"""
-    if period_type == "7d":
-        start = yesterday - timedelta(days=7)
-        return datetime.combine(start, datetime.min.time()), datetime.combine(yesterday, datetime.max.time())
-    elif period_type == "30d":
-        start = yesterday - timedelta(days=30)
-        return datetime.combine(start, datetime.min.time()), datetime.combine(yesterday, datetime.max.time())
-    else:  # total
-        # 从系统启用开始
-        return datetime.min, datetime.combine(yesterday, datetime.max.time())
-
-
-def get_previous_period_range(period_type: str, yesterday: datetime) -> Tuple[datetime, datetime]:
-    """获取上一个统计周期范围"""
-    if period_type == "7d":
-        start = yesterday - timedelta(days=14)
-        end = yesterday - timedelta(days=8)
-        return datetime.combine(start, datetime.min.time()), datetime.combine(end, datetime.max.time())
-    elif period_type == "30d":
-        start = yesterday - timedelta(days=60)
-        end = yesterday - timedelta(days=31)
-        return datetime.combine(start, datetime.min.time()), datetime.combine(end, datetime.max.time())
-    else:  # total 无上一周期
+def get_previous_period_range(period_type, yesterday):
+    if period_type == "total":
         return None, None
+    start, end = get_period_range(period_type, yesterday)
+    return start - (end - start), start
 
 
-def calculate_class_stats(
-    db: Session,
-    period_start: datetime,
-    period_end: datetime,
-    rank_type: str,
-) -> Dict[int, Dict]:
-    """计算每个班级的统计数据"""
+def calculate_class_stats(db, period_start, period_end, rank_type, semester_id=None):
     if period_start is None:
         return {}
-
-    # 获取已审核通过的提交
-    approved_submissions = db.query(Submission).filter(
-        Submission.status == "approved",
-        Submission.submitted_at >= period_start,
-        Submission.submitted_at <= period_end,
+    semester = resolve_semester(db, semester_id)
+    submissions = db.query(Submission).filter(
+        Submission.semester_id == semester.id, Submission.status == "approved",
+        Submission.submitted_at >= period_start, Submission.submitted_at < period_end,
     ).all()
-
-    if not approved_submissions:
+    if not submissions:
         return {}
-
-    # 获取这些提交对应的记录
-    submission_ids = [s.id for s in approved_submissions]
-    submission_records = db.query(SubmissionRecord).filter(
-        SubmissionRecord.submission_id.in_(submission_ids),
-    ).all()
-
-    if not submission_records:
-        return {}
-
-    record_ids = [sr.record_id for sr in submission_records]
-    records = db.query(AttendanceRecord).filter(
-        AttendanceRecord.id.in_(record_ids),
-    ).all()
-
-    # 按班级统计
-    class_stats = {}
-    class_submission_ids = {}  # 统计每个班级被查了多少次
-
-    for sr in submission_records:
-        record = next((r for r in records if r.id == sr.record_id), None)
-        if not record:
-            continue
-        class_id = record.class_id
-        if class_id not in class_stats:
-            class_stats[class_id] = {
-                "absent": 0,
-                "late": 0,
-                "leave": 0,
-                "other": 0,
-                "present": 0,
-            }
-            class_submission_ids[class_id] = set()
-
-        class_submission_ids[class_id].add(sr.submission_id)
-
-        status = record.status
-        if status in class_stats[class_id]:
-            class_stats[class_id][status] += 1
-
-    # 分母 = 班级人数 × 查课次数
-    for class_id in list(class_stats.keys()):
-        student_count = db.query(func.count(Student.id)).filter(
-            Student.class_id == class_id
-        ).scalar()
-        check_count = len(class_submission_ids.get(class_id, set()))
-        class_stats[class_id]["total_expected"] = (student_count or 1) * max(check_count, 1)
-
-    # 计算排名值
-    for class_id, stats in class_stats.items():
-        stats["score"] = calculate_score(stats)
-        stats["rate"] = calculate_rate(stats)
-        stats["count"] = stats["absent"]
-
-    return class_stats
+    ids = [s.id for s in submissions]
+    snapshots = {snap.submission_id: snap for snap in db.query(SubmissionSnapshot).filter(
+        SubmissionSnapshot.semester_id == semester.id,
+        SubmissionSnapshot.submission_id.in_(ids)).all()}
+    current_rosters = dict(db.query(Student.class_id, func.count(Student.id)).group_by(Student.class_id).all())
+    unique_records, expected = {}, {}
+    for sub in submissions:
+        snapshot = snapshots.get(sub.id)
+        data = None
+        if snapshot is not None:
+            try:
+                data = json.loads(snapshot.snapshot_data)
+            except (ValueError, TypeError):
+                pass
+        if isinstance(data, dict) and isinstance(data.get("records"), list):
+            records = data["records"]
+            roster_counts = data.get("task_class_roster_counts", {})
+        else:
+            rows = db.query(AttendanceRecord).join(SubmissionRecord,
+                SubmissionRecord.record_id == AttendanceRecord.id).filter(
+                SubmissionRecord.submission_id == sub.id).all()
+            records = [{"task_id": r.task_id, "student_id": r.student_id,
+                        "class_id": r.class_id, "status": r.status} for r in rows]
+            roster_counts = {}
+        for record in records:
+            cid, tid, sid = record.get("class_id"), record.get("task_id"), record.get("student_id")
+            if cid is None or tid is None or sid is None:
+                continue
+            unique_records[(tid, sid)] = record
+            count = roster_counts.get(tid, {}).get(str(cid))
+            expected[(cid, tid)] = int(count) if count is not None else current_rosters.get(cid, 0)
+    stats, observed = {}, {}
+    for (tid, sid), record in unique_records.items():
+        cid = record["class_id"]
+        values = stats.setdefault(cid, {"absent": 0, "late": 0, "leave": 0, "other": 0, "present": 0})
+        if record["status"] in values:
+            values[record["status"]] += 1
+        observed[(cid, tid)] = observed.get((cid, tid), 0) + 1
+    for cid, values in stats.items():
+        # Distinct actual tasks, not submission batches; approved snapshots keep
+        # each task's roster size stable across later roster changes.
+        values["total_expected"] = sum(max(count, observed.get(key, 0))
+            for key, count in expected.items() if key[0] == cid)
+        values["score"] = calculate_score(values)
+        values["rate"] = calculate_rate(values)
+        values["count"] = values["absent"]
+    return stats
 
 
-def calculate_score(stats: Dict) -> float:
-    """计算综合异常分数"""
+def calculate_score(stats):
     total = stats["total_expected"]
-    if total == 0:
-        return 0.0
-
-    raw_score = (
-        stats["absent"] * WEIGHTS["absent"]
-        + stats["leave"] * WEIGHTS["leave"]
-        + stats["late"] * WEIGHTS["late"]
-        + stats["other"] * WEIGHTS["other"]
-    )
-
-    return raw_score / total
+    return sum(stats[k] * weight for k, weight in WEIGHTS.items()) / total if total else 0.0
 
 
-def calculate_rate(stats: Dict) -> float:
-    """计算缺勤率"""
-    total = stats["total_expected"]
-    if total == 0:
-        return 0.0
-
-    return stats["absent"] / total
+def calculate_rate(stats):
+    return stats["absent"] / stats["total_expected"] if stats["total_expected"] else 0.0
 
 
-def sort_and_rank(stats: Dict[int, Dict], rank_type: str) -> List[Tuple[int, Dict]]:
-    """排序并生成排名"""
-    items = [(class_id, data) for class_id, data in stats.items()]
-
-    # 按值降序排序
-    items.sort(key=lambda x: (-x[1][rank_type], x[0]))
-
-    # 添加排名
-    for i, (class_id, data) in enumerate(items):
-        data["rank"] = i + 1
-
+def sort_and_rank(stats, rank_type):
+    items = sorted(stats.items(), key=lambda item: (-item[1][rank_type], item[0]))
+    for index, (_, data) in enumerate(items, 1):
+        data["rank"] = index
     return items
 
 
-def save_ranking_cache(
-    db: Session,
-    period_type: str,
-    rank_type: str,
-    sorted_stats: List[Tuple[int, Dict]],
-    prev_sorted: List[Tuple[int, Dict]],
-):
-    """保存排行榜缓存"""
-    # 构建上一周期的排名映射
-    prev_rank_map = {item[0]: item[1]["rank"] for item in prev_sorted}
-
-    for class_id, data in sorted_stats:
-        # 计算趋势
-        prev_data = prev_rank_map.get(class_id)
-        if prev_data:
-            current_rank = data["rank"]
-            prev_rank = prev_rank_map.get(class_id, None)
-            
-            if prev_rank is None:
-                trend_rank = "NEW"
-            elif current_rank < prev_rank:
-                trend_rank = f"UP{prev_rank - current_rank}"
-            elif current_rank > prev_rank:
-                trend_rank = f"DOWN{current_rank - prev_rank}"
-            else:
-                trend_rank = "SAME"
-        else:
-            trend_rank = "NEW"
-
-        cache = RankingCache(
-            period_type=period_type,
-            rank_type=rank_type,
-            class_id=class_id,
-            rank_position=data["rank"],
-            rank_value=data[rank_type],
-            trend_value=None if period_type == "total" else data.get("trend_value"),
-            trend_rank=None if period_type == "total" else trend_rank,
-            total_expected=data["total_expected"],
-            total_absent=data["absent"],
-            total_late=data["late"],
-            total_leave=data["leave"],
-            total_other=data["other"],
-        )
-        db.add(cache)
+def save_empty_summary(db, period_type, rank_type, semester_id=None):
+    semester = resolve_semester(db, semester_id)
+    db.add(RankingSummary(semester_id=semester.id, period_type=period_type,
+                         rank_type=rank_type, avg_value=0, total_classes=0))
 
 
-def save_ranking_summary(
-    db: Session,
-    period_type: str,
-    rank_type: str,
-    sorted_stats: List[Tuple[int, Dict]],
-    prev_stats: Dict[int, Dict],
-):
-    """保存概览数据"""
+def save_ranking_cache(db, period_type, rank_type, sorted_stats, prev_sorted, semester_id=None):
+    semester = resolve_semester(db, semester_id)
+    previous = dict(prev_sorted)
+    for cid, data in sorted_stats:
+        prev = previous.get(cid)
+        trend = "NEW"
+        if prev is not None:
+            delta = prev["rank"] - data["rank"]
+            trend = f"UP{delta}" if delta > 0 else f"DOWN{-delta}" if delta < 0 else "SAME"
+        db.add(RankingCache(
+            semester_id=semester.id, period_type=period_type, rank_type=rank_type,
+            class_id=cid, rank_position=data["rank"], rank_value=data[rank_type],
+            trend_value=(data[rank_type] - prev[rank_type]) if prev and period_type != "total" else None,
+            trend_rank=trend if period_type != "total" else None,
+            total_expected=data["total_expected"], total_absent=data["absent"],
+            total_late=data["late"], total_leave=data["leave"], total_other=data["other"],
+        ))
+
+
+def save_ranking_summary(db, period_type, rank_type, sorted_stats, prev_stats, semester_id=None):
     if not sorted_stats:
-        save_empty_summary(db, period_type, rank_type)
-        return
-
-    values = [data[rank_type] for _, data in sorted_stats]
-    avg_value = sum(values) / len(values)
-
-    # 最高班级
-    top_class_id, top_data = sorted_stats[0]
-    top_class = db.query(Class).filter(Class.id == top_class_id).first()
-
-    summary = RankingSummary(
-        period_type=period_type,
-        rank_type=rank_type,
-        avg_value=avg_value,
-        avg_trend=None if period_type == "total" else None,
-        top_class_id=top_class_id,
-        top_class_name=top_class.display_name if top_class else None,
-        top_value=top_data[rank_type],
-        top_trend=None if period_type == "total" else None,
+        return save_empty_summary(db, period_type, rank_type, semester_id)
+    semester = resolve_semester(db, semester_id)
+    avg = sum(data[rank_type] for _, data in sorted_stats) / len(sorted_stats)
+    top_cid, top = sorted_stats[0]
+    cls = db.query(Class).filter(Class.id == top_cid).first()
+    prev_avg = sum(v[rank_type] for v in prev_stats.values()) / len(prev_stats) if prev_stats else None
+    prev_top = prev_stats.get(top_cid)
+    db.add(RankingSummary(
+        semester_id=semester.id, period_type=period_type, rank_type=rank_type,
+        avg_value=avg, avg_trend=avg - prev_avg if prev_avg is not None else None,
+        top_class_id=top_cid, top_class_name=cls.display_name if cls else None,
+        top_value=top[rank_type], top_trend=top[rank_type] - prev_top[rank_type] if prev_top else None,
         total_classes=len(sorted_stats),
-    )
-    db.add(summary)
+    ))
 
 
-def save_empty_summary(db: Session, period_type: str, rank_type: str):
-    """保存空概览"""
-    summary = RankingSummary(
-        period_type=period_type,
-        rank_type=rank_type,
-        avg_value=0,
-        avg_trend=None,
-        top_class_id=None,
-        top_class_name=None,
-        top_value=None,
-        top_trend=None,
-        total_classes=0,
-    )
-    db.add(summary)
+def calculate_rankings(semester_id=None):
+    db = SessionLocal()
+    try:
+        semester = resolve_semester(db, semester_id)
+        # Serialize writers for the same term; a failed calculation rolls back
+        # the deletion too, so the last good cache remains available.
+        db.query(WeekConfig).filter(WeekConfig.id == semester.id).with_for_update().one()
+        db.query(RankingCache).filter(RankingCache.semester_id == semester.id).delete()
+        db.query(RankingSummary).filter(RankingSummary.semester_id == semester.id).delete()
+        yesterday = datetime.now().date() - timedelta(days=1)
+        for period in PERIOD_TYPES:
+            start, end = get_period_range(period, yesterday)
+            prev_start, prev_end = get_previous_period_range(period, yesterday)
+            for rank in RANK_TYPES:
+                stats = calculate_class_stats(db, start, end, rank, semester.id)
+                previous = calculate_class_stats(db, prev_start, prev_end, rank, semester.id)
+                ordered, prev_ordered = sort_and_rank(stats, rank), sort_and_rank(previous, rank)
+                save_ranking_cache(db, period, rank, ordered, prev_ordered, semester.id)
+                save_ranking_summary(db, period, rank, ordered, previous, semester.id)
+        db.commit()
+    except Exception:
+        db.rollback()
+        logger.exception("排行榜计算失败，保留原缓存")
+        raise
+    finally:
+        db.close()
 
 
 if __name__ == "__main__":

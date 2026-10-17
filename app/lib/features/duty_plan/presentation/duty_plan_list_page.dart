@@ -29,13 +29,14 @@ class DutyPlanListPage extends ConsumerWidget {
           IconButton(
             icon: const Icon(Icons.notifications_outlined),
             tooltip: '通知权限',
-            onPressed: () => _checkPermission(context),
+            onPressed: () => context.push('/settings/notifications'),
           ),
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () async {
           await context.push('/duty-plan/create');
+          if (!context.mounted) return;
           ref.invalidate(dutyPlansProvider);
           ref.invalidate(upcomingDutyPlansProvider);
         },
@@ -49,40 +50,54 @@ class DutyPlanListPage extends ConsumerWidget {
           _buildHint(context),
           Expanded(
             child: plansAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(
-          child: Text(
-            '加载失败: $e',
-            style: AppTextStyles.sm.copyWith(color: c.stateDanger),
-          ),
-        ),
-        data: (plans) {
-          if (plans.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.event_note_outlined,
-                      size: 48, color: c.textTertiary),
-                  const SizedBox(height: AppSpacing.md),
-                  Text(
-                    '还没有查课计划',
-                    style:
-                        AppTextStyles.bodyMedium.copyWith(color: c.textPrimary),
-                  ),
-                  const SizedBox(height: AppSpacing.xs),
-                  Text(
-                    '点击右下角“新建”创建你的第一个计划',
-                    style:
-                        AppTextStyles.sm.copyWith(color: c.textSecondary),
-                  ),
-                ],
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (e, _) => Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      '加载失败，请重试',
+                      style: AppTextStyles.sm.copyWith(color: c.stateDanger),
+                    ),
+                    TextButton(
+                      onPressed: () => ref.invalidate(dutyPlansProvider),
+                      child: const Text('重试'),
+                    ),
+                  ],
+                ),
               ),
-            );
-          }
-          return _buildList(context, ref, plans);
-        },
-      ),
+              data: (plans) {
+                if (plans.isEmpty) {
+                  return Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.event_note_outlined,
+                          size: 48,
+                          color: c.textTertiary,
+                        ),
+                        const SizedBox(height: AppSpacing.md),
+                        Text(
+                          '还没有查课计划',
+                          style: AppTextStyles.bodyMedium.copyWith(
+                            color: c.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.xs),
+                        Text(
+                          '点击右下角“新建”创建你的第一个计划',
+                          style: AppTextStyles.sm.copyWith(
+                            color: c.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+                return _buildList(context, ref, plans);
+              },
+            ),
           ),
         ],
       ),
@@ -113,8 +128,7 @@ class DutyPlanListPage extends ConsumerWidget {
     );
   }
 
-  Widget _buildList(
-      BuildContext context, WidgetRef ref, List<DutyPlan> plans) {
+  Widget _buildList(BuildContext context, WidgetRef ref, List<DutyPlan> plans) {
     final byWeek = <int, List<DutyPlan>>{};
     for (final p in plans) {
       byWeek.putIfAbsent(p.weekNumber, () => []).add(p);
@@ -135,19 +149,6 @@ class DutyPlanListPage extends ConsumerWidget {
         return _WeekSection(weekNumber: w, plans: wPlans);
       },
     );
-  }
-
-  Future<void> _checkPermission(BuildContext context) async {
-    final svc = NotificationService();
-    final granted = await svc.isPermissionGranted();
-    if (!context.mounted) return;
-    if (granted) {
-      Toast.show(context, '通知权限已开启');
-    } else {
-      final ok = await svc.requestPermission();
-      if (!context.mounted) return;
-      Toast.show(context, ok ? '通知权限已开启' : '通知权限未开启，请到系统设置中允许');
-    }
   }
 }
 
@@ -199,10 +200,12 @@ class _WeekSection extends ConsumerWidget {
           ...weekdays.expand((wd) {
             final wdPlans = byWeekday[wd]!
               ..sort((a, b) => a.period.compareTo(b.period));
-            return wdPlans.map((p) => Padding(
-                  padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                  child: _DutyPlanCard(plan: p),
-                ));
+            return wdPlans.map(
+              (p) => Padding(
+                padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                child: _DutyPlanCard(key: ValueKey(p.id), plan: p),
+              ),
+            );
           }),
         ],
       ),
@@ -210,12 +213,20 @@ class _WeekSection extends ConsumerWidget {
   }
 }
 
-class _DutyPlanCard extends ConsumerWidget {
+class _DutyPlanCard extends ConsumerStatefulWidget {
   final DutyPlan plan;
-  const _DutyPlanCard({required this.plan});
+  const _DutyPlanCard({super.key, required this.plan});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_DutyPlanCard> createState() => _DutyPlanCardState();
+}
+
+class _DutyPlanCardState extends ConsumerState<_DutyPlanCard> {
+  bool _busy = false;
+  DutyPlan get plan => widget.plan;
+
+  @override
+  Widget build(BuildContext context) {
     final c = context.colors;
     final isPast = plan.isPast;
     final color = isPast ? c.textTertiary : c.brandPrimary;
@@ -223,7 +234,7 @@ class _DutyPlanCard extends ConsumerWidget {
 
     return AppCard(
       padding: const EdgeInsets.all(AppSpacing.md),
-      onTap: () => _showActions(context, ref),
+      onTap: _busy ? null : () => _showActions(context, ref),
       child: Row(
         children: [
           Container(
@@ -237,14 +248,18 @@ class _DutyPlanCard extends ConsumerWidget {
               children: [
                 Text(
                   plan.weekdayLabel,
-                  style: AppTextStyles.xs
-                      .copyWith(color: color, fontWeight: FontWeight.w600),
+                  style: AppTextStyles.xs.copyWith(
+                    color: color,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   '第${plan.period}节',
-                  style: AppTextStyles.sm
-                      .copyWith(color: color, fontWeight: FontWeight.w700),
+                  style: AppTextStyles.sm.copyWith(
+                    color: color,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ],
             ),
@@ -267,19 +282,30 @@ class _DutyPlanCard extends ConsumerWidget {
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    if (isPast)
+                    if (_busy)
+                      const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    else if (isPast)
                       const StatusPill.neutral(label: '已结束')
                     else if (!plan.reminderEnabled)
                       const StatusPill.neutral(label: '提醒已关')
+                    else if (plan.reminderStatus == 'scheduledExact')
+                      StatusPill.success(label: plan.reminderLabel)
+                    else if (plan.reminderStatus == 'scheduledInexact')
+                      StatusPill.warning(label: plan.reminderLabel)
                     else
-                      const StatusPill.success(label: '已设提醒'),
+                      StatusPill.danger(label: plan.reminderLabel),
                   ],
                 ),
                 const SizedBox(height: 2),
                 Text(
                   '${fmt.format(plan.classStartAt)} · ${plan.timeRange}${plan.classroom != null ? ' · ${plan.classroom}' : ''}',
-                  style: AppTextStyles.withTabular(AppTextStyles.xs)
-                      .copyWith(color: c.textTertiary),
+                  style: AppTextStyles.withTabular(
+                    AppTextStyles.xs,
+                  ).copyWith(color: c.textTertiary),
                 ),
                 if (plan.remark != null && plan.remark!.isNotEmpty) ...[
                   const SizedBox(height: 2),
@@ -299,6 +325,7 @@ class _DutyPlanCard extends ConsumerWidget {
   }
 
   Future<void> _showActions(BuildContext context, WidgetRef ref) async {
+    if (_busy) return;
     final c = context.colors;
     final action = await showModalBottomSheet<String>(
       context: context,
@@ -327,47 +354,30 @@ class _DutyPlanCard extends ConsumerWidget {
     );
     if (!context.mounted || action == null) return;
 
-    final repo = ref.read(dutyPlanRepositoryProvider);
-    final notif = NotificationService();
-
-    if (action == 'toggle') {
-      final newEnabled = !plan.reminderEnabled;
-      if (newEnabled) {
-        final classroomStr =
-            plan.classroom != null ? ' @ ${plan.classroom}' : '';
-        await notif.scheduleDutyReminder(
-          notificationId: plan.notificationId,
-          title: '查课提醒 · 第${plan.period}节$classroomStr',
-          body: '${plan.weekdayLabel} ${plan.timeRange}$classroomStr 即将开始，记得查课',
-          scheduledAt: plan.remindAt,
-          payload: plan.id,
+    final container = ProviderScope.containerOf(context, listen: false);
+    final repo = container.read(dutyPlanRepositoryProvider);
+    final notif = ref.read(notificationServiceProvider);
+    setState(() => _busy = true);
+    try {
+      var message = '已删除';
+      if (action == 'toggle') {
+        final result = await notif.setPlanEnabled(
+          repo,
+          plan.id,
+          !plan.reminderEnabled,
         );
-      } else {
-        await notif.cancel(plan.notificationId);
+        message = result.message;
+      } else if (action == 'delete') {
+        await notif.deletePlan(repo, plan.id);
       }
-      await repo.upsert(DutyPlan(
-        id: plan.id,
-        weekNumber: plan.weekNumber,
-        weekday: plan.weekday,
-        period: plan.period,
-        classIds: plan.classIds,
-        className: plan.className,
-        classroom: plan.classroom,
-        remark: plan.remark,
-        notificationId: plan.notificationId,
-        reminderEnabled: newEnabled,
-        classStartAt: plan.classStartAt,
-        createdAt: plan.createdAt,
-      ));
-    } else if (action == 'delete') {
-      await notif.cancel(plan.notificationId);
-      await repo.delete(plan.id);
-    }
-
-    ref.invalidate(dutyPlansProvider);
-    ref.invalidate(upcomingDutyPlansProvider);
-    if (context.mounted) {
-      Toast.show(context, action == 'delete' ? '已删除' : '提醒已更新');
+      container.invalidate(dutyPlansProvider);
+      container.invalidate(upcomingDutyPlansProvider);
+      if (!context.mounted) return;
+      Toast.show(context, message);
+    } catch (e) {
+      if (context.mounted) Toast.show(context, '操作失败，请重试');
+    } finally {
+      if (mounted) setState(() => _busy = false);
     }
   }
 }

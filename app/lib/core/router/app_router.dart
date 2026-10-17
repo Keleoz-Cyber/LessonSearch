@@ -25,9 +25,10 @@ import '../../features/debug/release_check_page.dart';
 import '../../features/home/presentation/home_page.dart';
 import '../../features/duty_plan/presentation/duty_plan_list_page.dart';
 import '../../features/duty_plan/presentation/duty_plan_create_page.dart';
+import '../../features/duty_plan/presentation/notification_settings_page.dart';
 import '../../shared/providers.dart';
 
-final _routerKey = GlobalKey<NavigatorState>();
+final rootNavigatorKey = GlobalKey<NavigatorState>();
 
 String? _redirect(BuildContext context, GoRouterState state) {
   final container = ProviderScope.containerOf(context);
@@ -63,14 +64,33 @@ String? _redirect(BuildContext context, GoRouterState state) {
     return '/login';
   }
 
+  if ((state.matchedLocation == '/roll-call/execute' ||
+          state.matchedLocation == '/name-check/execute') &&
+      state.extra is! Map) {
+    return state.matchedLocation.startsWith('/roll-call')
+        ? '/roll-call/select'
+        : '/name-check/select';
+  }
+  if (state.matchedLocation == '/text-gen' && state.extra is! Map) {
+    return '/records';
+  }
+  if (state.matchedLocation == '/confirmation' &&
+      container.read(nameCheckProvider).task == null) {
+    return '/records';
+  }
+
   return null;
 }
 
 final appRouter = GoRouter(
-  navigatorKey: _routerKey,
+  navigatorKey: rootNavigatorKey,
   initialLocation: '/',
   redirect: _redirect,
   routes: [
+    GoRoute(
+      path: '/settings/notifications',
+      builder: (context, state) => const NotificationSettingsPage(),
+    ),
     GoRoute(
       path: '/',
       name: 'home',

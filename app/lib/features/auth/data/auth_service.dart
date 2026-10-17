@@ -43,15 +43,17 @@ class AuthService {
     commits.add(_prefs.setString(_tokenKey, token));
     commits.add(_prefs.setInt(_userIdKey, userId));
     commits.add(_prefs.setString(_userEmailKey, email));
-    if (nickname != null) {
-      commits.add(_prefs.setString(_userNicknameKey, nickname));
-    }
-    if (realName != null) {
-      commits.add(_prefs.setString(_userRealNameKey, realName));
-    }
-    if (role != null) {
-      commits.add(_prefs.setString(_userRoleKey, role));
-    }
+    commits.add(
+      nickname == null
+          ? _prefs.remove(_userNicknameKey)
+          : _prefs.setString(_userNicknameKey, nickname),
+    );
+    commits.add(
+      realName == null
+          ? _prefs.remove(_userRealNameKey)
+          : _prefs.setString(_userRealNameKey, realName),
+    );
+    commits.add(_prefs.setString(_userRoleKey, role ?? 'member'));
     await Future.wait(commits);
   }
 

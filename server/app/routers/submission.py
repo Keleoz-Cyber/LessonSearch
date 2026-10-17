@@ -30,6 +30,7 @@ from app.schemas.submission import (
     SubmissionAdminSearchResponse
 )
 from app.routers.week import get_current_week_config, calculate_week_number
+from app.services.semesters import resolve_semester, validate_submission_week, validate_task_semester
 
 router = APIRouter(prefix="/submissions", tags=["submissions"])
 
@@ -75,7 +76,7 @@ def _build_snapshot_data(db: Session, submission: Submission) -> dict:
         if not student:
             continue
         
-        class_ = db.query(Class).filter(Class.id == student.class_id).first()
+        class_ = db.query(Class).filter(Class.id == record.class_id).first()
         major = None
         if class_:
             major = db.query(Major).filter(Major.id == class_.major_id).first()
@@ -86,7 +87,7 @@ def _build_snapshot_data(db: Session, submission: Submission) -> dict:
             "student_id": student.id,
             "student_name": student.name,
             "student_no": student.student_no,
-            "class_id": student.class_id,
+            "class_id": record.class_id,
             "class_name": class_.display_name if class_ else "未知",
             "major_short_name": major.short_name if major else "",
             "class_code": class_.class_code if class_ else "",
@@ -100,6 +101,7 @@ def _build_snapshot_data(db: Session, submission: Submission) -> dict:
     return {
         "submission": {
             "id": submission.id,
+            "semester_id": submission.semester_id,
             "user_id": submission.user_id,
             "week_number": submission.week_number,
             "status": submission.status,
@@ -119,6 +121,11 @@ def _build_snapshot_data(db: Session, submission: Submission) -> dict:
             "email": reviewer.email if reviewer else None,
         },
         "records": records,
+        "task_class_roster_counts": {
+            task_id: {str(class_id): db.query(Student).filter(Student.class_id == class_id).count()
+                      for class_id in {r["class_id"] for r in records if r["task_id"] == task_id}}
+            for task_id in {r["task_id"] for r in records}
+        },
     }
 
 
@@ -128,7 +135,7 @@ def _build_record_from_db(db: Session, record) -> dict:
     if not student:
         return None
     
-    class_ = db.query(Class).filter(Class.id == student.class_id).first()
+    class_ = db.query(Class).filter(Class.id == record.class_id).first()
     major = None
     if class_:
         major = db.query(Major).filter(Major.id == class_.major_id).first()
@@ -139,7 +146,7 @@ def _build_record_from_db(db: Session, record) -> dict:
         "student_id": student.id,
         "student_name": student.name,
         "student_no": student.student_no,
-        "class_id": student.class_id,
+        "class_id": record.class_id,
         "class_name": class_.display_name if class_ else "未知",
         "major_short_name": major.short_name if major else "",
         "class_code": class_.class_code if class_ else "",
@@ -152,10 +159,12 @@ def _build_record_from_db(db: Session, record) -> dict:
 
 
 def _get_approved_records_from_snapshots(
-    db: Session, week_number: int
+    db: Session, week_number: int, semester_id: int | None = None
 ) -> List[Dict[str, Any]]:
     """从快照获取 approved 记录，submission 级别 fallback"""
+    semester = resolve_semester(db, semester_id)
     approved_submissions = db.query(Submission).filter(
+        Submission.semester_id == semester.id,
         Submission.week_number == week_number,
         Submission.status == "approved"
     ).all()
@@ -165,6 +174,7 @@ def _get_approved_records_from_snapshots(
     
     # 预加载该周所有 snapshots
     snapshots = db.query(SubmissionSnapshot).filter(
+        SubmissionSnapshot.semester_id == semester.id,
         SubmissionSnapshot.week_number == week_number
     ).all()
     snapshot_map = {s.submission_id: s for s in snapshots}
@@ -219,9 +229,11 @@ async def create_submission(
     db: Session = Depends(get_db)
 ):
     """创建提交"""
+    semester = resolve_semester(db, body.semester_id)
+    validate_submission_week(db, semester, body.week_number)
     tasks = db.query(AttendanceTask).filter(
         AttendanceTask.id.in_(body.task_ids)
-    ).all()
+    ).order_by(AttendanceTask.id).with_for_update().all()
     
     # 校验：所有 task 必须存在
     found_task_ids = {t.id for t in tasks}
@@ -234,11 +246,12 @@ async def create_submission(
     
     for task in tasks:
         # 校验：任务必须属于当前用户
-        if task.user_id is not None and task.user_id != current_user.id:
+        if task.user_id != current_user.id:
             raise HTTPException(
                 status_code=403,
                 detail=f"任务 {task.id} 不属于当前用户"
             )
+        validate_task_semester(db, semester, task)
         # 校验：任务状态必须是 completed
         if task.status != "completed":
             raise HTTPException(
@@ -248,7 +261,7 @@ async def create_submission(
     
     records = db.query(AttendanceRecord).filter(
         AttendanceRecord.task_id.in_(body.task_ids)
-    ).all()
+    ).with_for_update().all()
 
     students_by_id = {
         student.id: student
@@ -284,7 +297,7 @@ async def create_submission(
     existing_submission = db.query(SubmissionRecord).join(Submission).filter(
         SubmissionRecord.record_id.in_([r.id for r in records if r.id]),
         Submission.status.in_(['pending', 'approved'])
-    ).first()
+    ).with_for_update().first()
     
     if existing_submission:
         raise HTTPException(
@@ -301,6 +314,7 @@ async def create_submission(
     
     submission = Submission(
         user_id=current_user.id,
+        semester_id=semester.id,
         week_number=body.week_number,
         status="pending",
         class_names=class_names
@@ -324,11 +338,14 @@ async def create_submission(
 
 @router.get("/submitted-task-ids")
 async def get_submitted_task_ids(
+    semester_id: int | None = None,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """获取已提交的任务ID列表（只包含 pending/approved 状态的提交）"""
+    semester = resolve_semester(db, semester_id)
     submissions = db.query(Submission).filter(
+        Submission.semester_id == semester.id,
         Submission.user_id == current_user.id,
         Submission.status.in_(["pending", "approved"])
     ).all()
@@ -352,11 +369,14 @@ async def get_submitted_task_ids(
 async def get_submissions(
     week_number: int = None,
     status: str = None,
+    semester_id: int | None = None,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """获取用户自己的提交列表"""
-    query = db.query(Submission).filter(Submission.user_id == current_user.id)
+    semester = resolve_semester(db, semester_id)
+    query = db.query(Submission).filter(Submission.user_id == current_user.id,
+                                         Submission.semester_id == semester.id)
     
     if week_number:
         query = query.filter(Submission.week_number == week_number)
@@ -380,6 +400,7 @@ async def get_submissions(
             
             result.append(SubmissionDetailResponse(
                 id=sub.id,
+                semester_id=sub.semester_id,
                 user_id=sub.user_id,
                 user_name=current_user.real_name or current_user.email,
                 user_email=current_user.email,
@@ -404,6 +425,7 @@ async def get_submissions(
 @router.get("/pending", response_model=List[SubmissionDetailResponse])
 async def get_pending_submissions(
     week_number: int = None,
+    semester_id: int | None = None,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -411,7 +433,8 @@ async def get_pending_submissions(
     if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="需要管理员权限")
     
-    query = db.query(Submission).filter(Submission.status == "pending")
+    semester = resolve_semester(db, semester_id)
+    query = db.query(Submission).filter(Submission.status == "pending", Submission.semester_id == semester.id)
     
     if week_number:
         query = query.filter(Submission.week_number == week_number)
@@ -429,6 +452,7 @@ async def get_pending_submissions(
         
         result.append(SubmissionDetailResponse(
             id=sub.id,
+            semester_id=sub.semester_id,
             user_id=sub.user_id,
             user_name=user.real_name if user else None,
             user_email=user.email if user else None,
@@ -450,6 +474,7 @@ async def get_pending_submissions(
 @router.get("/reviewed", response_model=List[SubmissionDetailResponse])
 async def get_reviewed_submissions(
     week_number: int = None,
+    semester_id: int | None = None,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -457,7 +482,9 @@ async def get_reviewed_submissions(
     if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="需要管理员权限")
     
+    semester = resolve_semester(db, semester_id)
     query = db.query(Submission).filter(
+        Submission.semester_id == semester.id,
         Submission.status.in_(["approved", "rejected"])
     )
     
@@ -480,6 +507,7 @@ async def get_reviewed_submissions(
         
         result.append(SubmissionDetailResponse(
             id=sub.id,
+            semester_id=sub.semester_id,
             user_id=sub.user_id,
             user_name=user.real_name if user else None,
             user_email=user.email if user else None,
@@ -508,6 +536,7 @@ async def admin_search_submissions(
     start_date: str = None,
     end_date: str = None,
     keyword: str = None,
+    semester_id: int | None = None,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -519,7 +548,8 @@ async def admin_search_submissions(
     page = max(1, page)
     page_size = min(max(1, page_size), 100)
     
-    query = db.query(Submission)
+    semester = resolve_semester(db, semester_id)
+    query = db.query(Submission).filter(Submission.semester_id == semester.id)
     
     # 状态筛选
     if status:
@@ -596,6 +626,7 @@ async def admin_search_submissions(
         
         result.append(SubmissionDetailResponse(
             id=sub.id,
+            semester_id=sub.semester_id,
             user_id=sub.user_id,
             user_name=user.real_name if user else None,
             user_email=user.email if user else None,
@@ -622,13 +653,16 @@ async def admin_search_submissions(
 @router.get("/week-summary/{week_number}", response_model=WeekSummaryResponse)
 async def get_week_summary(
     week_number: int,
+    semester_id: int | None = None,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """获取周汇总统计（优先使用快照）"""
     from sqlalchemy import func as sql_func
     
+    semester = resolve_semester(db, semester_id)
     submissions = db.query(Submission).filter(
+        Submission.semester_id == semester.id,
         Submission.week_number == week_number
     ).all()
     
@@ -647,7 +681,7 @@ async def get_week_summary(
     total_abnormal_students = 0
     
     # 优先使用快照，fallback 到旧逻辑
-    all_records = _get_approved_records_from_snapshots(db, week_number)
+    all_records = _get_approved_records_from_snapshots(db, week_number, semester.id)
     
     # 从快照或 fallback 数据中统计
     late_students = set()
@@ -678,10 +712,12 @@ async def get_week_summary(
     total_abnormal_students = len(late_students | absent_students | leave_students | other_students)
     
     export = db.query(WeekExport).filter(
+        WeekExport.semester_id == semester.id,
         WeekExport.week_number == week_number
     ).order_by(WeekExport.exported_at.desc()).first()
     
     return WeekSummaryResponse(
+        semester_id=semester.id,
         week_number=week_number,
         total_submissions=len(submissions),
         pending_count=pending,
@@ -703,11 +739,14 @@ async def get_week_summary(
 @router.get("/week-summary-detail/{week_number}")
 async def get_week_summary_detail(
     week_number: int,
+    semester_id: int | None = None,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """获取周汇总详细名单（优先使用快照）"""
+    semester = resolve_semester(db, semester_id)
     export = db.query(WeekExport).filter(
+        WeekExport.semester_id == semester.id,
         WeekExport.week_number == week_number
     ).first()
     
@@ -715,7 +754,7 @@ async def get_week_summary_detail(
         raise HTTPException(status_code=403, detail="该周汇总尚未发布")
     
     # 优先使用快照，fallback 到旧逻辑
-    all_records = _get_approved_records_from_snapshots(db, week_number)
+    all_records = _get_approved_records_from_snapshots(db, week_number, semester.id)
     
     student_stats = {}
     
@@ -768,6 +807,7 @@ async def get_week_summary_detail(
         })
     
     return {
+        "semester_id": semester.id,
         "week_number": week_number,
         "table_data": table_data,
         "total_count": len(table_data),
@@ -776,15 +816,23 @@ async def get_week_summary_detail(
 
 @router.get("/history")
 async def get_history_weeks(
+    semester_id: int | None = None,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """获取历史周次列表（已导出的周次）"""
-    exports = db.query(WeekExport).order_by(WeekExport.week_number.desc()).all()
+    semester = resolve_semester(db, semester_id)
+    exports = db.query(WeekExport).filter(WeekExport.semester_id == semester.id).order_by(
+        WeekExport.week_number.desc(), WeekExport.exported_at.desc()).all()
     
     result = []
+    seen = set()
     for export in exports:
+        if export.week_number in seen:
+            continue
+        seen.add(export.week_number)
         result.append({
+            "semester_id": semester.id,
             "week_number": export.week_number,
             "exported_at": export.exported_at.isoformat() if export.exported_at else None,
         })
@@ -795,15 +843,19 @@ async def get_history_weeks(
 @router.get("/export-status/{week_number}", response_model=ExportStatusResponse)
 async def get_export_status(
     week_number: int,
+    semester_id: int | None = None,
     db: Session = Depends(get_db)
 ):
     """获取周导出状态"""
+    semester = resolve_semester(db, semester_id)
     export = db.query(WeekExport).filter(
+        WeekExport.semester_id == semester.id,
         WeekExport.week_number == week_number
     ).order_by(WeekExport.exported_at.desc()).first()
     
     if not export:
         return ExportStatusResponse(
+            semester_id=semester.id,
             week_number=week_number,
             is_published=False
         )
@@ -811,6 +863,7 @@ async def get_export_status(
     exporter = db.query(User).filter(User.id == export.exported_by).first()
     
     return ExportStatusResponse(
+        semester_id=semester.id,
         week_number=week_number,
         is_published=True,
         exported_at=export.exported_at,
@@ -821,6 +874,7 @@ async def get_export_status(
 @router.get("/export/{week_number}")
 async def export_week_excel(
     week_number: int,
+    semester_id: int | None = None,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -829,7 +883,8 @@ async def export_week_excel(
         raise HTTPException(status_code=403, detail="需要管理员权限")
     
     # 优先使用快照，fallback 到旧逻辑
-    all_records = _get_approved_records_from_snapshots(db, week_number)
+    semester = resolve_semester(db, semester_id)
+    all_records = _get_approved_records_from_snapshots(db, week_number, semester.id)
     
     if not all_records:
         raise HTTPException(status_code=400, detail="该周无已审核通过的提交")
@@ -889,14 +944,14 @@ async def export_week_excel(
     
     filtered_students = [
         s for s in sorted_students
-        if s["late"] > 0 or s["absent"] > 0
+        if any(s[key] > 0 for key in ("late", "absent", "leave", "other"))
     ]
     
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = f"第{week_number}周考勤"
     
-    headers = ["序号", "姓名", "班级", "学号", "迟到", "缺勤", "累计", "记录时间"]
+    headers = ["序号", "姓名", "班级", "学号", "迟到", "缺勤", "请假", "其他", "累计", "记录时间"]
     ws.append(headers)
     
     for cell in ws[1]:
@@ -923,12 +978,14 @@ async def export_week_excel(
             s["student_no"],
             s["late"],
             s["absent"],
+            s["leave"],
+            s["other"],
             None,
             time_str,
         ]
         ws.append(row)
         
-        ws.cell(row=i+1, column=7).value = f"=ROUNDDOWN(E{i+1}/2+F{i+1},0)"
+        ws.cell(row=i+1, column=9).value = f"=ROUNDDOWN(E{i+1}/2+F{i+1},0)"
     
     thin_border = Border(
         left=Side(style='thin'),
@@ -936,11 +993,11 @@ async def export_week_excel(
         top=Side(style='thin'),
         bottom=Side(style='thin')
     )
-    for row in ws.iter_rows(min_row=1, max_row=ws.max_row, min_col=1, max_col=8):
+    for row in ws.iter_rows(min_row=1, max_row=ws.max_row, min_col=1, max_col=10):
         for cell in row:
             cell.border = thin_border
             # 时间列(H列)保持左对齐，其他列居中
-            if cell.column == 8:
+            if cell.column == 10:
                 cell.alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
             else:
                 cell.alignment = Alignment(horizontal="center")
@@ -952,13 +1009,16 @@ async def export_week_excel(
     ws.column_dimensions['E'].width = 8
     ws.column_dimensions['F'].width = 8
     ws.column_dimensions['G'].width = 8
-    ws.column_dimensions['H'].width = 20
+    ws.column_dimensions['H'].width = 8
+    ws.column_dimensions['I'].width = 8
+    ws.column_dimensions['J'].width = 24
     
     output = BytesIO()
     wb.save(output)
     output.seek(0)
     
     export = WeekExport(
+        semester_id=semester.id,
         week_number=week_number,
         exported_by=current_user.id
     )
@@ -999,10 +1059,11 @@ async def get_submission_detail(
     ).all()
     record_count = len(submission_records)
     
-    class_names = _get_submission_class_names(db, submission.id)
+    class_names = submission.class_names or ""
     
     return SubmissionDetailResponse(
         id=submission.id,
+        semester_id=submission.semester_id,
         user_id=submission.user_id,
         user_name=user.real_name if user else None,
         user_email=user.email if user else None,
@@ -1078,6 +1139,7 @@ async def get_submission_records(
     
     return SubmissionRecordsResponse(
         id=submission.id,
+        semester_id=submission.semester_id,
         user_id=submission.user_id,
         user_name=user.real_name if user else None,
         user_email=user.email if user else None,
@@ -1103,7 +1165,7 @@ async def approve_submission(
     if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="需要管理员权限")
     
-    submission = db.query(Submission).filter(Submission.id == submission_id).first()
+    submission = db.query(Submission).filter(Submission.id == submission_id).with_for_update().first()
     
     if not submission:
         raise HTTPException(status_code=404, detail="提交不存在")
@@ -1133,6 +1195,7 @@ async def approve_submission(
         snapshot_data = _build_snapshot_data(db, submission)
         snapshot = SubmissionSnapshot(
             submission_id=submission.id,
+            semester_id=submission.semester_id,
             week_number=submission.week_number,
             user_id=submission.user_id,
             class_names=submission.class_names,
@@ -1156,7 +1219,7 @@ async def reject_submission(
     if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="需要管理员权限")
     
-    submission = db.query(Submission).filter(Submission.id == submission_id).first()
+    submission = db.query(Submission).filter(Submission.id == submission_id).with_for_update().first()
     
     if not submission:
         raise HTTPException(status_code=404, detail="提交不存在")
@@ -1192,7 +1255,7 @@ async def cancel_submission(
     db: Session = Depends(get_db)
 ):
     """撤销提交"""
-    submission = db.query(Submission).filter(Submission.id == submission_id).first()
+    submission = db.query(Submission).filter(Submission.id == submission_id).with_for_update().first()
     
     if not submission:
         raise HTTPException(status_code=404, detail="提交不存在")

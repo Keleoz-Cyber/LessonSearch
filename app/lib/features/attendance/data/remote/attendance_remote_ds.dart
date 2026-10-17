@@ -2,15 +2,12 @@ import '../../../../core/network/api_client.dart';
 import '../../domain/models.dart';
 
 Map<String, dynamic> recordToRequestBody(AttendanceRecord record) {
-  final body = {
+  final body = <String, dynamic>{
     'student_id': record.studentId,
     'class_id': record.classId,
     'status': record.status.value,
   };
-  final remark = record.remark;
-  if (remark != null) {
-    body['remark'] = remark;
-  }
+  body['remark'] = record.remark;
   return body;
 }
 
@@ -18,10 +15,7 @@ Map<String, dynamic> recordUpdateRequestBody(
   AttendanceStatus status, {
   String? remark,
 }) {
-  final body = {'status': status.value};
-  if (remark != null) {
-    body['remark'] = remark;
-  }
+  final body = <String, dynamic>{'status': status.value, 'remark': remark};
   return body;
 }
 
@@ -112,5 +106,12 @@ class AttendanceRemoteDataSource {
     List<Map<String, dynamic>> items,
   ) async {
     return await _api.batchUpdateRecords(items);
+  }
+
+  Future<void> deleteRecordByTaskStudent(String taskId, int studentId) async {
+    await _api.dio.delete(
+      '/records/by-task-student',
+      queryParameters: {'task_id': taskId, 'student_id': studentId},
+    );
   }
 }

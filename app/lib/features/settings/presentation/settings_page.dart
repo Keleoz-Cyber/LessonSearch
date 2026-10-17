@@ -6,6 +6,8 @@ import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/announcement/announcement_config.dart';
+import '../../../core/app_version.dart';
+import '../../../core/auth/account_session.dart';
 import '../../../core/logger/logger_service.dart';
 import '../../../core/sync/sync_service.dart';
 import '../../../shared/design_system/colors.dart';
@@ -48,18 +50,16 @@ class SettingsPage extends ConsumerWidget {
                   leading: const Icon(Icons.password_outlined),
                   title: const Text('账号安全'),
                   subtitle: hasPasswordAsync.when(
-                    data: (hasPassword) => Text(
-                      hasPassword ? '已设置密码，点击修改' : '未设置密码，点击设置',
-                    ),
+                    data: (hasPassword) =>
+                        Text(hasPassword ? '已设置密码，点击修改' : '未设置密码，点击设置'),
                     loading: () => const Text('加载中...'),
                     error: (error, _) {
                       // 区分 401 和普通网络错误
-                      final is401 = error is DioException &&
+                      final is401 =
+                          error is DioException &&
                           error.response?.statusCode == 401;
                       return Text(
-                        is401
-                            ? '登录状态已过期，请重新登录后查看'
-                            : '加载失败，点击重试',
+                        is401 ? '登录状态已过期，请重新登录后查看' : '加载失败，点击重试',
                         style: TextStyle(
                           color: is401 ? c.stateWarning : c.stateDanger,
                         ),
@@ -86,9 +86,11 @@ class SettingsPage extends ConsumerWidget {
                     }
                     // error 状态：区分 401 和普通错误
                     if (hasPasswordAsync is AsyncError) {
-                      final is401 = hasPasswordAsync.error is DioException &&
+                      final is401 =
+                          hasPasswordAsync.error is DioException &&
                           (hasPasswordAsync.error as DioException)
-                                  .response?.statusCode ==
+                                  .response
+                                  ?.statusCode ==
                               401;
                       if (is401) {
                         // 401 跳转登录页（不退出登录，不清数据）
@@ -106,6 +108,7 @@ class SettingsPage extends ConsumerWidget {
                         builder: (_) => const SetPasswordPage(),
                       ),
                     ).then((_) {
+                      if (!context.mounted) return;
                       // 从设置密码页返回后自动刷新
                       ref.invalidate(hasPasswordProvider);
                     });
@@ -116,27 +119,34 @@ class SettingsPage extends ConsumerWidget {
 
           const Divider(),
 
+          ListTile(
+            leading: const Icon(Icons.notifications_outlined),
+            title: const Text('系统通知与提醒'),
+            subtitle: const Text('权限、查课提醒与进行中通知'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push('/settings/notifications'),
+          ),
           const _SectionHeader(title: '同步'),
           ListTile(
             leading: Icon(
               syncState == SyncState.syncing
                   ? Icons.sync
                   : syncState == SyncState.error
-                      ? Icons.sync_problem
-                      : Icons.sync_outlined,
+                  ? Icons.sync_problem
+                  : Icons.sync_outlined,
               color: syncState == SyncState.error
                   ? c.stateWarning
                   : syncState == SyncState.syncing
-                      ? c.brandPrimary
-                      : null,
+                  ? c.brandPrimary
+                  : null,
             ),
             title: const Text('手动同步'),
             subtitle: Text(
               syncState == SyncState.syncing
                   ? '正在同步中...'
                   : syncState == SyncState.error
-                      ? '上次同步失败，点击重试'
-                      : '点击立即同步数据',
+                  ? '上次同步失败，点击重试'
+                  : '点击立即同步数据',
             ),
             trailing: syncState == SyncState.syncing
                 ? SizedBox(
@@ -200,7 +210,8 @@ class SettingsPage extends ConsumerWidget {
           FutureBuilder(
             future: ref.read(databaseProvider).getStatistics(),
             builder: (context, snapshot) {
-              final stats = snapshot.data ??
+              final stats =
+                  snapshot.data ??
                   {
                     'total_tasks': 0,
                     'completed_tasks': 0,
@@ -254,7 +265,7 @@ class SettingsPage extends ConsumerWidget {
           ListTile(
             leading: const Icon(Icons.system_update),
             title: const Text('检查更新'),
-            subtitle: const Text('当前版本: 0.7.0'),
+            subtitle: const Text('当前版本: $appVersion'),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => _checkUpdate(context, ref),
           ),
@@ -294,6 +305,7 @@ class SettingsPage extends ConsumerWidget {
             value: ref.watch(vibrationEnabledProvider),
             onChanged: (val) async {
               await ref.read(feedbackServiceProvider).setVibration(val);
+              if (!context.mounted) return;
               ref.invalidate(feedbackServiceProvider);
               ref.invalidate(vibrationEnabledProvider);
             },
@@ -351,6 +363,7 @@ class SettingsPage extends ConsumerWidget {
     final c = context.colors;
     final db = ref.read(databaseProvider);
     final unsyncedCount = await db.getUnsyncedCount();
+    if (!context.mounted) return;
     final hasUnsynced = unsyncedCount > 0;
 
     final confirmed = await showDialog<bool>(
@@ -435,18 +448,19 @@ class SettingsPage extends ConsumerWidget {
         ],
       ),
     );
+    if (!context.mounted) return;
 
     // 有未同步数据时，不允许退出
     if (hasUnsynced) return;
 
     if (confirmed == true && context.mounted) {
-      await db.clearUserData();
-      await ref.read(authServiceProvider).clearAuth();
-      ref.invalidate(authServiceProvider);
-      ref.invalidate(isLoggedInProvider);
-      ref.invalidate(userEmailProvider);
-      ref.invalidate(apiClientProvider);
-      Toast.show(context, '已退出登录');
+      try {
+        await logoutCurrentAccount(ref);
+        if (!context.mounted) return;
+        Toast.show(context, '已退出登录');
+      } catch (e) {
+        if (context.mounted) Toast.show(context, '退出失败: $e');
+      }
     }
   }
 
@@ -474,9 +488,11 @@ class SettingsPage extends ConsumerWidget {
         ],
       ),
     );
+    if (!context.mounted) return;
 
     if (confirmed == true && context.mounted) {
       await LoggerService.clear();
+      if (!context.mounted) return;
       Toast.show(context, '缓存已清理');
     }
   }
@@ -484,9 +500,17 @@ class SettingsPage extends ConsumerWidget {
   Future<void> _syncNow(BuildContext context, WidgetRef ref) async {
     try {
       Toast.show(context, '开始同步...');
-      await ref.read(syncServiceProvider).syncNow();
+      final result = await ref.read(syncServiceProvider).syncNow();
+      if (!context.mounted) return;
       if (context.mounted) {
-        Toast.show(context, '同步完成');
+        Toast.show(
+          context,
+          result.failed > 0
+              ? '同步结束，${result.failed} 项失败，请查看同步问题'
+              : result.skipped > 0
+              ? '同步结束，${result.skipped} 项尚未完成'
+              : '同步完成',
+        );
       }
     } catch (e) {
       if (context.mounted) {
@@ -589,10 +613,7 @@ class SettingsPage extends ConsumerWidget {
             data: announcementContent.trim(),
             styleSheet: MarkdownStyleSheet(
               h2: AppTextStyles.h3.copyWith(color: c.brandPrimary),
-              p: AppTextStyles.body.copyWith(
-                color: c.textPrimary,
-                height: 1.6,
-              ),
+              p: AppTextStyles.body.copyWith(color: c.textPrimary, height: 1.6),
               listBullet: AppTextStyles.body.copyWith(
                 color: c.textPrimary,
                 height: 1.6,
@@ -623,10 +644,7 @@ class SettingsPage extends ConsumerWidget {
               data: updateNotes.trim(),
               styleSheet: MarkdownStyleSheet(
                 h2: AppTextStyles.h3.copyWith(color: c.brandPrimary),
-                p: AppTextStyles.sm.copyWith(
-                  color: c.textPrimary,
-                  height: 1.5,
-                ),
+                p: AppTextStyles.sm.copyWith(color: c.textPrimary, height: 1.5),
                 listBullet: AppTextStyles.sm.copyWith(
                   color: c.textPrimary,
                   height: 1.5,
@@ -650,20 +668,26 @@ class SettingsPage extends ConsumerWidget {
       LoggerService.sync('开始检查更新...');
       final apiClient = ref.read(apiClientProvider);
       final response = await apiClient.checkUpdate();
+      if (!context.mounted) return;
       LoggerService.sync('响应: $response');
 
       final latestVersion = response['version'] as String;
       final downloadUrl = response['download_url'] as String;
       final releaseNotes = response['release_notes'] as String;
 
-      const currentVersion = '0.7.0';
+      const currentVersion = appVersion;
       LoggerService.sync('当前版本: $currentVersion, 最新版本: $latestVersion');
 
-      if (latestVersion == currentVersion) {
+      if (!isNewerAppVersion(latestVersion)) {
         if (context.mounted) {
           Toast.show(context, '当前已是最新版本');
         }
         return;
+      }
+
+      final uri = Uri.tryParse(downloadUrl);
+      if (uri == null || uri.scheme != 'https' || uri.host.isEmpty) {
+        throw const FormatException('新版安装包暂不可用');
       }
 
       if (context.mounted) {
@@ -689,9 +713,18 @@ class SettingsPage extends ConsumerWidget {
               FilledButton(
                 onPressed: () async {
                   Navigator.pop(ctx);
-                  final uri = Uri.parse(downloadUrl);
-                  if (await canLaunchUrl(uri)) {
-                    await launchUrl(uri, mode: LaunchMode.externalApplication);
+                  try {
+                    final opened = await launchUrl(
+                      uri,
+                      mode: LaunchMode.externalApplication,
+                    );
+                    if (!opened && context.mounted) {
+                      Toast.show(context, '无法打开下载链接，请稍后重试');
+                    }
+                  } catch (_) {
+                    if (context.mounted) {
+                      Toast.show(context, '无法打开下载链接，请稍后重试');
+                    }
                   }
                 },
                 child: const Text('立即更新'),
@@ -850,6 +883,7 @@ class _AboutPageState extends ConsumerState<AboutPage> {
   }
 
   void _startHeartRain() {
+    if (MediaQuery.disableAnimationsOf(context)) return;
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
 
@@ -1057,10 +1091,8 @@ class _AboutPageState extends ConsumerState<AboutPage> {
 
               Center(
                 child: Text(
-                  '考勤助手 v0.7.0',
-                  style: AppTextStyles.sm.copyWith(
-                    color: c.textTertiary,
-                  ),
+                  '考勤助手 v$appVersion',
+                  style: AppTextStyles.sm.copyWith(color: c.textTertiary),
                 ),
               ),
             ],
@@ -1121,10 +1153,7 @@ class _InfoSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          title,
-          style: AppTextStyles.h3.copyWith(color: c.textPrimary),
-        ),
+        Text(title, style: AppTextStyles.h3.copyWith(color: c.textPrimary)),
         const SizedBox(height: AppSpacing.sm),
         Card(child: Column(children: children)),
       ],
@@ -1170,10 +1199,7 @@ class _PersonTile extends StatelessWidget {
       title: Text(
         name,
         style: showGlow
-            ? TextStyle(
-                color: c.brandPrimary,
-                fontWeight: FontWeight.bold,
-              )
+            ? TextStyle(color: c.brandPrimary, fontWeight: FontWeight.bold)
             : null,
       ),
       subtitle: Text(role),

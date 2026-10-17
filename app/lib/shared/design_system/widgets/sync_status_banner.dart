@@ -38,6 +38,11 @@ class _SyncStatusBannerState extends State<SyncStatusBanner>
       vsync: this,
       duration: const Duration(milliseconds: 1100),
     );
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
     _updateRotation();
   }
 
@@ -50,7 +55,8 @@ class _SyncStatusBannerState extends State<SyncStatusBanner>
   }
 
   void _updateRotation() {
-    if (widget.state == SyncBannerState.syncing) {
+    if (widget.state == SyncBannerState.syncing &&
+        !MediaQuery.disableAnimationsOf(context)) {
       _rotation.repeat();
     } else {
       _rotation.stop();
@@ -76,10 +82,7 @@ class _SyncStatusBannerState extends State<SyncStatusBanner>
 
     Widget iconWidget = Icon(icon, color: color, size: 18);
     if (widget.state == SyncBannerState.syncing) {
-      iconWidget = RotationTransition(
-        turns: _rotation,
-        child: iconWidget,
-      );
+      iconWidget = RotationTransition(turns: _rotation, child: iconWidget);
     }
 
     return Container(
@@ -100,7 +103,9 @@ class _SyncStatusBannerState extends State<SyncStatusBanner>
               children: [
                 Text(
                   widget.title,
-                  style: AppTextStyles.bodyMedium.copyWith(color: c.textPrimary),
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    color: c.textPrimary,
+                  ),
                 ),
                 if (widget.description != null) ...[
                   const SizedBox(height: 2),

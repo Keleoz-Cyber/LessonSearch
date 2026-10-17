@@ -21,6 +21,7 @@ class WeekExport(Base):
     __tablename__ = "week_exports"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
+    semester_id = Column(Integer, ForeignKey("week_config.id"), nullable=False, index=True)
     week_number = Column(Integer, nullable=False)
     exported_by = Column(Integer, ForeignKey("users.id"), nullable=False)
     exported_at = Column(DateTime, server_default=func.now())

@@ -39,6 +39,7 @@ class _RollCallPageState extends ConsumerState<RollCallPage> {
   void initState() {
     super.initState();
     Future.microtask(() {
+      if (!mounted) return;
       final authService = ref.read(authServiceProvider);
       if (widget.resumeTaskId != null) {
         ref.read(rollCallProvider.notifier).resumeTask(widget.resumeTaskId!);
@@ -177,143 +178,157 @@ class _RollCallPageState extends ConsumerState<RollCallPage> {
     final student = state.currentStudent;
     if (student == null) return const SizedBox();
 
-    return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (didPop, result) async {
-        if (didPop) return;
-        await _showExitDialog();
-      },
-      child: Scaffold(
-        backgroundColor: c.bgCanvas,
-        appBar: AppBar(
-          title: Text(state.currentClassName),
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back),
-            onPressed: () => _showExitDialog(),
-          ),
-          actions: [
-            Center(
-              child: Padding(
-                padding: const EdgeInsets.only(right: AppSpacing.lg),
-                child: Text(
-                  '${state.processedCount + 1} / ${state.totalCount}',
-                  style: AppTextStyles.withTabular(
-                    AppTextStyles.bodyMedium,
-                  ).copyWith(color: c.textSecondary),
-                ),
-              ),
+    return LoadingOverlay(
+      isLoading: state.isMutating,
+      message: '正在保存...',
+      child: PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, result) async {
+          if (didPop || state.isMutating) return;
+          await _showExitDialog();
+        },
+        child: Scaffold(
+          backgroundColor: c.bgCanvas,
+          appBar: AppBar(
+            title: Text(state.currentClassName),
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back),
+              onPressed: () => _showExitDialog(),
             ),
-          ],
-        ),
-        body: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.xl,
-              vertical: AppSpacing.lg,
-            ),
-            child: Column(
-              children: [
-                _buildPreviewArea(context, state),
-                const Spacer(flex: 2),
-                FittedBox(
-                  fit: BoxFit.scaleDown,
+            actions: [
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.only(right: AppSpacing.lg),
                   child: Text(
-                    student.name,
-                    style: AppTextStyles.display.copyWith(
-                      color: c.textPrimary,
-                      fontSize: 40,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.md),
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(
-                    student.pinyin ?? '',
-                    style: AppTextStyles.h2.copyWith(
-                      color: c.textTertiary,
-                      letterSpacing: 2,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.lg),
-                Text(
-                  '${state.currentClassName} · ${student.studentNo}',
-                  style: AppTextStyles.withTabular(
-                    AppTextStyles.sm,
-                  ).copyWith(color: c.textTertiary),
-                  textAlign: TextAlign.center,
-                ),
-                const Spacer(flex: 3),
-              ],
-            ),
-          ),
-        ),
-        bottomNavigationBar: BottomActionBar(
-          primary: AppButton.gradient(
-            label: state.hasNext ? '下一位' : '完成',
-            onPressed: () {
-              ref.read(feedbackServiceProvider).feedback();
-              ref.read(rollCallProvider.notifier).nextStudent();
-            },
-            trailingIcon: state.hasNext ? Icons.navigate_next : Icons.check,
-            size: AppButtonSize.lg,
-            fullWidth: true,
-          ),
-          secondary: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              SizedBox(
-                width: 44,
-                height: 48,
-                child: OutlinedButton(
-                  onPressed: state.hasPrev
-                      ? () {
-                          ref.read(feedbackServiceProvider).feedback();
-                          ref.read(rollCallProvider.notifier).prevStudent();
-                        }
-                      : null,
-                  style: OutlinedButton.styleFrom(
-                    padding: EdgeInsets.zero,
-                    foregroundColor: c.textSecondary,
-                    side: BorderSide(color: c.borderDefault),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(AppRadius.normal),
-                    ),
-                  ),
-                  child: const Icon(Icons.navigate_before, size: 20),
-                ),
-              ),
-              const SizedBox(width: AppSpacing.xs + 2),
-              SizedBox(
-                width: 56,
-                height: 48,
-                child: OutlinedButton(
-                  onPressed: () => _showFinishDialog(),
-                  style: OutlinedButton.styleFrom(
-                    padding: EdgeInsets.zero,
-                    foregroundColor: c.stateDanger,
-                    side: BorderSide(
-                      color: c.stateDanger.withValues(alpha: 0.4),
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(AppRadius.normal),
-                    ),
-                  ),
-                  child: Text(
-                    '结束',
-                    style: AppTextStyles.bodyMedium.copyWith(
-                      color: c.stateDanger,
-                    ),
+                    '${state.processedCount + 1} / ${state.totalCount}',
+                    style: AppTextStyles.withTabular(
+                      AppTextStyles.bodyMedium,
+                    ).copyWith(color: c.textSecondary),
                   ),
                 ),
               ),
             ],
           ),
+          body: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.xl,
+                vertical: AppSpacing.lg,
+              ),
+              child: Column(
+                children: [
+                  _buildPreviewArea(context, state),
+                  const Spacer(flex: 2),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      student.name,
+                      style: AppTextStyles.display.copyWith(
+                        color: c.textPrimary,
+                        fontSize: 40,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      student.pinyin ?? '',
+                      style: AppTextStyles.h2.copyWith(
+                        color: c.textTertiary,
+                        letterSpacing: 2,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                  Text(
+                    '${state.currentClassName} · ${student.studentNo}',
+                    style: AppTextStyles.withTabular(
+                      AppTextStyles.sm,
+                    ).copyWith(color: c.textTertiary),
+                    textAlign: TextAlign.center,
+                  ),
+                  const Spacer(flex: 3),
+                ],
+              ),
+            ),
+          ),
+          bottomNavigationBar: BottomActionBar(
+            primary: AppButton.gradient(
+              label: state.hasNext ? '下一位' : '完成',
+              onPressed: () {
+                ref.read(feedbackServiceProvider).feedback();
+                _runAction(ref.read(rollCallProvider.notifier).nextStudent);
+              },
+              trailingIcon: state.hasNext ? Icons.navigate_next : Icons.check,
+              size: AppButtonSize.lg,
+              fullWidth: true,
+            ),
+            secondary: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(
+                  width: 44,
+                  height: 48,
+                  child: OutlinedButton(
+                    onPressed: state.hasPrev
+                        ? () {
+                            ref.read(feedbackServiceProvider).feedback();
+                            _runAction(
+                              ref.read(rollCallProvider.notifier).prevStudent,
+                            );
+                          }
+                        : null,
+                    style: OutlinedButton.styleFrom(
+                      padding: EdgeInsets.zero,
+                      foregroundColor: c.textSecondary,
+                      side: BorderSide(color: c.borderDefault),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(AppRadius.normal),
+                      ),
+                    ),
+                    child: const Icon(Icons.navigate_before, size: 20),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.xs + 2),
+                SizedBox(
+                  width: 56,
+                  height: 48,
+                  child: OutlinedButton(
+                    onPressed: () => _showFinishDialog(),
+                    style: OutlinedButton.styleFrom(
+                      padding: EdgeInsets.zero,
+                      foregroundColor: c.stateDanger,
+                      side: BorderSide(
+                        color: c.stateDanger.withValues(alpha: 0.4),
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(AppRadius.normal),
+                      ),
+                    ),
+                    child: Text(
+                      '结束',
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        color: c.stateDanger,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
+  }
+
+  Future<void> _runAction(Future<void> Function() action) async {
+    try {
+      await action();
+    } catch (_) {
+      if (mounted) Toast.show(context, '保存失败，请重试');
+    }
   }
 
   Widget _buildPreviewArea(BuildContext context, RollCallState state) {
@@ -334,9 +349,7 @@ class _RollCallPageState extends ConsumerState<RollCallPage> {
                 child: prevThree.isEmpty
                     ? Text(
                         '暂无',
-                        style: AppTextStyles.sm.copyWith(
-                          color: c.textTertiary,
-                        ),
+                        style: AppTextStyles.sm.copyWith(color: c.textTertiary),
                       )
                     : Wrap(
                         spacing: AppSpacing.md,
@@ -367,9 +380,7 @@ class _RollCallPageState extends ConsumerState<RollCallPage> {
                 child: nextOne == null
                     ? Text(
                         '已是最后',
-                        style: AppTextStyles.sm.copyWith(
-                          color: c.textTertiary,
-                        ),
+                        style: AppTextStyles.sm.copyWith(color: c.textTertiary),
                       )
                     : Text(
                         nextOne.name,
@@ -387,6 +398,7 @@ class _RollCallPageState extends ConsumerState<RollCallPage> {
   }
 
   Future<void> _showExitDialog() async {
+    if (ref.read(rollCallProvider).isMutating) return;
     final c = context.colors;
     final result = await showDialog<String>(
       context: context,
@@ -430,6 +442,7 @@ class _RollCallPageState extends ConsumerState<RollCallPage> {
   }
 
   Future<void> _showFinishDialog() async {
+    if (ref.read(rollCallProvider).isMutating) return;
     final state = ref.read(rollCallProvider);
     final confirm = await showDialog<bool>(
       context: context,

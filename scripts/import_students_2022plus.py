@@ -14,7 +14,7 @@ from typing import Tuple
 
 import pandas as pd
 from pypinyin import lazy_pinyin, Style
-from sqlalchemy import select, delete, text
+from sqlalchemy import select, delete, text, inspect
 
 sys.path.insert(0, str(Path(__file__).parent))
 from config import DATABASE_URL
@@ -124,20 +124,20 @@ def import_students(commit: bool = False, clear: bool = False, min_year: int = 2
     try:
         if clear:
             print("\n清空旧数据...")
-            # 按外键依赖顺序删除（从子表到父表）
-            session.execute(text("DELETE FROM submission_records"))
-            session.execute(text("DELETE FROM submissions"))
-            session.execute(text("DELETE FROM attendance_records"))
-            session.execute(text("DELETE FROM week_exports"))
-            session.execute(text("DELETE FROM task_classes"))
-            session.execute(text("DELETE FROM attendance_tasks"))
+            # Explicit --clear removes attendance history, snapshots and caches.
+            # Keep the clear and replacement import in the SAME transaction.
+            inspector = inspect(session.connection())
+            for table in ("ranking_cache", "ranking_summary", "submission_snapshots",
+                          "submission_records", "submissions", "attendance_records",
+                          "week_exports", "task_classes", "attendance_tasks"):
+                if inspector.has_table(table):
+                    session.execute(text(f"DELETE FROM {table}"))
             # 再清空主表
             session.execute(delete(Student))
             session.execute(delete(Class))
             session.execute(delete(Major))
             session.execute(delete(Grade))
-            session.commit()
-            print("  已清空")
+            print("  已清理旧数据，等待导入成功后统一提交")
         
         # 创建年级
         grade_map = {}

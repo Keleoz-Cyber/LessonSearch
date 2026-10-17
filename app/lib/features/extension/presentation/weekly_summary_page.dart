@@ -98,6 +98,31 @@ final submissionServiceProvider = Provider<SubmissionService>((ref) {
   return SubmissionService(ref.watch(apiClientProvider));
 });
 
+final historySemestersProvider = FutureProvider<List<dynamic>>((ref) {
+  return ref.watch(submissionServiceProvider).getSemesters();
+});
+final historyWeeksProvider = FutureProvider.family<List<dynamic>, int>((
+  ref,
+  semesterId,
+) {
+  return ref
+      .watch(submissionServiceProvider)
+      .getHistoryWeeks(semesterId: semesterId);
+});
+typedef SemesterWeek = ({int semesterId, int weekNumber});
+final historyExportStatusProvider =
+    FutureProvider.family<Map<String, dynamic>, SemesterWeek>((ref, scope) {
+      return ref
+          .watch(submissionServiceProvider)
+          .getExportStatus(scope.weekNumber, semesterId: scope.semesterId);
+    });
+final historySummaryProvider =
+    FutureProvider.family<Map<String, dynamic>, SemesterWeek>((ref, scope) {
+      return ref
+          .watch(submissionServiceProvider)
+          .getWeekSummary(scope.weekNumber, semesterId: scope.semesterId);
+    });
+
 class WeeklySummaryPage extends ConsumerStatefulWidget {
   const WeeklySummaryPage({super.key});
 
@@ -117,6 +142,7 @@ class _WeeklySummaryPageState extends ConsumerState<WeeklySummaryPage>
 
     // 进入页面时刷新职务状态
     Future.microtask(() {
+      if (!mounted) return;
       ref.invalidate(myDutyProvider);
     });
   }
@@ -160,10 +186,8 @@ class _WeeklySummaryPageState extends ConsumerState<WeeklySummaryPage>
         ),
       ),
       body: currentWeekAsync.when(
-        loading: () => const LoadingOverlay(
-          isLoading: true,
-          child: SizedBox.expand(),
-        ),
+        loading: () =>
+            const LoadingOverlay(isLoading: true, child: SizedBox.expand()),
         error: (e, _) => Center(
           child: Padding(
             padding: const EdgeInsets.all(AppSpacing.xl),
@@ -202,7 +226,11 @@ class _WeeklySummaryPageState extends ConsumerState<WeeklySummaryPage>
                 weekData: weekData,
                 isAdmin: auth.isAdmin,
               ),
-              _HistoryWeekTab(currentWeek: weekNumber, isAdmin: auth.isAdmin),
+              _HistoryWeekTab(
+                currentWeek: weekNumber,
+                isAdmin: auth.isAdmin,
+                activeSemesterId: weekData['semester_id'] as int?,
+              ),
             ],
           );
         },
@@ -336,8 +364,9 @@ class _CurrentWeekTab extends ConsumerWidget {
                       ),
                     Text(
                       '${DateFormat('M月d日').format(startDate)} - ${DateFormat('M月d日').format(endDate)}',
-                      style: AppTextStyles.withTabular(AppTextStyles.sm)
-                          .copyWith(color: c.onBrand.withValues(alpha: 0.85)),
+                      style: AppTextStyles.withTabular(
+                        AppTextStyles.sm,
+                      ).copyWith(color: c.onBrand.withValues(alpha: 0.85)),
                     ),
                   ],
                 ),
@@ -347,8 +376,7 @@ class _CurrentWeekTab extends ConsumerWidget {
                 loading: () => const SizedBox.shrink(),
                 error: (_, _) => const SizedBox.shrink(),
                 data: (status) {
-                  final isPublished =
-                      status['is_published'] as bool? ?? false;
+                  final isPublished = status['is_published'] as bool? ?? false;
                   return Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: AppSpacing.md,
@@ -444,7 +472,10 @@ class _CurrentWeekTab extends ConsumerWidget {
             padding: EdgeInsets.symmetric(vertical: AppSpacing.lg),
             child: Column(
               children: [
-                Padding(padding: EdgeInsets.only(bottom: AppSpacing.md), child: SkeletonCard()),
+                Padding(
+                  padding: EdgeInsets.only(bottom: AppSpacing.md),
+                  child: SkeletonCard(),
+                ),
                 SkeletonCard(),
               ],
             ),
@@ -471,8 +502,9 @@ class _CurrentWeekTab extends ConsumerWidget {
                       const SizedBox(height: AppSpacing.sm),
                       Text(
                         '暂无待审核提交',
-                        style: AppTextStyles.bodyMedium
-                            .copyWith(color: c.textSecondary),
+                        style: AppTextStyles.bodyMedium.copyWith(
+                          color: c.textSecondary,
+                        ),
                       ),
                     ],
                   ),
@@ -520,8 +552,9 @@ class _CurrentWeekTab extends ConsumerWidget {
                       const SizedBox(height: AppSpacing.sm),
                       Text(
                         '暂无已审核记录',
-                        style: AppTextStyles.bodyMedium
-                            .copyWith(color: c.textSecondary),
+                        style: AppTextStyles.bodyMedium.copyWith(
+                          color: c.textSecondary,
+                        ),
                       ),
                     ],
                   ),
@@ -566,8 +599,7 @@ class _CurrentWeekTab extends ConsumerWidget {
               Expanded(
                 child: Text(
                   '提交状态',
-                  style:
-                      AppTextStyles.h3.copyWith(color: c.textPrimary),
+                  style: AppTextStyles.h3.copyWith(color: c.textPrimary),
                 ),
               ),
               Wrap(
@@ -736,8 +768,7 @@ class _CurrentWeekTab extends ConsumerWidget {
         children: [
           Row(
             children: [
-              Icon(Icons.insights_outlined,
-                  size: 18, color: c.brandPrimary),
+              Icon(Icons.insights_outlined, size: 18, color: c.brandPrimary),
               const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: Text(
@@ -754,16 +785,23 @@ class _CurrentWeekTab extends ConsumerWidget {
             runSpacing: AppSpacing.sm,
             children: [
               AppStatChip(label: '迟到', count: lateCount, color: c.stateWarning),
-              AppStatChip(label: '缺勤', count: absentCount, color: c.stateDanger),
+              AppStatChip(
+                label: '缺勤',
+                count: absentCount,
+                color: c.stateDanger,
+              ),
               AppStatChip(label: '请假', count: leaveCount, color: c.stateInfo),
-              AppStatChip(label: '其他', count: otherCount, color: c.textTertiary),
+              AppStatChip(
+                label: '其他',
+                count: otherCount,
+                color: c.textTertiary,
+              ),
             ],
           ),
           const SizedBox(height: AppSpacing.md),
           Row(
             children: [
-              Icon(Icons.verified_outlined,
-                  size: 14, color: c.stateSuccess),
+              Icon(Icons.verified_outlined, size: 14, color: c.stateSuccess),
               const SizedBox(width: AppSpacing.xs),
               Text(
                 '已审核提交 $approvedCount',
@@ -786,26 +824,14 @@ class _CurrentWeekTab extends ConsumerWidget {
     WidgetRef ref,
     int weekNumber,
   ) async {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => const AlertDialog(
-        content: Row(
-          children: [
-            CircularProgressIndicator(),
-            SizedBox(width: 20),
-            Text('正在加载...'),
-          ],
-        ),
-      ),
-    );
+    final loadingDialog = LoadingDialogHandle.show(context);
 
     try {
       final detail = await ref
           .read(submissionServiceProvider)
           .getWeekSummaryDetail(weekNumber);
 
-      Navigator.of(context, rootNavigator: true).pop();
+      if (!loadingDialog.close() || !context.mounted) return;
 
       final tableData = (detail['table_data'] as List? ?? [])
           .map((r) => r as Map<String, dynamic>)
@@ -817,7 +843,7 @@ class _CurrentWeekTab extends ConsumerWidget {
             _SummaryDetailDialog(weekNumber: weekNumber, tableData: tableData),
       );
     } catch (e) {
-      Navigator.of(context, rootNavigator: true).pop();
+      loadingDialog.close();
       Toast.show(context, '加载详情失败: $e');
     }
   }
@@ -876,7 +902,9 @@ class _CurrentWeekTab extends ConsumerWidget {
                       const SizedBox(height: AppSpacing.xs),
                       Text(
                         '请等待管理员导出后查看',
-                        style: AppTextStyles.sm.copyWith(color: c.textSecondary),
+                        style: AppTextStyles.sm.copyWith(
+                          color: c.textSecondary,
+                        ),
                       ),
                     ],
                   ),
@@ -1011,8 +1039,9 @@ class _CurrentWeekTab extends ConsumerWidget {
             if (exportedAt != null)
               Text(
                 '导出时间 · ${DateFormat('yyyy-MM-dd HH:mm').format(DateTime.parse(exportedAt))}',
-                style: AppTextStyles.withTabular(AppTextStyles.sm)
-                    .copyWith(color: c.textTertiary),
+                style: AppTextStyles.withTabular(
+                  AppTextStyles.sm,
+                ).copyWith(color: c.textTertiary),
               ),
           ],
           const SizedBox(height: AppSpacing.lg),
@@ -1066,8 +1095,11 @@ class _CurrentWeekTab extends ConsumerWidget {
             ),
             child: Row(
               children: [
-                Icon(Icons.calculate_outlined,
-                    size: 18, color: c.textSecondary),
+                Icon(
+                  Icons.calculate_outlined,
+                  size: 18,
+                  color: c.textSecondary,
+                ),
                 const SizedBox(width: AppSpacing.sm),
                 Expanded(
                   child: Text(
@@ -1136,9 +1168,11 @@ class _CurrentWeekTab extends ConsumerWidget {
           ],
         ),
       );
+      if (!context.mounted) return;
 
       if (shouldSync == true) {
         await ref.read(syncServiceProvider).syncNow();
+        if (!context.mounted) return;
         // 同步后再试一次
         if (context.mounted) {
           _showExportDialog(context, ref, weekNumber);
@@ -1164,6 +1198,7 @@ class _CurrentWeekTab extends ConsumerWidget {
         ],
       ),
     );
+    if (!context.mounted) return;
 
     if (confirmed == true) {
       _doExport(context, ref, weekNumber);
@@ -1176,25 +1211,28 @@ class _CurrentWeekTab extends ConsumerWidget {
     int weekNumber,
   ) async {
     try {
-      final api = ref.read(apiClientProvider);
-      final response = await api.dio.get(
-        '/submissions/export/$weekNumber',
-        options: Options(responseType: ResponseType.bytes),
-      );
+      final exported = await ref
+          .read(submissionServiceProvider)
+          .exportWeek(weekNumber, semesterId: weekData['semester_id'] as int?);
+      if (!context.mounted) return;
 
-      final bytes = Uint8List.fromList(response.data as List<int>);
+      final bytes = Uint8List.fromList(exported);
       final filename = '第$weekNumber周考勤表.xlsx';
 
       final tempDir = await getTemporaryDirectory();
+      if (!context.mounted) return;
       final file = File('${tempDir.path}/$filename');
       await file.writeAsBytes(bytes);
+      if (!context.mounted) return;
 
       await Share.shareXFiles([XFile(file.path)], subject: filename);
+      if (!context.mounted) return;
 
       ref.invalidate(pendingSubmissionsProvider(weekNumber));
       ref.invalidate(exportStatusProvider(weekNumber));
       ref.invalidate(weekSummaryProvider(weekNumber));
     } catch (e) {
+      if (!context.mounted) return;
       Toast.show(context, '导出失败: $e');
     }
   }
@@ -1245,8 +1283,9 @@ class _PendingSubmissionCard extends ConsumerWidget {
                       const SizedBox(height: 2),
                       Text(
                         DateFormat('yyyy-MM-dd HH:mm').format(submittedAt),
-                        style: AppTextStyles.withTabular(AppTextStyles.xs)
-                            .copyWith(color: c.textTertiary),
+                        style: AppTextStyles.withTabular(
+                          AppTextStyles.xs,
+                        ).copyWith(color: c.textTertiary),
                       ),
                     ],
                   ),
@@ -1271,8 +1310,11 @@ class _PendingSubmissionCard extends ConsumerWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.assignment_outlined,
-                      size: 14, color: c.textSecondary),
+                  Icon(
+                    Icons.assignment_outlined,
+                    size: 14,
+                    color: c.textSecondary,
+                  ),
                   const SizedBox(width: AppSpacing.xs),
                   Text(
                     '$taskCount 个任务',
@@ -1297,30 +1339,34 @@ class _PendingSubmissionCard extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: AppSpacing.md),
-            LayoutBuilder(builder: (ctx, constraints) {
-              final compact = constraints.maxWidth < 320;
-              final actions = [
-                Expanded(
-                  child: AppButton.secondary(
-                    label: '拒绝',
-                    leadingIcon: Icons.close,
-                    onPressed: () => _showRejectDialog(context, ref),
+            LayoutBuilder(
+              builder: (ctx, constraints) {
+                final compact = constraints.maxWidth < 320;
+                final actions = [
+                  Expanded(
+                    child: AppButton.secondary(
+                      label: '拒绝',
+                      leadingIcon: Icons.close,
+                      onPressed: () => _showRejectDialog(context, ref),
+                    ),
                   ),
-                ),
-                SizedBox(width: compact ? 0 : AppSpacing.md,
-                    height: compact ? AppSpacing.sm : 0),
-                Expanded(
-                  child: AppButton.primary(
-                    label: '通过',
-                    leadingIcon: Icons.check,
-                    onPressed: () => _approve(context, ref),
+                  SizedBox(
+                    width: compact ? 0 : AppSpacing.md,
+                    height: compact ? AppSpacing.sm : 0,
                   ),
-                ),
-              ];
-              return compact
-                  ? Column(children: actions.whereType<Widget>().toList())
-                  : Row(children: actions.whereType<Widget>().toList());
-            }),
+                  Expanded(
+                    child: AppButton.primary(
+                      label: '通过',
+                      leadingIcon: Icons.check,
+                      onPressed: () => _approve(context, ref),
+                    ),
+                  ),
+                ];
+                return compact
+                    ? Column(children: actions.whereType<Widget>().toList())
+                    : Row(children: actions.whereType<Widget>().toList());
+              },
+            ),
           ],
         ),
       ),
@@ -1338,8 +1384,7 @@ class _PendingSubmissionCard extends ConsumerWidget {
         return AlertDialog(
           title: Row(
             children: [
-              Icon(Icons.fact_check_outlined,
-                  size: 20, color: c.brandPrimary),
+              Icon(Icons.fact_check_outlined, size: 20, color: c.brandPrimary),
               const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: Text(
@@ -1360,8 +1405,7 @@ class _PendingSubmissionCard extends ConsumerWidget {
                         .read(submissionServiceProvider)
                         .getSubmissionRecords(submissionId),
                     builder: (context, snapshot) {
-                      if (snapshot.connectionState ==
-                          ConnectionState.waiting) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
                         return const Padding(
                           padding: EdgeInsets.all(AppSpacing.xl),
                           child: Center(child: CircularProgressIndicator()),
@@ -1422,11 +1466,13 @@ class _PendingSubmissionCard extends ConsumerWidget {
                                 const SizedBox(height: AppSpacing.xs),
                                 Padding(
                                   padding: const EdgeInsets.symmetric(
-                                      horizontal: AppSpacing.sm),
+                                    horizontal: AppSpacing.sm,
+                                  ),
                                   child: Text(
                                     '拒绝原因 · ${submission['review_note']}',
-                                    style: AppTextStyles.sm
-                                        .copyWith(color: c.stateDanger),
+                                    style: AppTextStyles.sm.copyWith(
+                                      color: c.stateDanger,
+                                    ),
                                   ),
                                 ),
                               ],
@@ -1434,7 +1480,9 @@ class _PendingSubmissionCard extends ConsumerWidget {
                             ],
                             if (recordCount == 0)
                               EmptyState.noLinkedRecords()
-                            else if (lateCount + absentCount + leaveCount +
+                            else if (lateCount +
+                                    absentCount +
+                                    leaveCount +
                                     otherCount ==
                                 0)
                               EmptyState.noAbnormalRecords()
@@ -1444,48 +1492,56 @@ class _PendingSubmissionCard extends ConsumerWidget {
                                 runSpacing: AppSpacing.sm,
                                 children: [
                                   AppStatChip(
-                                      label: '迟到',
-                                      count: lateCount,
-                                      color: c.stateWarning),
+                                    label: '迟到',
+                                    count: lateCount,
+                                    color: c.stateWarning,
+                                  ),
                                   AppStatChip(
-                                      label: '缺勤',
-                                      count: absentCount,
-                                      color: c.stateDanger),
+                                    label: '缺勤',
+                                    count: absentCount,
+                                    color: c.stateDanger,
+                                  ),
                                   AppStatChip(
-                                      label: '请假',
-                                      count: leaveCount,
-                                      color: c.stateInfo),
+                                    label: '请假',
+                                    count: leaveCount,
+                                    color: c.stateInfo,
+                                  ),
                                   AppStatChip(
-                                      label: '其他',
-                                      count: otherCount,
-                                      color: c.textTertiary),
+                                    label: '其他',
+                                    count: otherCount,
+                                    color: c.textTertiary,
+                                  ),
                                 ],
                               ),
                               const SizedBox(height: AppSpacing.lg),
                               if (absentRecords.isNotEmpty)
                                 _RecordListPreview(
-                                    label: '缺勤',
-                                    records: absentRecords,
-                                    color: c.stateDanger,
-                                    max: 999),
+                                  label: '缺勤',
+                                  records: absentRecords,
+                                  color: c.stateDanger,
+                                  max: 999,
+                                ),
                               if (lateRecords.isNotEmpty)
                                 _RecordListPreview(
-                                    label: '迟到',
-                                    records: lateRecords,
-                                    color: c.stateWarning,
-                                    max: 999),
+                                  label: '迟到',
+                                  records: lateRecords,
+                                  color: c.stateWarning,
+                                  max: 999,
+                                ),
                               if (leaveRecords.isNotEmpty)
                                 _RecordListPreview(
-                                    label: '请假',
-                                    records: leaveRecords,
-                                    color: c.stateInfo,
-                                    max: 999),
+                                  label: '请假',
+                                  records: leaveRecords,
+                                  color: c.stateInfo,
+                                  max: 999,
+                                ),
                               if (otherRecords.isNotEmpty)
                                 _RecordListPreview(
-                                    label: '其他',
-                                    records: otherRecords,
-                                    color: c.textTertiary,
-                                    max: 999),
+                                  label: '其他',
+                                  records: otherRecords,
+                                  color: c.textTertiary,
+                                  max: 999,
+                                ),
                             ],
                           ],
                         ),
@@ -1522,28 +1578,41 @@ class _PendingSubmissionCard extends ConsumerWidget {
   }
 
   Future<void> _approve(BuildContext context, WidgetRef ref) async {
-    final confirmed = await _showReviewConfirmDialog(context, ref, isApprove: true);
+    final confirmed = await _showReviewConfirmDialog(
+      context,
+      ref,
+      isApprove: true,
+    );
+    if (!context.mounted) return;
     if (!confirmed) return;
 
     try {
       final service = ref.read(submissionServiceProvider);
       await service.approveSubmission(submission['id']);
+      if (!context.mounted) return;
       ref.invalidate(pendingSubmissionsProvider(weekNumber));
       ref.invalidate(weekSummaryProvider(weekNumber));
       ref.invalidate(weekSubmissionStatusProvider(weekNumber));
       ref.invalidate(reviewedSubmissionsProvider(weekNumber));
       Toast.show(context, '审核通过');
     } on DioException catch (e) {
-      final message = e.response?.data['detail'] ?? '操作失败';
+      if (!context.mounted) return;
+      final message = Toast.errorMessage(e.response?.data);
       Toast.show(context, message);
     } catch (e) {
+      if (!context.mounted) return;
       Toast.show(context, '操作失败: $e');
     }
   }
 
   Future<void> _showRejectDialog(BuildContext context, WidgetRef ref) async {
     // 先显示摘要确认
-    final confirmed = await _showReviewConfirmDialog(context, ref, isApprove: false);
+    final confirmed = await _showReviewConfirmDialog(
+      context,
+      ref,
+      isApprove: false,
+    );
+    if (!context.mounted) return;
     if (!confirmed) return;
 
     final controller = TextEditingController();
@@ -1566,8 +1635,7 @@ class _PendingSubmissionCard extends ConsumerWidget {
             controller: controller,
             decoration: InputDecoration(
               hintText: '请输入拒绝理由',
-              hintStyle:
-                  AppTextStyles.sm.copyWith(color: c.textTertiary),
+              hintStyle: AppTextStyles.sm.copyWith(color: c.textTertiary),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(AppRadius.md),
                 borderSide: BorderSide(color: c.borderDefault),
@@ -1578,8 +1646,7 @@ class _PendingSubmissionCard extends ConsumerWidget {
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(AppRadius.md),
-                borderSide:
-                    BorderSide(color: c.brandPrimary, width: 1.5),
+                borderSide: BorderSide(color: c.brandPrimary, width: 1.5),
               ),
             ),
             autofocus: true,
@@ -1602,6 +1669,7 @@ class _PendingSubmissionCard extends ConsumerWidget {
         );
       },
     );
+    if (!context.mounted) return;
 
     if (result == true) {
       final note = controller.text.trim();
@@ -1615,14 +1683,17 @@ class _PendingSubmissionCard extends ConsumerWidget {
       try {
         final service = ref.read(submissionServiceProvider);
         await service.rejectSubmission(submission['id'], note);
+        if (!context.mounted) return;
         ref.invalidate(pendingSubmissionsProvider(weekNumber));
         ref.invalidate(weekSubmissionStatusProvider(weekNumber));
         ref.invalidate(reviewedSubmissionsProvider(weekNumber));
         Toast.show(context, '已拒绝');
       } on DioException catch (e) {
-        final message = e.response?.data['detail'] ?? '操作失败';
+        if (!context.mounted) return;
+        final message = Toast.errorMessage(e.response?.data);
         Toast.show(context, message);
       } catch (e) {
+        if (!context.mounted) return;
         Toast.show(context, '操作失败: $e');
       }
     }
@@ -1640,26 +1711,14 @@ class _PendingSubmissionCard extends ConsumerWidget {
     final submissionId = submission['id'] as int;
 
     // 显示加载中
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => const AlertDialog(
-        content: Row(
-          children: [
-            CircularProgressIndicator(),
-            SizedBox(width: 20),
-            Text('正在加载提交详情...'),
-          ],
-        ),
-      ),
-    );
+    final loadingDialog = LoadingDialogHandle.show(context);
 
     try {
       final data = await ref
           .read(submissionServiceProvider)
           .getSubmissionRecords(submissionId);
 
-      if (context.mounted) Navigator.of(context, rootNavigator: true).pop();
+      if (!loadingDialog.close() || !context.mounted) return false;
 
       // 检查是否已被撤销
       final status = data['status'] as String?;
@@ -1676,14 +1735,21 @@ class _PendingSubmissionCard extends ConsumerWidget {
       final leaveCount = data['leave_count'] as int? ?? 0;
       final otherCount = data['other_count'] as int? ?? 0;
       final classNames = submission['class_names'] as String? ?? '';
-      final userName = submission['user_name'] ?? submission['user_email'] ?? '未知';
+      final userName =
+          submission['user_name'] ?? submission['user_email'] ?? '未知';
       final submittedAt = DateTime.parse(submission['submitted_at'] as String);
 
       // 分类记录
-      final absentRecords = records.where((r) => r['status'] == 'absent').toList();
+      final absentRecords = records
+          .where((r) => r['status'] == 'absent')
+          .toList();
       final lateRecords = records.where((r) => r['status'] == 'late').toList();
-      final leaveRecords = records.where((r) => r['status'] == 'leave').toList();
-      final otherRecords = records.where((r) => r['status'] == 'other').toList();
+      final leaveRecords = records
+          .where((r) => r['status'] == 'leave')
+          .toList();
+      final otherRecords = records
+          .where((r) => r['status'] == 'other')
+          .toList();
 
       final confirmed = await showDialog<bool>(
         context: context,
@@ -1712,14 +1778,18 @@ class _PendingSubmissionCard extends ConsumerWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     _buildInfoRow(c, '提交人', userName),
-                    _buildInfoRow(c, '提交时间',
-                        DateFormat('yyyy-MM-dd HH:mm').format(submittedAt)),
+                    _buildInfoRow(
+                      c,
+                      '提交时间',
+                      DateFormat('yyyy-MM-dd HH:mm').format(submittedAt),
+                    ),
                     if (classNames.isNotEmpty)
                       _buildInfoRow(c, '班级', classNames),
                     _buildInfoRow(c, '记录数量', '${records.length} 条'),
                     Padding(
                       padding: const EdgeInsets.symmetric(
-                          vertical: AppSpacing.md),
+                        vertical: AppSpacing.md,
+                      ),
                       child: Container(height: 1, color: c.borderSubtle),
                     ),
                     Text(
@@ -1735,44 +1805,52 @@ class _PendingSubmissionCard extends ConsumerWidget {
                       runSpacing: AppSpacing.sm,
                       children: [
                         AppStatChip(
-                            label: '迟到',
-                            count: lateCount,
-                            color: c.stateWarning),
+                          label: '迟到',
+                          count: lateCount,
+                          color: c.stateWarning,
+                        ),
                         AppStatChip(
-                            label: '缺勤',
-                            count: absentCount,
-                            color: c.stateDanger),
+                          label: '缺勤',
+                          count: absentCount,
+                          color: c.stateDanger,
+                        ),
                         AppStatChip(
-                            label: '请假',
-                            count: leaveCount,
-                            color: c.stateInfo),
+                          label: '请假',
+                          count: leaveCount,
+                          color: c.stateInfo,
+                        ),
                         AppStatChip(
-                            label: '其他',
-                            count: otherCount,
-                            color: c.textTertiary),
+                          label: '其他',
+                          count: otherCount,
+                          color: c.textTertiary,
+                        ),
                       ],
                     ),
                     const SizedBox(height: AppSpacing.lg),
                     if (absentRecords.isNotEmpty)
                       _RecordListPreview(
-                          label: '缺勤',
-                          records: absentRecords,
-                          color: c.stateDanger),
+                        label: '缺勤',
+                        records: absentRecords,
+                        color: c.stateDanger,
+                      ),
                     if (lateRecords.isNotEmpty)
                       _RecordListPreview(
-                          label: '迟到',
-                          records: lateRecords,
-                          color: c.stateWarning),
+                        label: '迟到',
+                        records: lateRecords,
+                        color: c.stateWarning,
+                      ),
                     if (leaveRecords.isNotEmpty)
                       _RecordListPreview(
-                          label: '请假',
-                          records: leaveRecords,
-                          color: c.stateInfo),
+                        label: '请假',
+                        records: leaveRecords,
+                        color: c.stateInfo,
+                      ),
                     if (otherRecords.isNotEmpty)
                       _RecordListPreview(
-                          label: '其他',
-                          records: otherRecords,
-                          color: c.textTertiary),
+                        label: '其他',
+                        records: otherRecords,
+                        color: c.textTertiary,
+                      ),
                     const SizedBox(height: AppSpacing.sm),
                     AppNoticeBox(
                       color: isApprove ? c.stateSuccess : c.stateDanger,
@@ -1780,9 +1858,7 @@ class _PendingSubmissionCard extends ConsumerWidget {
                           ? Icons.check_circle_outline
                           : Icons.warning_amber,
                       title: isApprove ? '即将通过此提交' : '即将拒绝此提交',
-                      body: isApprove
-                          ? '通过后数据将计入周汇总。'
-                          : '拒绝后成员可以修改后重新提交。',
+                      body: isApprove ? '通过后数据将计入周汇总。' : '拒绝后成员可以修改后重新提交。',
                     ),
                   ],
                 ),
@@ -1796,8 +1872,7 @@ class _PendingSubmissionCard extends ConsumerWidget {
               FilledButton(
                 onPressed: () => Navigator.pop(ctx, true),
                 style: FilledButton.styleFrom(
-                  backgroundColor:
-                      isApprove ? c.stateSuccess : c.stateDanger,
+                  backgroundColor: isApprove ? c.stateSuccess : c.stateDanger,
                   foregroundColor: c.onBrand,
                 ),
                 child: Text(isApprove ? '确认通过' : '确认拒绝'),
@@ -1809,7 +1884,7 @@ class _PendingSubmissionCard extends ConsumerWidget {
 
       return confirmed == true;
     } catch (e) {
-      if (context.mounted) Navigator.of(context, rootNavigator: true).pop();
+      loadingDialog.close();
       if (context.mounted) Toast.show(context, '加载详情失败: $e');
       return false;
     }
@@ -1891,8 +1966,9 @@ class _ReviewedSubmissionCard extends ConsumerWidget {
                       const SizedBox(height: 2),
                       Text(
                         '提交于 ${DateFormat('yyyy-MM-dd HH:mm').format(submittedAt)}',
-                        style: AppTextStyles.withTabular(AppTextStyles.xs)
-                            .copyWith(color: c.textTertiary),
+                        style: AppTextStyles.withTabular(
+                          AppTextStyles.xs,
+                        ).copyWith(color: c.textTertiary),
                       ),
                     ],
                   ),
@@ -1903,10 +1979,7 @@ class _ReviewedSubmissionCard extends ConsumerWidget {
                         label: '已通过',
                         icon: Icons.check_circle,
                       )
-                    : const StatusPill.danger(
-                        label: '已拒绝',
-                        icon: Icons.cancel,
-                      ),
+                    : const StatusPill.danger(label: '已拒绝', icon: Icons.cancel),
               ],
             ),
             const SizedBox(height: AppSpacing.sm),
@@ -1922,8 +1995,11 @@ class _ReviewedSubmissionCard extends ConsumerWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.assignment_outlined,
-                      size: 14, color: c.textSecondary),
+                  Icon(
+                    Icons.assignment_outlined,
+                    size: 14,
+                    color: c.textSecondary,
+                  ),
                   const SizedBox(width: AppSpacing.xs),
                   Text(
                     '$taskCount 个任务',
@@ -1984,27 +2060,14 @@ class _ReviewedSubmissionCard extends ConsumerWidget {
   Future<void> _showDetailDialog(BuildContext context, WidgetRef ref) async {
     final submissionId = submission['id'] as int;
 
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => const AlertDialog(
-        content: Row(
-          children: [
-            CircularProgressIndicator(),
-            SizedBox(width: 20),
-            Text('正在加载...'),
-          ],
-        ),
-      ),
-    );
+    final loadingDialog = LoadingDialogHandle.show(context);
 
     try {
       final data = await ref
           .read(submissionServiceProvider)
           .getSubmissionRecords(submissionId);
 
-      if (!context.mounted) return;
-      Navigator.of(context, rootNavigator: true).pop();
+      if (!loadingDialog.close() || !context.mounted) return;
 
       final records = data['records'] as List? ?? [];
       final lateCount = data['late_count'] as int? ?? 0;
@@ -2016,12 +2079,15 @@ class _ReviewedSubmissionCard extends ConsumerWidget {
       final isRejected = submissionStatus == 'rejected';
 
       final lateRecords = records.where((r) => r['status'] == 'late').toList();
-      final absentRecords =
-          records.where((r) => r['status'] == 'absent').toList();
-      final leaveRecords =
-          records.where((r) => r['status'] == 'leave').toList();
-      final otherRecords =
-          records.where((r) => r['status'] == 'other').toList();
+      final absentRecords = records
+          .where((r) => r['status'] == 'absent')
+          .toList();
+      final leaveRecords = records
+          .where((r) => r['status'] == 'leave')
+          .toList();
+      final otherRecords = records
+          .where((r) => r['status'] == 'other')
+          .toList();
 
       if (!context.mounted) return;
       showDialog(
@@ -2031,8 +2097,11 @@ class _ReviewedSubmissionCard extends ConsumerWidget {
           return AlertDialog(
             title: Row(
               children: [
-                Icon(Icons.fact_check_outlined,
-                    size: 20, color: c.brandPrimary),
+                Icon(
+                  Icons.fact_check_outlined,
+                  size: 20,
+                  color: c.brandPrimary,
+                ),
                 const SizedBox(width: AppSpacing.sm),
                 Expanded(
                   child: Text(
@@ -2067,11 +2136,13 @@ class _ReviewedSubmissionCard extends ConsumerWidget {
                         const SizedBox(height: AppSpacing.xs),
                         Padding(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: AppSpacing.sm),
+                            horizontal: AppSpacing.sm,
+                          ),
                           child: Text(
                             '拒绝原因 · ${submission['review_note']}',
-                            style: AppTextStyles.sm
-                                .copyWith(color: c.stateDanger),
+                            style: AppTextStyles.sm.copyWith(
+                              color: c.stateDanger,
+                            ),
                           ),
                         ),
                       ],
@@ -2079,7 +2150,9 @@ class _ReviewedSubmissionCard extends ConsumerWidget {
                     ],
                     if (recordCount == 0)
                       EmptyState.noLinkedRecords()
-                    else if (lateCount + absentCount + leaveCount +
+                    else if (lateCount +
+                            absentCount +
+                            leaveCount +
                             otherCount ==
                         0)
                       EmptyState.noAbnormalRecords()
@@ -2089,49 +2162,57 @@ class _ReviewedSubmissionCard extends ConsumerWidget {
                         runSpacing: AppSpacing.sm,
                         children: [
                           AppStatChip(
-                              label: '迟到',
-                              count: lateCount,
-                              color: c.stateWarning),
+                            label: '迟到',
+                            count: lateCount,
+                            color: c.stateWarning,
+                          ),
                           AppStatChip(
-                              label: '缺勤',
-                              count: absentCount,
-                              color: c.stateDanger),
+                            label: '缺勤',
+                            count: absentCount,
+                            color: c.stateDanger,
+                          ),
                           AppStatChip(
-                              label: '请假',
-                              count: leaveCount,
-                              color: c.stateInfo),
+                            label: '请假',
+                            count: leaveCount,
+                            color: c.stateInfo,
+                          ),
                           if (otherCount > 0)
                             AppStatChip(
-                                label: '其他',
-                                count: otherCount,
-                                color: c.textTertiary),
+                              label: '其他',
+                              count: otherCount,
+                              color: c.textTertiary,
+                            ),
                         ],
                       ),
                       const SizedBox(height: AppSpacing.lg),
                       if (absentRecords.isNotEmpty)
                         _RecordListPreview(
-                            label: '缺勤',
-                            records: absentRecords,
-                            color: c.stateDanger,
-                            max: 999),
+                          label: '缺勤',
+                          records: absentRecords,
+                          color: c.stateDanger,
+                          max: 999,
+                        ),
                       if (lateRecords.isNotEmpty)
                         _RecordListPreview(
-                            label: '迟到',
-                            records: lateRecords,
-                            color: c.stateWarning,
-                            max: 999),
+                          label: '迟到',
+                          records: lateRecords,
+                          color: c.stateWarning,
+                          max: 999,
+                        ),
                       if (leaveRecords.isNotEmpty)
                         _RecordListPreview(
-                            label: '请假',
-                            records: leaveRecords,
-                            color: c.stateInfo,
-                            max: 999),
+                          label: '请假',
+                          records: leaveRecords,
+                          color: c.stateInfo,
+                          max: 999,
+                        ),
                       if (otherRecords.isNotEmpty)
                         _RecordListPreview(
-                            label: '其他',
-                            records: otherRecords,
-                            color: c.textTertiary,
-                            max: 999),
+                          label: '其他',
+                          records: otherRecords,
+                          color: c.textTertiary,
+                          max: 999,
+                        ),
                     ],
                   ],
                 ),
@@ -2148,7 +2229,7 @@ class _ReviewedSubmissionCard extends ConsumerWidget {
       );
     } catch (e) {
       if (!context.mounted) return;
-      Navigator.of(context, rootNavigator: true).pop();
+      loadingDialog.close();
       Toast.show(context, '加载详情失败: $e');
     }
   }
@@ -2182,32 +2263,134 @@ class _MetaItem extends StatelessWidget {
   }
 }
 
-class _HistoryWeekTab extends ConsumerWidget {
+class _HistoryWeekTab extends ConsumerStatefulWidget {
   final int currentWeek;
   final bool isAdmin;
+  final int? activeSemesterId;
 
-  const _HistoryWeekTab({required this.currentWeek, required this.isAdmin});
+  const _HistoryWeekTab({
+    required this.currentWeek,
+    required this.isAdmin,
+    this.activeSemesterId,
+  });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final c = context.colors;
-    final weeks = List.generate(currentWeek, (i) => currentWeek - i);
-    return Container(
-      color: c.bgCanvas,
-      child: ListView.builder(
-        padding: const EdgeInsets.all(AppSpacing.lg),
-        itemCount: weeks.length,
-        itemBuilder: (context, index) {
-          final week = weeks[index];
-          return RepaintBoundary(
-            child: _HistoryWeekCard(
-              weekNumber: week,
-              currentWeek: currentWeek,
-              isAdmin: isAdmin,
-            ),
-          );
-        },
+  ConsumerState<_HistoryWeekTab> createState() => _HistoryWeekTabState();
+}
+
+class _HistoryWeekTabState extends ConsumerState<_HistoryWeekTab> {
+  int? _selectedSemesterId;
+
+  @override
+  Widget build(BuildContext context) {
+    final semesters = ref.watch(historySemestersProvider);
+    return semesters.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (error, _) => Center(
+        child: AppButton.secondary(
+          label: '学期加载失败，重试',
+          onPressed: () => ref.invalidate(historySemestersProvider),
+        ),
       ),
+      data: (items) {
+        final terms = items.cast<Map<String, dynamic>>();
+        if (terms.isEmpty) return const Center(child: Text('暂无学期记录'));
+        int id(Map<String, dynamic> t) => (t['semester_id'] ?? t['id']) as int;
+        final requested = _selectedSemesterId ?? widget.activeSemesterId;
+        final selected = terms.firstWhere(
+          (t) => id(t) == requested,
+          orElse: () => terms.first,
+        );
+        final semesterId = id(selected);
+        final isCurrentTerm =
+            semesterId == widget.activeSemesterId ||
+            selected['is_active'] == true;
+        final semesterName =
+            selected['semester_name'] as String? ?? '学期 $semesterId';
+        final history = ref.watch(historyWeeksProvider(semesterId));
+        return Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(AppSpacing.lg),
+              child: DropdownButtonFormField<int>(
+                key: ValueKey('history-semester-$semesterId'),
+                initialValue: semesterId,
+                isExpanded: true,
+                decoration: const InputDecoration(
+                  labelText: '查看学期',
+                  border: OutlineInputBorder(),
+                ),
+                items: terms
+                    .map(
+                      (t) => DropdownMenuItem(
+                        value: id(t),
+                        child: Text(
+                          '${t['semester_name'] ?? '学期 ${id(t)}'}${t['is_active'] == true ? '（本学期）' : ''}',
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (value) =>
+                    setState(() => _selectedSemesterId = value),
+              ),
+            ),
+            Expanded(
+              child: history.when(
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (_, _) => Center(
+                  child: AppButton.secondary(
+                    label: '周次加载失败，重试',
+                    onPressed: () =>
+                        ref.invalidate(historyWeeksProvider(semesterId)),
+                  ),
+                ),
+                data: (published) {
+                  final weeks = <int>{
+                    if (isCurrentTerm)
+                      ...List.generate(widget.currentWeek, (i) => i + 1),
+                    ...published.map((p) => (p as Map)['week_number'] as int),
+                  }.toList()..sort((a, b) => b.compareTo(a));
+                  if (weeks.isEmpty) {
+                    return const Center(child: Text('该学期暂无已发布的周汇总'));
+                  }
+                  return RefreshIndicator(
+                    onRefresh: () async {
+                      ref.invalidate(historyWeeksProvider(semesterId));
+                      for (final week in weeks) {
+                        final scope = (
+                          semesterId: semesterId,
+                          weekNumber: week,
+                        );
+                        ref.invalidate(historyExportStatusProvider(scope));
+                        ref.invalidate(historySummaryProvider(scope));
+                      }
+                      await ref.read(historyWeeksProvider(semesterId).future);
+                    },
+                    child: ListView.builder(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.lg,
+                      ),
+                      itemCount: weeks.length,
+                      itemBuilder: (context, index) => RepaintBoundary(
+                        child: _HistoryWeekCard(
+                          key: ValueKey('$semesterId-${weeks[index]}'),
+                          weekNumber: weeks[index],
+                          currentWeek: isCurrentTerm ? widget.currentWeek : -1,
+                          isAdmin: widget.isAdmin,
+                          semesterId: semesterId,
+                          semesterName: semesterName,
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }
@@ -2216,19 +2399,25 @@ class _HistoryWeekCard extends ConsumerWidget {
   final int weekNumber;
   final int currentWeek;
   final bool isAdmin;
+  final int semesterId;
+  final String semesterName;
 
   const _HistoryWeekCard({
+    super.key,
     required this.weekNumber,
     required this.currentWeek,
     required this.isAdmin,
+    required this.semesterId,
+    required this.semesterName,
   });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final c = context.colors;
-    final exportStatusAsync = ref.watch(exportStatusProvider(weekNumber));
+    final scope = (semesterId: semesterId, weekNumber: weekNumber);
+    final exportStatusAsync = ref.watch(historyExportStatusProvider(scope));
     final weekSummaryAsync = isAdmin
-        ? ref.watch(weekSummaryProvider(weekNumber))
+        ? ref.watch(historySummaryProvider(scope))
         : const AsyncValue<Map<String, dynamic>>.loading();
     final isCurrent = weekNumber == currentWeek;
 
@@ -2303,8 +2492,7 @@ class _HistoryWeekCard extends ConsumerWidget {
                   exportStatusAsync.when(
                     loading: () => Text(
                       '加载状态…',
-                      style:
-                          AppTextStyles.xs.copyWith(color: c.textTertiary),
+                      style: AppTextStyles.xs.copyWith(color: c.textTertiary),
                     ),
                     error: (_, _) => const SizedBox.shrink(),
                     data: (status) {
@@ -2320,12 +2508,12 @@ class _HistoryWeekCard extends ConsumerWidget {
                               vertical: 2,
                             ),
                             decoration: BoxDecoration(
-                              color: (isPublished
-                                      ? c.stateSuccess
-                                      : c.textTertiary)
-                                  .withValues(alpha: 0.10),
-                              borderRadius:
-                                  BorderRadius.circular(AppRadius.sm),
+                              color:
+                                  (isPublished
+                                          ? c.stateSuccess
+                                          : c.textTertiary)
+                                      .withValues(alpha: 0.10),
+                              borderRadius: BorderRadius.circular(AppRadius.sm),
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
@@ -2359,8 +2547,8 @@ class _HistoryWeekCard extends ConsumerWidget {
                               data: (summary) {
                                 final totalAbnormalStudents =
                                     summary['total_abnormal_students']
-                                            as int? ??
-                                        0;
+                                        as int? ??
+                                    0;
                                 if (totalAbnormalStudents > 0) {
                                   return Container(
                                     padding: const EdgeInsets.symmetric(
@@ -2368,21 +2556,23 @@ class _HistoryWeekCard extends ConsumerWidget {
                                       vertical: 2,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: c.stateDanger
-                                          .withValues(alpha: 0.10),
-                                      borderRadius:
-                                          BorderRadius.circular(AppRadius.sm),
+                                      color: c.stateDanger.withValues(
+                                        alpha: 0.10,
+                                      ),
+                                      borderRadius: BorderRadius.circular(
+                                        AppRadius.sm,
+                                      ),
                                     ),
-                                     child: Text(
-                                       '异常 $totalAbnormalStudents 人',
-                                       style: AppTextStyles.xs.copyWith(
-                                         color: c.stateDanger,
-                                         fontWeight: FontWeight.w600,
-                                       ),
-                                     ),
-                                   );
-                                 }
-                                 return const SizedBox.shrink();
+                                    child: Text(
+                                      '异常 $totalAbnormalStudents 人',
+                                      style: AppTextStyles.xs.copyWith(
+                                        color: c.stateDanger,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  );
+                                }
+                                return const SizedBox.shrink();
                               },
                             ),
                         ],
@@ -2401,38 +2591,23 @@ class _HistoryWeekCard extends ConsumerWidget {
   }
 
   Future<void> _showWeekDetail(BuildContext context, WidgetRef ref) async {
-    final exportStatus = await ref
-        .read(submissionServiceProvider)
-        .getExportStatus(weekNumber);
-    final isPublished = exportStatus['is_published'] as bool? ?? false;
-
-    if (!isPublished && !isAdmin) {
-      if (context.mounted) Toast.show(context, '该周汇总尚未发布');
-      return;
-    }
-
-    if (!context.mounted) return;
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => const AlertDialog(
-        content: Row(
-          children: [
-            CircularProgressIndicator(),
-            SizedBox(width: 20),
-            Text('正在加载...'),
-          ],
-        ),
-      ),
-    );
+    final loadingDialog = LoadingDialogHandle.show(context);
 
     try {
+      final exportStatus = await ref
+          .read(submissionServiceProvider)
+          .getExportStatus(weekNumber, semesterId: semesterId);
+      if (!context.mounted) return;
+      if (exportStatus['is_published'] != true && !isAdmin) {
+        loadingDialog.close();
+        Toast.show(context, '该周汇总尚未发布');
+        return;
+      }
       final detail = await ref
           .read(submissionServiceProvider)
-          .getWeekSummaryDetail(weekNumber);
+          .getWeekSummaryDetail(weekNumber, semesterId: semesterId);
 
-      if (!context.mounted) return;
-      Navigator.of(context, rootNavigator: true).pop();
+      if (!loadingDialog.close() || !context.mounted) return;
 
       final tableData = (detail['table_data'] as List? ?? [])
           .map((r) => r as Map<String, dynamic>)
@@ -2441,12 +2616,15 @@ class _HistoryWeekCard extends ConsumerWidget {
       if (!context.mounted) return;
       showDialog(
         context: context,
-        builder: (ctx) =>
-            _SummaryDetailDialog(weekNumber: weekNumber, tableData: tableData),
+        builder: (ctx) => _SummaryDetailDialog(
+          weekNumber: weekNumber,
+          tableData: tableData,
+          semesterName: semesterName,
+        ),
       );
     } catch (e) {
       if (!context.mounted) return;
-      Navigator.of(context, rootNavigator: true).pop();
+      loadingDialog.close();
       Toast.show(context, '加载详情失败: $e');
     }
   }
@@ -2455,10 +2633,12 @@ class _HistoryWeekCard extends ConsumerWidget {
 class _SummaryDetailDialog extends StatefulWidget {
   final int weekNumber;
   final List<Map<String, dynamic>> tableData;
+  final String? semesterName;
 
   const _SummaryDetailDialog({
     required this.weekNumber,
     required this.tableData,
+    this.semesterName,
   });
 
   @override
@@ -2532,15 +2712,17 @@ class _SummaryDetailDialogState extends State<_SummaryDetailDialog> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          '第 ${widget.weekNumber} 周汇总',
-                          style: AppTextStyles.h2
-                              .copyWith(color: c.textPrimary),
+                          '${widget.semesterName == null ? '' : '${widget.semesterName} · '}第 ${widget.weekNumber} 周汇总',
+                          style: AppTextStyles.h2.copyWith(
+                            color: c.textPrimary,
+                          ),
                         ),
                         const SizedBox(height: 2),
                         Text(
                           '共 ${filteredData.length} 人',
-                          style: AppTextStyles.sm
-                              .copyWith(color: c.textTertiary),
+                          style: AppTextStyles.sm.copyWith(
+                            color: c.textTertiary,
+                          ),
                         ),
                       ],
                     ),
@@ -2573,13 +2755,13 @@ class _SummaryDetailDialogState extends State<_SummaryDetailDialog> {
                   ),
                   child: Row(
                     children: [
-                      Icon(Icons.filter_list,
-                          size: 16, color: c.textSecondary),
+                      Icon(Icons.filter_list, size: 16, color: c.textSecondary),
                       const SizedBox(width: AppSpacing.sm),
                       Text(
                         '班级',
-                        style: AppTextStyles.sm
-                            .copyWith(color: c.textSecondary),
+                        style: AppTextStyles.sm.copyWith(
+                          color: c.textSecondary,
+                        ),
                       ),
                       const SizedBox(width: AppSpacing.sm),
                       Expanded(
@@ -2590,19 +2772,22 @@ class _SummaryDetailDialogState extends State<_SummaryDetailDialog> {
                             isDense: true,
                             hint: Text(
                               '全部班级',
-                              style: AppTextStyles.sm
-                                  .copyWith(color: c.textPrimary),
+                              style: AppTextStyles.sm.copyWith(
+                                color: c.textPrimary,
+                              ),
                             ),
-                            style: AppTextStyles.sm
-                                .copyWith(color: c.textPrimary),
+                            style: AppTextStyles.sm.copyWith(
+                              color: c.textPrimary,
+                            ),
                             iconEnabledColor: c.textSecondary,
                             items: [
                               DropdownMenuItem(
                                 value: null,
                                 child: Text(
                                   '全部班级',
-                                  style: AppTextStyles.sm
-                                      .copyWith(color: c.textPrimary),
+                                  style: AppTextStyles.sm.copyWith(
+                                    color: c.textPrimary,
+                                  ),
                                 ),
                               ),
                               ...sortedClasses.map(
@@ -2610,8 +2795,9 @@ class _SummaryDetailDialogState extends State<_SummaryDetailDialog> {
                                   value: cls,
                                   child: Text(
                                     cls,
-                                    style: AppTextStyles.sm
-                                        .copyWith(color: c.textPrimary),
+                                    style: AppTextStyles.sm.copyWith(
+                                      color: c.textPrimary,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -2710,7 +2896,9 @@ class _StudentRow extends StatelessWidget {
             width: 28,
             height: 28,
             decoration: BoxDecoration(
-              color: hasIssue ? c.stateDanger.withValues(alpha: 0.10) : c.bgMuted,
+              color: hasIssue
+                  ? c.stateDanger.withValues(alpha: 0.10)
+                  : c.bgMuted,
               borderRadius: BorderRadius.circular(AppRadius.sm),
             ),
             child: Center(
@@ -2759,17 +2947,13 @@ class _StudentRow extends StatelessWidget {
                 alignment: WrapAlignment.end,
                 children: [
                   if (late > 0)
-                    _MicroChip(
-                        label: '迟$late', color: c.stateWarning),
+                    _MicroChip(label: '迟$late', color: c.stateWarning),
                   if (absent > 0)
-                    _MicroChip(
-                        label: '缺$absent', color: c.stateDanger),
+                    _MicroChip(label: '缺$absent', color: c.stateDanger),
                   if (leave > 0)
-                    _MicroChip(
-                        label: '假$leave', color: c.stateInfo),
+                    _MicroChip(label: '假$leave', color: c.stateInfo),
                   if (other > 0)
-                    _MicroChip(
-                        label: '其$other', color: c.textTertiary),
+                    _MicroChip(label: '其$other', color: c.textTertiary),
                 ],
               ),
               const SizedBox(height: 4),
@@ -2892,13 +3076,17 @@ class _RecordListPreview extends StatelessWidget {
             ],
           ),
           const SizedBox(height: AppSpacing.xs),
-          ...records.take(previewCount).map((r) => Padding(
-                padding: const EdgeInsets.only(left: 11, top: 2, bottom: 2),
-                child: Text(
-                  '${r['student_name']} · ${r['student_no']} · ${r['class_name']}',
-                  style: AppTextStyles.sm.copyWith(color: c.textSecondary),
+          ...records
+              .take(previewCount)
+              .map(
+                (r) => Padding(
+                  padding: const EdgeInsets.only(left: 11, top: 2, bottom: 2),
+                  child: Text(
+                    '${r['student_name']} · ${r['student_no']} · ${r['class_name']}',
+                    style: AppTextStyles.sm.copyWith(color: c.textSecondary),
+                  ),
                 ),
-              )),
+              ),
           if (hasMore)
             Padding(
               padding: const EdgeInsets.only(left: 11, top: 2),

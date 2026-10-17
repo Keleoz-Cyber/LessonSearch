@@ -14,6 +14,16 @@ env/
 .env.*
 !.env.example
 
+# === SSH / TLS 私钥和数据库备份 ===
+*.pem
+*.key
+*.p12
+*.pfx
+*.sql.gz
+*.sql.bz2
+*.sql.xz
+mysql-backup.cnf
+
 # === 日志 ===
 *.log
 logs/
@@ -35,6 +45,7 @@ app/.packages
 app/.flutter-plugins
 app/.flutter-plugins-dependencies
 app/build/
+app/android/.kotlin/
 
 # === IDE ===
 .idea/
@@ -52,9 +63,6 @@ desktop.ini
 # === 导入脚本输出 ===
 scripts/output/
 scripts/reports/
-
-# === 重构临时目录 ===
-server/app/
 
 # === Android 签名 ===
 app/android/app/release-keystore.jks

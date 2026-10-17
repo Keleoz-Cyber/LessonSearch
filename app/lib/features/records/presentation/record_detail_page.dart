@@ -49,7 +49,11 @@ class _RecordDetailPageState extends ConsumerState<RecordDetailPage> {
     _load();
   }
 
+  int _loadGeneration = 0;
+
   Future<void> _load() async {
+    if (!mounted) return;
+    final generation = ++_loadGeneration;
     setState(() => _loading = true);
     final repo = ref.read(recordsRepositoryProvider);
     final attendanceRepo = ref.read(attendanceRepositoryProvider);
@@ -61,6 +65,8 @@ class _RecordDetailPageState extends ConsumerState<RecordDetailPage> {
         ? await repo.getFullRollCallEntries(widget.taskId)
         : await repo.getRecordEntries(widget.taskId);
 
+    if (!mounted || generation != _loadGeneration) return;
+
     // 检查该任务是否已提交审核（pending/approved）
     bool isSubmitted = false;
     bool submitStatusUnknown = false;
@@ -68,7 +74,9 @@ class _RecordDetailPageState extends ConsumerState<RecordDetailPage> {
       try {
         final api = ref.read(apiClientProvider);
         final res = await api.dio.get('/submissions/submitted-task-ids');
-        final ids = (res.data['task_ids'] as List).map((e) => e.toString()).toSet();
+        final ids = (res.data['task_ids'] as List)
+            .map((e) => e.toString())
+            .toSet();
         isSubmitted = ids.contains(task.id);
       } catch (e) {
         // 网络异常时无法确认提交状态：默认禁止编辑，避免本地编辑后被服务端拒绝。
@@ -77,6 +85,7 @@ class _RecordDetailPageState extends ConsumerState<RecordDetailPage> {
       }
     }
 
+    if (!mounted || generation != _loadGeneration) return;
     setState(() {
       _entries = entries;
       _taskType = task?.type;
@@ -148,17 +157,24 @@ class _RecordDetailPageState extends ConsumerState<RecordDetailPage> {
 
     final repo = ref.read(recordsRepositoryProvider);
     await repo.updateRecord(recordId, newStatus, remark: remark);
+    if (!mounted) return;
 
     // 立即同步到服务端，确保编辑生效
-    syncService.syncNow().then((result) {
-      if (result.failed == 0) {
-        LoggerService.sync('记录编辑已同步: record=$recordId');
-      } else {
-        LoggerService.sync('记录编辑同步失败: record=$recordId, failed=${result.failed}', isError: true);
-      }
-    }).catchError((e) {
-      LoggerService.sync('记录编辑同步异常: $e', isError: true);
-    });
+    syncService
+        .syncNow()
+        .then((result) {
+          if (result.failed == 0) {
+            LoggerService.sync('记录编辑已同步: record=$recordId');
+          } else {
+            LoggerService.sync(
+              '记录编辑同步失败: record=$recordId, failed=${result.failed}',
+              isError: true,
+            );
+          }
+        })
+        .catchError((e) {
+          LoggerService.sync('记录编辑同步异常: $e', isError: true);
+        });
 
     // 直接更新列表项，不重新加载整个列表（保持滚动位置）
     setState(() {
@@ -197,7 +213,11 @@ class _RecordDetailPageState extends ConsumerState<RecordDetailPage> {
           .where((s) => s.status == AttendanceStatus.other)
           .toList();
       final present = students
-          .where((s) => s.status == AttendanceStatus.present)
+          .where(
+            (s) =>
+                s.status == AttendanceStatus.present ||
+                s.status == AttendanceStatus.late_,
+          )
           .length;
 
       toRecord(RecordEntry e) => StudentRecord(
@@ -243,10 +263,7 @@ class _RecordDetailPageState extends ConsumerState<RecordDetailPage> {
       return Scaffold(
         backgroundColor: context.colors.bgCanvas,
         appBar: AppBar(title: const Text('记录详情')),
-        body: const LoadingOverlay(
-          isLoading: true,
-          child: SizedBox.expand(),
-        ),
+        body: const LoadingOverlay(isLoading: true, child: SizedBox.expand()),
       );
     }
 
@@ -376,7 +393,9 @@ class _RecordDetailPageState extends ConsumerState<RecordDetailPage> {
                 ? Center(
                     child: Text(
                       _editing ? '没有记录' : '全部到齐，没有异常记录',
-                      style: AppTextStyles.sm.copyWith(color: context.colors.textTertiary),
+                      style: AppTextStyles.sm.copyWith(
+                        color: context.colors.textTertiary,
+                      ),
                     ),
                   )
                 : ListView(
@@ -389,24 +408,25 @@ class _RecordDetailPageState extends ConsumerState<RecordDetailPage> {
                             padding: const EdgeInsets.only(top: 8, bottom: 8),
                             child: Text(
                               entry.key,
-                              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
+                              style: Theme.of(context).textTheme.titleSmall
+                                  ?.copyWith(fontWeight: FontWeight.bold),
                             ),
                           ),
-                           ...entry.value.map((record) {
+                          ...entry.value.map((record) {
                             return _RecordRow(
                               entry: record,
-                              editing: _editing &&
+                              editing:
+                                  _editing &&
                                   !_isSubmitted &&
                                   !_isAbandoned &&
                                   !_submitStatusUnknown &&
                                   !isSyncFailed,
-                              onStatusChanged: (status, {remark}) => _updateStatus(
-                                record.recordId,
-                                status,
-                                remark: remark,
-                              ),
+                              onStatusChanged: (status, {remark}) =>
+                                  _updateStatus(
+                                    record.recordId,
+                                    status,
+                                    remark: remark,
+                                  ),
                             );
                           }),
                           const Divider(),
@@ -573,8 +593,9 @@ class _RecordDetailPageState extends ConsumerState<RecordDetailPage> {
       children: [
         Text(
           value,
-          style: AppTextStyles.withTabular(AppTextStyles.bodyMedium)
-              .copyWith(color: color, fontWeight: FontWeight.w600),
+          style: AppTextStyles.withTabular(
+            AppTextStyles.bodyMedium,
+          ).copyWith(color: color, fontWeight: FontWeight.w600),
         ),
         const SizedBox(width: 2),
         Text(
@@ -614,7 +635,7 @@ class _RecordRow extends StatelessWidget {
     AttendanceStatus.absent => '缺勤',
     AttendanceStatus.late_ => '迟到',
     AttendanceStatus.leave => '请假',
-    AttendanceStatus.other => entry.remark ?? '其他',
+    AttendanceStatus.other => '其他',
     AttendanceStatus.pending => '待查',
   };
 
@@ -631,62 +652,88 @@ class _RecordRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Expanded(
-            flex: 2,
-            child: Text(entry.studentName, overflow: TextOverflow.ellipsis),
-          ),
-          Expanded(
-            flex: 3,
-            child: Text(
-              entry.studentNo,
-              overflow: TextOverflow.ellipsis,
-              style: AppTextStyles.sm.copyWith(color: context.colors.textTertiary),
-            ),
-          ),
-          if (editing)
-            PopupMenuButton<AttendanceStatus>(
-              initialValue: entry.status,
-              onSelected: (status) {
-                if (status == AttendanceStatus.other) {
-                  _showRemarkDialog(context);
-                } else {
-                  onStatusChanged(status);
-                }
-              },
-              itemBuilder: (ctx) => [
-                const PopupMenuItem(
-                  value: AttendanceStatus.present,
-                  child: Text('到课'),
-                ),
-                const PopupMenuItem(
-                  value: AttendanceStatus.absent,
-                  child: Text('缺勤'),
-                ),
-                const PopupMenuItem(
-                  value: AttendanceStatus.late_,
-                  child: Text('迟到'),
-                ),
-                const PopupMenuItem(
-                  value: AttendanceStatus.leave,
-                  child: Text('请假'),
-                ),
-                const PopupMenuItem(
-                  value: AttendanceStatus.other,
-                  child: Text('其他...'),
-                ),
-              ],
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  StatusPill(variant: _pillVariant, label: _label),
-                  Icon(Icons.arrow_drop_down, size: 16, color: _color(context)),
-                ],
+          Row(
+            children: [
+              Expanded(
+                flex: 2,
+                child: Text(entry.studentName, overflow: TextOverflow.ellipsis),
               ),
-            )
-          else
-            StatusPill(variant: _pillVariant, label: _label),
+              Expanded(
+                flex: 3,
+                child: Text(
+                  entry.studentNo,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.sm.copyWith(
+                    color: context.colors.textTertiary,
+                  ),
+                ),
+              ),
+              if (editing)
+                PopupMenuButton<AttendanceStatus>(
+                  initialValue: entry.status,
+                  onSelected: (status) {
+                    if (status == AttendanceStatus.other) {
+                      _showRemarkDialog(context);
+                    } else {
+                      onStatusChanged(status);
+                    }
+                  },
+                  itemBuilder: (ctx) => [
+                    const PopupMenuItem(
+                      value: AttendanceStatus.present,
+                      child: Text('到课'),
+                    ),
+                    const PopupMenuItem(
+                      value: AttendanceStatus.absent,
+                      child: Text('缺勤'),
+                    ),
+                    const PopupMenuItem(
+                      value: AttendanceStatus.late_,
+                      child: Text('迟到'),
+                    ),
+                    const PopupMenuItem(
+                      value: AttendanceStatus.leave,
+                      child: Text('请假'),
+                    ),
+                    const PopupMenuItem(
+                      value: AttendanceStatus.other,
+                      child: Text('其他...'),
+                    ),
+                  ],
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      StatusPill(variant: _pillVariant, label: _label),
+                      Icon(
+                        Icons.arrow_drop_down,
+                        size: 16,
+                        color: _color(context),
+                      ),
+                    ],
+                  ),
+                )
+              else
+                StatusPill(variant: _pillVariant, label: _label),
+            ],
+          ),
+          if (entry.status == AttendanceStatus.other &&
+              entry.remark?.isNotEmpty == true)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Tooltip(
+                message: entry.remark!,
+                child: Text(
+                  entry.remark!,
+                  style: AppTextStyles.xs.copyWith(
+                    color: context.colors.textSecondary,
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -762,7 +809,10 @@ class _RollCallItem extends StatelessWidget {
             ),
           ),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 2),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.sm,
+              vertical: 2,
+            ),
             decoration: BoxDecoration(
               color: (called ? c.stateSuccess : c.textTertiary).withValues(
                 alpha: 0.15,
@@ -850,8 +900,11 @@ class _TextSheet extends StatelessWidget {
                     builder: (ctx) {
                       final dc = ctx.colors;
                       return AlertDialog(
-                        icon: Icon(Icons.info_outline,
-                            color: dc.stateInfo, size: 40),
+                        icon: Icon(
+                          Icons.info_outline,
+                          color: dc.stateInfo,
+                          size: 40,
+                        ),
                         title: const Text('复制汇报文本'),
                         content: const Text(
                           '确认复制最终汇报文本？\n\n'
@@ -932,47 +985,54 @@ class _TextSheet extends StatelessWidget {
                         child: Text(
                           cs.className,
                           style: AppTextStyles.bodyMedium.copyWith(
-                          color: c.textPrimary,
-                          fontWeight: FontWeight.w600,
+                            color: c.textPrimary,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
-                    ),
-                    FilledButton.icon(
-                      onPressed: () async {
-                        Clipboard.setData(ClipboardData(text: text));
-                        if (!context.mounted) return;
-                        Toast.show(context, '已复制到剪贴板');
+                      FilledButton.icon(
+                        onPressed: () async {
+                          Clipboard.setData(ClipboardData(text: text));
+                          if (!context.mounted) return;
+                          Toast.show(context, '已复制到剪贴板');
 
-                        await Future.delayed(const Duration(milliseconds: 300));
+                          await Future.delayed(
+                            const Duration(milliseconds: 300),
+                          );
 
-                        final uri = Uri.parse('mqq://');
-                        if (await canLaunchUrl(uri)) {
-                          await launchUrl(uri);
-                        } else {
-                          if (context.mounted) {
-                            Toast.show(context, '未安装QQ');
+                          final uri = Uri.parse('mqq://');
+                          if (await canLaunchUrl(uri)) {
+                            await launchUrl(uri);
+                          } else {
+                            if (context.mounted) {
+                              Toast.show(context, '未安装QQ');
+                            }
                           }
-                        }
-                      },
-                      icon: const Icon(Icons.copy, size: 18),
-                      label: const Text('复制'),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: c.brandPrimary,
-                        foregroundColor: c.onBrand,
-                        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                        },
+                        icon: const Icon(Icons.copy, size: 18),
+                        label: const Text('复制'),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: c.brandPrimary,
+                          foregroundColor: c.onBrand,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.md,
+                          ),
+                        ),
                       ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  SelectableText(
+                    text,
+                    style: AppTextStyles.body.copyWith(
+                      color: c.textPrimary,
+                      height: 1.5,
                     ),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                SelectableText(
-                  text,
-                  style: AppTextStyles.body.copyWith(color: c.textPrimary, height: 1.5),
-                ),
-              ],
+                  ),
+                ],
+              ),
             ),
           ),
-        ),
         );
       },
     );

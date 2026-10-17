@@ -59,16 +59,35 @@ class BottomActionBar extends StatelessWidget {
                 ),
                 const SizedBox(height: AppSpacing.sm),
               ],
-              Row(
-                children: [
-                  if (secondary != null) ...[
-                    // secondary 用 Flexible 包裹，避免在窄屏上挤压 primary 按钮。
-                    // FittedBox/intrinsic 由 secondary 自身处理。
-                    Flexible(child: secondary!),
-                    const SizedBox(width: AppSpacing.md),
-                  ],
-                  Expanded(child: primary),
-                ],
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  if (secondary != null &&
+                      (constraints.maxWidth < 440 ||
+                          MediaQuery.textScalerOf(context).scale(1) > 1.3)) {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        primary,
+                        const SizedBox(height: AppSpacing.md),
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: secondary!,
+                        ),
+                      ],
+                    );
+                  }
+                  return Row(
+                    children: [
+                      if (secondary != null) ...[
+                        // secondary 用 Flexible 包裹，避免在窄屏上挤压 primary 按钮。
+                        // FittedBox/intrinsic 由 secondary 自身处理。
+                        Flexible(child: secondary!),
+                        const SizedBox(width: AppSpacing.md),
+                      ],
+                      Expanded(child: primary),
+                    ],
+                  );
+                },
               ),
             ],
           ),

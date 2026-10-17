@@ -1,0 +1,3 @@
+# Backend regressions also exercise the isolated roster import scripts.
+-r requirements.txt
+-r ../scripts/requirements.txt

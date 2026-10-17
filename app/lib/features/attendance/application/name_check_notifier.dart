@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/logger/logger_service.dart';
@@ -92,6 +93,7 @@ class NameCheckState {
 
 /// 学生 + 当前考勤状态
 class StudentWithStatus {
+  static const _unset = Object();
   final StudentInfo student;
   final AttendanceStatus status;
   final String? remark;
@@ -106,13 +108,13 @@ class StudentWithStatus {
 
   StudentWithStatus copyWith({
     AttendanceStatus? status,
-    String? remark,
+    Object? remark = _unset,
     int? recordId,
   }) {
     return StudentWithStatus(
       student: student,
       status: status ?? this.status,
-      remark: remark ?? this.remark,
+      remark: identical(remark, _unset) ? this.remark : remark as String?,
       recordId: recordId ?? this.recordId,
     );
   }
@@ -145,6 +147,8 @@ List<StudentWithStatus> reconcileStudentsWithRoster(
 class NameCheckNotifier extends StateNotifier<NameCheckState> {
   final AttendanceRepository _attendanceRepo;
   final StudentRepository _studentRepo;
+  Future<void> _markTail = Future.value();
+  final Set<Future<void>> _pendingMarks = {};
 
   NameCheckNotifier(this._attendanceRepo, this._studentRepo)
     : super(const NameCheckState());
@@ -197,7 +201,10 @@ class NameCheckNotifier extends StateNotifier<NameCheckState> {
       state = state.copyWith(
         task: task,
         classes: allClasses,
-        currentClassIndex: 0,
+        currentClassIndex: task.currentClassIndex.clamp(
+          0,
+          allClasses.isEmpty ? 0 : allClasses.length - 1,
+        ),
         studentsByClass: studentsByClass,
         isLoading: false,
       );
@@ -283,8 +290,14 @@ class NameCheckNotifier extends StateNotifier<NameCheckState> {
 
   /// 切换到指定班级
   void switchClass(int index) {
+    if (state.isFinishing) return;
     if (index >= 0 && index < state.classes.length) {
       state = state.copyWith(currentClassIndex: index);
+      unawaited(
+        saveProgress().catchError((Object e) {
+          LoggerService.error('保存班级进度失败: $e');
+        }),
+      );
     }
   }
 
@@ -310,12 +323,27 @@ class NameCheckNotifier extends StateNotifier<NameCheckState> {
     int studentIndex,
     AttendanceStatus status, {
     String? remark,
+  }) {
+    if (state.isFinishing) return Future.error(StateError('正在结束记名，请稍候'));
+    final operation = _markTail.then(
+      (_) => _markStudent(classId, studentIndex, status, remark: remark),
+    );
+    _markTail = operation.then(
+      (_) {},
+      onError: (Object error, StackTrace stack) {},
+    );
+    _pendingMarks.add(operation);
+    return operation.whenComplete(() => _pendingMarks.remove(operation));
+  }
+
+  Future<void> _markStudent(
+    int classId,
+    int studentIndex,
+    AttendanceStatus status, {
+    String? remark,
   }) async {
     final task = state.task;
     if (task == null) return;
-
-    // 防止 finishNameCheck 执行期间并发修改 state
-    if (state.isFinishing) return;
 
     final students = state.studentsByClass[classId];
     if (students == null || studentIndex >= students.length) return;
@@ -401,6 +429,9 @@ class NameCheckNotifier extends StateNotifier<NameCheckState> {
   Future<FinishNameCheckResult> finishNameCheck({
     bool forceMarkPending = false,
   }) async {
+    if (state.isFinishing) {
+      return const FinishNameCheckResult.failed('正在结束记名，请稍候');
+    }
     final task = state.task;
     if (task == null) {
       return const FinishNameCheckResult.failed('无任务数据');
@@ -410,6 +441,7 @@ class NameCheckNotifier extends StateNotifier<NameCheckState> {
     state = state.copyWith(isFinishing: true);
 
     try {
+      await Future.wait(_pendingMarks.toList());
       // 记录 reconcile 前的学生 id 集合，用于识别新增学生
       final beforeIdsByClass = <int, Set<int>>{
         for (final e in state.studentsByClass.entries)
@@ -457,18 +489,20 @@ class NameCheckNotifier extends StateNotifier<NameCheckState> {
 
       // 批量写入 DB + SyncQueue（一个事务），返回 studentId→recordId
       Map<int, int>? recordIdMap;
-      if (pendingItems.isNotEmpty) {
-        recordIdMap = await _attendanceRepo.createRecordsBatch(
-          taskId: task.id,
-          items: pendingItems,
+      final updatedTask = await _attendanceRepo.transaction(() async {
+        if (pendingItems.isNotEmpty) {
+          recordIdMap = await _attendanceRepo.createRecordsBatch(
+            taskId: task.id,
+            items: pendingItems,
+          );
+        }
+        return _attendanceRepo.updateTaskStatus(
+          task,
+          status: TaskStatus.completed,
+          phase: TaskPhase.confirming,
+          currentClassIndex: state.currentClassIndex,
         );
-      }
-
-      await _attendanceRepo.updateTaskStatus(
-        task,
-        status: TaskStatus.completed,
-        phase: TaskPhase.confirming,
-      );
+      });
 
       // 数据库操作成功后，更新 UI 状态（含 recordId 回填）
       final updatedMap = Map<int, List<StudentWithStatus>>.from(
@@ -490,7 +524,11 @@ class NameCheckNotifier extends StateNotifier<NameCheckState> {
         updatedMap[classId] = students;
       }
 
-      state = state.copyWith(studentsByClass: updatedMap, isFinished: true);
+      state = state.copyWith(
+        task: updatedTask,
+        studentsByClass: updatedMap,
+        isFinished: true,
+      );
       return const FinishNameCheckResult.success();
     } catch (e, st) {
       LoggerService.error('finishNameCheck 失败: $e\n$st');
@@ -537,8 +575,52 @@ class NameCheckNotifier extends StateNotifier<NameCheckState> {
   }
 
   /// 从确认页返回继续编辑
-  void resumeEditing() {
-    state = state.copyWith(isFinished: false, isEditing: true);
+  Future<void> resumeEditing() async {
+    final task = state.task;
+    if (task == null) return;
+    final updated = await _attendanceRepo.updateTaskStatus(
+      task,
+      phase: TaskPhase.executing,
+    );
+    state = state.copyWith(task: updated, isFinished: false, isEditing: true);
+  }
+
+  Future<void> saveProgress() async {
+    await Future.wait(_pendingMarks.toList());
+    if (state.isFinishing) return;
+    final task = state.task;
+    if (task == null) return;
+    final updated = await _attendanceRepo.updateTaskStatus(
+      task,
+      currentClassIndex: state.currentClassIndex,
+    );
+    state = state.copyWith(task: updated);
+  }
+
+  Future<void> advanceToTextGeneration() async {
+    final task = state.task;
+    if (task == null) throw StateError('无任务数据');
+    final updated = await _attendanceRepo.updateTaskStatus(
+      task,
+      status: TaskStatus.completed,
+      phase: TaskPhase.textGenerating,
+    );
+    state = state.copyWith(task: updated);
+  }
+
+  Future<void> completeWorkflow() async {
+    final task = state.task;
+    if (task == null) throw StateError('无任务数据');
+    final updated = await _attendanceRepo.updateTaskStatus(
+      task,
+      status: TaskStatus.completed,
+      phase: TaskPhase.finished,
+    );
+    state = state.copyWith(task: updated, isFinished: true);
+  }
+
+  void reset() {
+    state = const NameCheckState();
   }
 }
 
@@ -562,12 +644,11 @@ class FinishNameCheckResult {
   const FinishNameCheckResult.success() : this._(success: true);
 
   const FinishNameCheckResult.newStudents(Map<int, List<StudentInfo>> students)
-      : this._(success: false, newStudents: students);
+    : this._(success: false, newStudents: students);
 
   const FinishNameCheckResult.failed(String message)
-      : this._(success: false, errorMessage: message);
+    : this._(success: false, errorMessage: message);
 
-  bool get hasNewStudents =>
-      newStudents != null && newStudents!.isNotEmpty;
+  bool get hasNewStudents => newStudents != null && newStudents!.isNotEmpty;
   bool get isFailed => errorMessage != null;
 }

@@ -11,7 +11,11 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final prefs = await SharedPreferences.getInstance();
   await LoggerService.init(prefs);
-  NotificationService().init();
+  try {
+    await NotificationService().init();
+  } catch (e) {
+    LoggerService.sync('通知初始化失败，可在设置中重试: $e', isError: true);
+  }
   runApp(
     ProviderScope(
       overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],

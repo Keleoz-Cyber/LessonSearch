@@ -7,12 +7,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/network/api_client.dart';
+import '../../../core/app_version.dart';
 import '../../../core/sync/sync_service.dart';
 import '../../../shared/providers.dart';
 import '../../../shared/design_system/colors.dart';
-
-// TODO: 使用 package_info_plus 读取真实 App 版本，避免手动维护
-const _appVersion = '0.7.0+34';
 
 class ReleaseCheckPage extends ConsumerStatefulWidget {
   const ReleaseCheckPage({super.key});
@@ -52,6 +50,7 @@ class _ReleaseCheckPageState extends ConsumerState<ReleaseCheckPage> {
       _checkLocalData(),
       _checkAccountSecurity(),
     ]);
+    if (!mounted) return;
 
     if (!mounted) return;
     setState(() => _loading = false);
@@ -62,6 +61,7 @@ class _ReleaseCheckPageState extends ConsumerState<ReleaseCheckPage> {
       final api = ref.read(apiClientProvider);
       final sw = Stopwatch()..start();
       final response = await api.dio.get('/health');
+      if (!mounted) return;
       sw.stop();
       if (!mounted) return;
       setState(() {
@@ -69,6 +69,7 @@ class _ReleaseCheckPageState extends ConsumerState<ReleaseCheckPage> {
         _networkLatency = sw.elapsedMilliseconds;
       });
     } catch (e) {
+      if (!mounted) return;
       if (!mounted) return;
       setState(() {
         _networkOk = false;
@@ -100,8 +101,7 @@ class _ReleaseCheckPageState extends ConsumerState<ReleaseCheckPage> {
       }
 
       var payload = parts[1];
-      payload +=
-          List.generate((4 - payload.length % 4) % 4, (_) => '=').join();
+      payload += List.generate((4 - payload.length % 4) % 4, (_) => '=').join();
       final decoded = utf8.decode(base64Url.decode(payload));
       final map = jsonDecode(decoded) as Map<String, dynamic>;
       final exp = map['exp'] as int?;
@@ -136,6 +136,7 @@ class _ReleaseCheckPageState extends ConsumerState<ReleaseCheckPage> {
       }
     } catch (e) {
       if (!mounted) return;
+      if (!mounted) return;
       setState(() {
         _tokenStatus = '解析失败';
         _tokenRemaining = null;
@@ -148,9 +149,13 @@ class _ReleaseCheckPageState extends ConsumerState<ReleaseCheckPage> {
       final local = ref.read(attendanceLocalDSProvider);
       final db = ref.read(databaseProvider);
       final tasks = await (db.select(db.attendanceTasks)).get();
+      if (!mounted) return;
       final records = await (db.select(db.attendanceRecords)).get();
+      if (!mounted) return;
       final issueCount = await local.getSyncIssueCount();
+      if (!mounted) return;
       final failedItems = await local.getFailedSyncItems();
+      if (!mounted) return;
 
       if (!mounted) return;
       setState(() {
@@ -164,6 +169,7 @@ class _ReleaseCheckPageState extends ConsumerState<ReleaseCheckPage> {
         _failedCount = failedItems.length;
       });
     } catch (_) {
+      if (!mounted) return;
       // ignore
     }
   }
@@ -172,6 +178,7 @@ class _ReleaseCheckPageState extends ConsumerState<ReleaseCheckPage> {
     try {
       final api = ref.read(apiClientProvider);
       final user = await api.getCurrentUser();
+      if (!mounted) return;
       if (!mounted) return;
       setState(() {
         _hasPassword = user['has_password'] == true;
@@ -184,6 +191,7 @@ class _ReleaseCheckPageState extends ConsumerState<ReleaseCheckPage> {
         _hasPasswordError = true;
       });
     } catch (_) {
+      if (!mounted) return;
       if (!mounted) return;
       setState(() {
         _hasPassword = false;
@@ -198,10 +206,10 @@ class _ReleaseCheckPageState extends ConsumerState<ReleaseCheckPage> {
     final syncState = ref.watch(syncStateProvider);
 
     final totalIssues = _pendingCount + _failedCount;
-    final hasTokenProblem = _tokenStatus == '已过期' ||
-        _tokenStatus == '无效' ||
-        _tokenStatus == '未登录';
-    final canRelease = _networkOk &&
+    final hasTokenProblem =
+        _tokenStatus == '已过期' || _tokenStatus == '无效' || _tokenStatus == '未登录';
+    final canRelease =
+        _networkOk &&
         !hasTokenProblem &&
         totalIssues == 0 &&
         !_hasPasswordError &&
@@ -234,7 +242,12 @@ class _ReleaseCheckPageState extends ConsumerState<ReleaseCheckPage> {
               children: [
                 // 总体结论
                 _buildConclusion(
-                    context, canRelease, totalIssues, hasTokenProblem, _hasPasswordError),
+                  context,
+                  canRelease,
+                  totalIssues,
+                  hasTokenProblem,
+                  _hasPasswordError,
+                ),
                 const SizedBox(height: 20),
 
                 // 登录状态
@@ -254,11 +267,7 @@ class _ReleaseCheckPageState extends ConsumerState<ReleaseCheckPage> {
                         value: auth.userEmail ?? '-',
                         ok: true,
                       ),
-                      _CheckItem(
-                        label: '角色',
-                        value: auth.userRole,
-                        ok: true,
-                      ),
+                      _CheckItem(label: '角色', value: auth.userRole, ok: true),
                     ],
                   ],
                 ),
@@ -312,6 +321,7 @@ class _ReleaseCheckPageState extends ConsumerState<ReleaseCheckPage> {
                           label: const Text('重试'),
                           onPressed: () async {
                             await _checkNetwork();
+                            if (!mounted) return;
                             if (mounted) setState(() {});
                           },
                         )
@@ -329,8 +339,8 @@ class _ReleaseCheckPageState extends ConsumerState<ReleaseCheckPage> {
                       value: syncState == SyncState.syncing
                           ? '同步中'
                           : syncState == SyncState.error
-                              ? '异常'
-                              : '正常',
+                          ? '异常'
+                          : '正常',
                       ok: syncState != SyncState.error,
                     ),
                     _CheckItem(
@@ -344,23 +354,15 @@ class _ReleaseCheckPageState extends ConsumerState<ReleaseCheckPage> {
                       ok: _failedCount == 0,
                     ),
                     if (_failedCount > 0)
-                      _CheckItem(
-                        label: '同步保护',
-                        value: '已激活',
-                        ok: false,
-                      ),
+                      _CheckItem(label: '同步保护', value: '已激活', ok: false),
                   ],
                   trailing: totalIssues > 0
                       ? TextButton.icon(
                           icon: Icon(
-                            _failedCount > 0
-                                ? Icons.warning_amber
-                                : Icons.sync,
+                            _failedCount > 0 ? Icons.warning_amber : Icons.sync,
                             size: 16,
                           ),
-                          label: Text(
-                            _failedCount > 0 ? '查看同步问题' : '立即同步',
-                          ),
+                          label: Text(_failedCount > 0 ? '查看同步问题' : '立即同步'),
                           onPressed: () async {
                             if (_failedCount > 0) {
                               // 有失败项，跳转同步问题详情页
@@ -368,7 +370,9 @@ class _ReleaseCheckPageState extends ConsumerState<ReleaseCheckPage> {
                             } else {
                               // 只有 pending，立即同步
                               await ref.read(syncServiceProvider).syncNow();
+                              if (!mounted) return;
                               await _checkLocalData();
+                              if (!mounted) return;
                               if (mounted) setState(() {});
                             }
                           },
@@ -382,16 +386,8 @@ class _ReleaseCheckPageState extends ConsumerState<ReleaseCheckPage> {
                   title: '本地数据',
                   icon: Icons.storage,
                   items: [
-                    _CheckItem(
-                      label: '任务数',
-                      value: '$_taskCount',
-                      ok: true,
-                    ),
-                    _CheckItem(
-                      label: '记录数',
-                      value: '$_recordCount',
-                      ok: true,
-                    ),
+                    _CheckItem(label: '任务数', value: '$_taskCount', ok: true),
+                    _CheckItem(label: '记录数', value: '$_recordCount', ok: true),
                     _CheckItem(
                       label: '未完成任务',
                       value: '$_unfinishedCount',
@@ -411,8 +407,8 @@ class _ReleaseCheckPageState extends ConsumerState<ReleaseCheckPage> {
                       value: _hasPasswordError
                           ? '加载失败'
                           : _hasPassword
-                              ? '已设置'
-                              : '未设置',
+                          ? '已设置'
+                          : '未设置',
                       ok: !_hasPasswordError,
                     ),
                   ],
@@ -422,6 +418,7 @@ class _ReleaseCheckPageState extends ConsumerState<ReleaseCheckPage> {
                           label: const Text('重试'),
                           onPressed: () async {
                             await _checkAccountSecurity();
+                            if (!mounted) return;
                             if (mounted) setState(() {});
                           },
                         )
@@ -436,7 +433,7 @@ class _ReleaseCheckPageState extends ConsumerState<ReleaseCheckPage> {
                   items: [
                     _CheckItem(
                       label: 'App 版本',
-                      value: _appVersion,
+                      value: appFullVersion,
                       ok: true,
                     ),
                     _CheckItem(
@@ -552,9 +549,7 @@ class _ReleaseCheckPageState extends ConsumerState<ReleaseCheckPage> {
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: BorderSide(
-          color: c.textTertiary.withValues(alpha: 0.2),
-        ),
+        side: BorderSide(color: c.textTertiary.withValues(alpha: 0.2)),
       ),
       margin: const EdgeInsets.only(bottom: 12),
       child: Padding(
@@ -564,14 +559,17 @@ class _ReleaseCheckPageState extends ConsumerState<ReleaseCheckPage> {
           children: [
             Row(
               children: [
-                Icon(icon,
-                    size: 18, color: Theme.of(context).colorScheme.primary),
+                Icon(
+                  icon,
+                  size: 18,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
                 const SizedBox(width: 8),
                 Text(
                   title,
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
                 ),
                 const Spacer(),
                 ?trailing,
@@ -627,4 +625,3 @@ class _CheckItem {
     required this.ok,
   });
 }
-

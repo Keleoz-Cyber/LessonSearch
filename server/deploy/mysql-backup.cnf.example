@@ -1,0 +1,7 @@
+# Operator template for a separate, least-privilege backup account.
+# Replace all placeholders locally; install a real copy INSIDE the MySQL
+# container at the chosen --defaults-file path, readable only by its owner.
+[client]
+user=lesson_search_backup
+password=REPLACE_LOCALLY_NEVER_COMMIT
+host=localhost

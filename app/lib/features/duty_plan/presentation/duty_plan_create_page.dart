@@ -33,6 +33,8 @@ class _DutyPlanCreatePageState extends ConsumerState<DutyPlanCreatePage> {
   final _remarkController = TextEditingController();
   DateTime? _semesterStartDate;
   bool _loading = true;
+  bool _submitting = false;
+  String? _loadError;
 
   @override
   void initState() {
@@ -42,12 +44,47 @@ class _DutyPlanCreatePageState extends ConsumerState<DutyPlanCreatePage> {
   }
 
   Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _loadError = null;
+    });
     try {
       final api = ref.read(apiClientProvider);
-      final res = await api.dio.get('/week/current');
-      final data = res.data as Map<String, dynamic>;
+      final prefs = ref.read(sharedPreferencesProvider);
+      Map<String, dynamic> data;
+      try {
+        final res = await api.dio.get('/week/current');
+        data = Map<String, dynamic>.from(res.data as Map);
+        final week = data['week_number'] as int;
+        final monday = DateTime.parse(data['start_date'] as String);
+        await prefs.setString(
+          'duty_semester_start',
+          monday.subtract(Duration(days: (week - 1) * 7)).toIso8601String(),
+        );
+      } catch (_) {
+        final cached = prefs.getString('duty_semester_start');
+        if (cached == null) rethrow;
+        final semester = DateTime.parse(cached);
+        final now = DateTime.now();
+        final week =
+            (DateTime(
+                          now.year,
+                          now.month,
+                          now.day,
+                        ).difference(semester).inDays ~/
+                        7 +
+                    1)
+                .clamp(1, 1000);
+        data = {
+          'week_number': week,
+          'start_date': semester
+              .add(Duration(days: (week - 1) * 7))
+              .toIso8601String(),
+        };
+      }
       final currentWeek = data['week_number'] as int;
       final startDate = DateTime.parse(data['start_date'] as String);
+      if (!mounted) return;
       final repo = ref.read(studentRepositoryProvider);
       // 主动同步基础数据（年级/专业/班级），避免依赖点名页先加载
       var classes = await repo.getClasses();
@@ -64,8 +101,9 @@ class _DutyPlanCreatePageState extends ConsumerState<DutyPlanCreatePage> {
       if (!mounted) return;
       setState(() {
         _weekNumber = currentWeek;
-        _semesterStartDate =
-            startDate.subtract(Duration(days: (currentWeek - 1) * 7));
+        _semesterStartDate = startDate.subtract(
+          Duration(days: (currentWeek - 1) * 7),
+        );
         _allClasses = classes;
         _grades = grades;
         _majors = majors;
@@ -73,19 +111,22 @@ class _DutyPlanCreatePageState extends ConsumerState<DutyPlanCreatePage> {
       });
     } catch (e) {
       if (!mounted) return;
-      Toast.show(context, '加载失败: $e');
-      setState(() => _loading = false);
+      setState(() {
+        _loading = false;
+        _loadError = '无法加载计划配置，请检查网络后重试';
+      });
     }
   }
 
-@override
+  @override
   void dispose() {
     _classroomController.dispose();
     _remarkController.dispose();
     super.dispose();
   }
 
-bool get _canSubmit =>
+  bool get _canSubmit =>
+      !_submitting &&
       _weekNumber != null &&
       _weekday != null &&
       _period != null &&
@@ -94,19 +135,27 @@ bool get _canSubmit =>
       _semesterStartDate != null;
   Future<void> _submit() async {
     if (!_canSubmit) return;
-    final repo = ref.read(dutyPlanRepositoryProvider);
-    final notif = NotificationService();
+    final container = ProviderScope.containerOf(context, listen: false);
+    final repo = container.read(dutyPlanRepositoryProvider);
+    final notif = ref.read(notificationServiceProvider);
 
-    final weekStart = _semesterStartDate!
-        .add(Duration(days: (_weekNumber! - 1) * 7));
+    final weekStart = _semesterStartDate!.add(
+      Duration(days: (_weekNumber! - 1) * 7),
+    );
     final classStartAt = DutyPlan.computeClassStartAt(
       startDate: weekStart,
       weekday: _weekday!,
       period: _period!,
     );
+    if (!classStartAt.isAfter(DateTime.now())) {
+      Toast.show(context, '请选择尚未开始的课程');
+      return;
+    }
+    setState(() => _submitting = true);
+    final id = const Uuid().v4();
 
     final plan = DutyPlan(
-      id: const Uuid().v4(),
+      id: id,
       weekNumber: _weekNumber!,
       weekday: _weekday!,
       period: _period!,
@@ -116,113 +165,135 @@ bool get _canSubmit =>
       remark: _remarkController.text.trim().isEmpty
           ? null
           : _remarkController.text.trim(),
-      notificationId:
-          DutyPlan.computeNotificationId(_weekNumber!, _weekday!, _period!),
+      notificationId: DutyPlan.notificationIdFor(id),
       reminderEnabled: true,
       classStartAt: classStartAt,
       createdAt: DateTime.now(),
     );
 
-    final granted = await notif.isPermissionGranted();
-    if (!granted) {
-      final ok = await notif.requestPermission();
+    var saved = false;
+    try {
+      await repo.upsert(plan);
+      saved = true;
+      final result = await notif.syncPlan(
+        repo,
+        plan.id,
+        requestPermissionIfNeeded: true,
+      );
+      container.invalidate(dutyPlansProvider);
+      container.invalidate(upcomingDutyPlansProvider);
       if (!mounted) return;
-      if (!ok) {
-        Toast.show(context, '通知权限未开启，提醒可能无法显示。计划仍会保存。');
+      Toast.show(context, result.message);
+      Navigator.pop(context);
+    } catch (e) {
+      if (!mounted) return;
+      Toast.show(context, saved ? '计划已保存，提醒未设置，请到系统通知与提醒中重试' : '保存失败，请重试');
+      if (saved) {
+        ref.invalidate(dutyPlansProvider);
+        Navigator.pop(context);
       }
+    } finally {
+      if (mounted) setState(() => _submitting = false);
     }
-
-    await repo.upsert(plan);
-    final classroomStr =
-        plan.classroom != null ? ' @ ${plan.classroom}' : '';
-    final scheduled = await notif.scheduleDutyReminder(
-      notificationId: plan.notificationId,
-      title: '查课提醒 · 第${plan.period}节$classroomStr',
-      body: '${plan.weekdayLabel} ${plan.timeRange}$classroomStr 即将开始，记得查课',
-      scheduledAt: plan.remindAt,
-      payload: plan.id,
-    );
-
-    if (!mounted) return;
-    if (scheduled) {
-      Toast.show(context, '已创建，将在上课前 15 分钟提醒');
-    } else {
-      Toast.show(context, '已创建。提醒时间已过，本次不会发送通知。');
-    }
-    Navigator.pop(context);
   }
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return Scaffold(
-      backgroundColor: c.bgCanvas,
-      appBar: AppBar(title: const Text('新建查课计划')),
-      bottomNavigationBar: BottomActionBar(
-        primary: AppButton.primary(
-          label: '创建并设置提醒',
-          onPressed: _canSubmit ? _submit : null,
-          fullWidth: true,
-          size: AppButtonSize.lg,
-          leadingIcon: Icons.alarm_add,
+    return PopScope(
+      canPop: !_submitting,
+      child: Scaffold(
+        backgroundColor: c.bgCanvas,
+        appBar: AppBar(title: const Text('新建查课计划')),
+        bottomNavigationBar: BottomActionBar(
+          primary: AppButton.primary(
+            label: '创建并设置提醒',
+            onPressed: _canSubmit ? _submit : null,
+            loading: _submitting,
+            fullWidth: true,
+            size: AppButtonSize.lg,
+            leadingIcon: Icons.alarm_add,
+          ),
         ),
-      ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(AppSpacing.lg),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _sectionLabel(context, '周次'),
-                  _weekPicker(),
-                  const SizedBox(height: AppSpacing.xl),
-                  _sectionLabel(context, '星期'),
-                  _weekdayPicker(),
-                  const SizedBox(height: AppSpacing.xl),
-                  _sectionLabel(context, '节次'),
-                  _periodPicker(),
-                  const SizedBox(height: AppSpacing.xl),
-                  _sectionLabel(context,
-                      '班级 (${_selectedClasses.length}/${_allClasses.length})'),
-                  _classPicker(),
-                  const SizedBox(height: AppSpacing.xl),
-                  _sectionLabel(context, '教室'),
-                  TextField(
-                    controller: _classroomController,
-                    decoration: InputDecoration(
-                      hintText: '例如：4213',
-                      hintStyle:
-                          AppTextStyles.sm.copyWith(color: c.textTertiary),
-                      prefixIcon: Icon(Icons.room_outlined,
-                          size: 18, color: c.textSecondary),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(AppRadius.md),
+        body: _loading
+            ? const Center(child: CircularProgressIndicator())
+            : _loadError != null
+            ? Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(_loadError!),
+                    const SizedBox(height: 16),
+                    AppButton.primary(label: '重试', onPressed: _load),
+                  ],
+                ),
+              )
+            : AbsorbPointer(
+                absorbing: _submitting,
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(AppSpacing.lg),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _sectionLabel(context, '周次'),
+                      _weekPicker(),
+                      const SizedBox(height: AppSpacing.xl),
+                      _sectionLabel(context, '星期'),
+                      _weekdayPicker(),
+                      const SizedBox(height: AppSpacing.xl),
+                      _sectionLabel(context, '节次'),
+                      _periodPicker(),
+                      const SizedBox(height: AppSpacing.xl),
+                      _sectionLabel(
+                        context,
+                        '班级 (${_selectedClasses.length}/${_allClasses.length})',
                       ),
-                    ),
-                    maxLines: 1,
-                  ),
-                  const SizedBox(height: AppSpacing.xl),
-                  _sectionLabel(context, '备注 (可选)'),
-                  TextField(
-                    controller: _remarkController,
-                    decoration: InputDecoration(
-                      hintText: '例如：重点查课、配合班主任等',
-                      hintStyle:
-                          AppTextStyles.sm.copyWith(color: c.textTertiary),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(AppRadius.md),
+                      _classPicker(),
+                      const SizedBox(height: AppSpacing.xl),
+                      _sectionLabel(context, '教室'),
+                      TextField(
+                        controller: _classroomController,
+                        decoration: InputDecoration(
+                          hintText: '例如：4213',
+                          hintStyle: AppTextStyles.sm.copyWith(
+                            color: c.textTertiary,
+                          ),
+                          prefixIcon: Icon(
+                            Icons.room_outlined,
+                            size: 18,
+                            color: c.textSecondary,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(AppRadius.md),
+                          ),
+                        ),
+                        maxLines: 1,
                       ),
-                    ),
-                    maxLines: 2,
+                      const SizedBox(height: AppSpacing.xl),
+                      _sectionLabel(context, '备注 (可选)'),
+                      TextField(
+                        controller: _remarkController,
+                        decoration: InputDecoration(
+                          hintText: '例如：重点查课、配合班主任等',
+                          hintStyle: AppTextStyles.sm.copyWith(
+                            color: c.textTertiary,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(AppRadius.md),
+                          ),
+                        ),
+                        maxLines: 2,
+                      ),
+                      const SizedBox(height: AppSpacing.lg),
+                      _previewHint(),
+                    ],
                   ),
-                  const SizedBox(height: AppSpacing.lg),
-                  _previewHint(),
-                ],
+                ),
               ),
-            ),
+      ),
     );
   }
+
   Widget _sectionLabel(BuildContext context, String text) {
     final c = context.colors;
     return Padding(
@@ -241,7 +312,9 @@ bool get _canSubmit =>
     final c = context.colors;
     return AppCard(
       padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.md, vertical: AppSpacing.xs),
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.xs,
+      ),
       child: Row(
         children: [
           IconButton(
@@ -286,9 +359,7 @@ bool get _canSubmit =>
             fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
           ),
           backgroundColor: c.bgSurface,
-          side: BorderSide(
-            color: selected ? c.brandPrimary : c.borderDefault,
-          ),
+          side: BorderSide(color: selected ? c.brandPrimary : c.borderDefault),
         );
       }),
     );
@@ -306,7 +377,9 @@ bool get _canSubmit =>
           borderRadius: BorderRadius.circular(AppRadius.md),
           child: Container(
             padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+              horizontal: AppSpacing.md,
+              vertical: AppSpacing.sm,
+            ),
             decoration: BoxDecoration(
               color: selected ? c.brandSubtle : c.bgSurface,
               borderRadius: BorderRadius.circular(AppRadius.md),
@@ -326,9 +399,9 @@ bool get _canSubmit =>
                 const SizedBox(height: 2),
                 Text(
                   p.timeRange,
-                  style: AppTextStyles.withTabular(AppTextStyles.xs).copyWith(
-                    color: selected ? c.brandPrimary : c.textTertiary,
-                  ),
+                  style: AppTextStyles.withTabular(
+                    AppTextStyles.xs,
+                  ).copyWith(color: selected ? c.brandPrimary : c.textTertiary),
                 ),
               ],
             ),
@@ -337,6 +410,7 @@ bool get _canSubmit =>
       }).toList(),
     );
   }
+
   Widget _classPicker() {
     final c = context.colors;
     if (_allClasses.isEmpty) {
@@ -400,10 +474,12 @@ bool get _canSubmit =>
     // 收集出现过的年级/专业（只显示有班级的）
     final usedGradeIds = _allClasses.map((c) => c.gradeId).toSet();
     final usedMajorIds = _allClasses.map((c) => c.majorId).toSet();
-    final usedGrades = _grades.where((g) => usedGradeIds.contains(g.id)).toList()
-      ..sort((a, b) => b.year.compareTo(a.year));
-    final usedMajors = _majors.where((m) => usedMajorIds.contains(m.id)).toList()
-      ..sort((a, b) => a.shortName.compareTo(b.shortName));
+    final usedGrades =
+        _grades.where((g) => usedGradeIds.contains(g.id)).toList()
+          ..sort((a, b) => b.year.compareTo(a.year));
+    final usedMajors =
+        _majors.where((m) => usedMajorIds.contains(m.id)).toList()
+          ..sort((a, b) => a.shortName.compareTo(b.shortName));
 
     int? filterGradeId;
     int? filterMajorId;
@@ -451,7 +527,9 @@ bool get _canSubmit =>
                   ),
                   Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: AppSpacing.sm, vertical: 2),
+                      horizontal: AppSpacing.sm,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
                       color: dc.brandSubtle,
                       borderRadius: BorderRadius.circular(AppRadius.full),
@@ -485,13 +563,15 @@ bool get _canSubmit =>
                             onTap: () =>
                                 dialogSetState(() => filterGradeId = null),
                           ),
-                          ...usedGrades.map((g) => _filterChip(
-                                dc,
-                                label: g.name,
-                                selected: filterGradeId == g.id,
-                                onTap: () => dialogSetState(
-                                    () => filterGradeId = g.id),
-                              )),
+                          ...usedGrades.map(
+                            (g) => _filterChip(
+                              dc,
+                              label: g.name,
+                              selected: filterGradeId == g.id,
+                              onTap: () =>
+                                  dialogSetState(() => filterGradeId = g.id),
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -509,13 +589,15 @@ bool get _canSubmit =>
                             onTap: () =>
                                 dialogSetState(() => filterMajorId = null),
                           ),
-                          ...usedMajors.map((m) => _filterChip(
-                                dc,
-                                label: m.shortName,
-                                selected: filterMajorId == m.id,
-                                onTap: () => dialogSetState(
-                                    () => filterMajorId = m.id),
-                              )),
+                          ...usedMajors.map(
+                            (m) => _filterChip(
+                              dc,
+                              label: m.shortName,
+                              selected: filterMajorId == m.id,
+                              onTap: () =>
+                                  dialogSetState(() => filterMajorId = m.id),
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -524,7 +606,9 @@ bool get _canSubmit =>
                     if (_selectedClasses.isNotEmpty)
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: AppSpacing.sm, vertical: 4),
+                          horizontal: AppSpacing.sm,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
                           color: dc.brandSubtle,
                           borderRadius: BorderRadius.circular(AppRadius.sm),
@@ -554,8 +638,11 @@ bool get _canSubmit =>
                               },
                               child: Padding(
                                 padding: const EdgeInsets.all(4),
-                                child: Icon(Icons.close,
-                                    size: 16, color: dc.brandPrimary),
+                                child: Icon(
+                                  Icons.close,
+                                  size: 16,
+                                  color: dc.brandPrimary,
+                                ),
                               ),
                             ),
                           ],
@@ -568,20 +655,21 @@ bool get _canSubmit =>
                           ? Center(
                               child: Text(
                                 '没有符合条件的班级',
-                                style: AppTextStyles.sm
-                                    .copyWith(color: dc.textTertiary),
+                                style: AppTextStyles.sm.copyWith(
+                                  color: dc.textTertiary,
+                                ),
                               ),
                             )
                           : ListView(
                               children: keys.map((key) {
                                 final classList = grouped[key]!;
                                 return Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.start,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Padding(
                                       padding: const EdgeInsets.only(
-                                          bottom: AppSpacing.xs),
+                                        bottom: AppSpacing.xs,
+                                      ),
                                       child: Text(
                                         key,
                                         style: AppTextStyles.xs.copyWith(
@@ -594,9 +682,9 @@ bool get _canSubmit =>
                                       spacing: AppSpacing.sm,
                                       runSpacing: AppSpacing.sm,
                                       children: classList.map((cls) {
-                                        final selected =
-                                            _selectedClasses
-                                                .any((s) => s.id == cls.id);
+                                        final selected = _selectedClasses.any(
+                                          (s) => s.id == cls.id,
+                                        );
                                         return FilterChip(
                                           label: Text(cls.displayName),
                                           selected: selected,
@@ -606,15 +694,15 @@ bool get _canSubmit =>
                                                 _selectedClasses.add(cls);
                                               } else {
                                                 _selectedClasses.removeWhere(
-                                                    (s) => s.id == cls.id);
+                                                  (s) => s.id == cls.id,
+                                                );
                                               }
                                             });
                                             setState(() {});
                                           },
                                           selectedColor: dc.brandSubtle,
                                           checkmarkColor: dc.brandPrimary,
-                                          labelStyle:
-                                              AppTextStyles.sm.copyWith(
+                                          labelStyle: AppTextStyles.sm.copyWith(
                                             color: selected
                                                 ? dc.brandPrimary
                                                 : dc.textPrimary,
@@ -713,8 +801,9 @@ bool get _canSubmit =>
       );
     }
 
-    final weekStart = _semesterStartDate!
-        .add(Duration(days: (_weekNumber! - 1) * 7));
+    final weekStart = _semesterStartDate!.add(
+      Duration(days: (_weekNumber! - 1) * 7),
+    );
     final classStartAt = DutyPlan.computeClassStartAt(
       startDate: weekStart,
       weekday: _weekday!,

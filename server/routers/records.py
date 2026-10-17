@@ -2,19 +2,17 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.models import AttendanceTask, AttendanceRecord, Submission, SubmissionRecord, User, Student
+from app.core.security import get_current_user
+from app.models import AttendanceRecord, User, Student
 from app.schemas import RecordCreate, RecordUpdate, RecordOut, RecordBatchUpdateItem, RecordBatchUpdateResult
-from routers.auth import get_current_user
+from app.services.task_access import owned_task, ensure_task_mutable
 
 router = APIRouter(prefix="/tasks/{task_id}/records", tags=["考勤记录"])
+record_router = APIRouter(prefix="/records", tags=["考勤记录"])
 
 
-def _validate_student_record_membership(
-    task_class_ids: set[int],
-    student: Student | None,
-    payload_class_id: int,
-) -> None:
-    """Validate that a record payload still matches the authoritative roster."""
+def _validate_student_record_membership(task_class_ids: set[int], student: Student | None,
+                                       payload_class_id: int) -> None:
     if student is None:
         raise HTTPException(status_code=400, detail="学生不存在")
     if payload_class_id not in task_class_ids:
@@ -24,260 +22,118 @@ def _validate_student_record_membership(
 
 
 def _check_record_editable(record_id: int, current_user: User, db: Session) -> AttendanceRecord:
-    """检查记录是否可编辑（未关联 pending/approved 的 submission，且任务未放弃）"""
     record = db.query(AttendanceRecord).filter(AttendanceRecord.id == record_id).first()
-    if not record:
+    if record is None:
         raise HTTPException(status_code=404, detail="记录不存在")
-    
-    # 检查所属任务是否已放弃
-    task = db.query(AttendanceTask).filter(AttendanceTask.id == record.task_id).first()
-    if task and task.status == "abandoned":
-        raise HTTPException(
-            status_code=403,
-            detail="该任务已放弃，不可修改记录"
-        )
-    
-    # 检查是否已关联 pending/approved 的 submission
-    sr = db.query(SubmissionRecord).join(Submission).filter(
-        SubmissionRecord.record_id == record_id,
-        Submission.status.in_(["pending", "approved"])
-    ).first()
-    
-    if sr:
-        raise HTTPException(
-            status_code=403, 
-            detail="该记录已提交审核，不可修改。如需修改，请先撤回提交。"
-        )
-    
-    # 检查是否属于自己的任务（或旧版无 user_id 的任务）
-    if task and task.user_id is not None and task.user_id != current_user.id:
-        raise HTTPException(status_code=403, detail="无权修改此记录")
-    
-    return record
+    task = owned_task(db, record.task_id, current_user, lock=True)
+    if task.status == "abandoned":
+        raise HTTPException(status_code=403, detail="该任务已放弃，不可修改记录")
+    ensure_task_mutable(db, task)
+    return db.query(AttendanceRecord).filter(AttendanceRecord.id == record_id).with_for_update().one()
+
+
+def _record_for_student(db: Session, task_id: str, student_id: int):
+    return db.query(AttendanceRecord).filter(AttendanceRecord.task_id == task_id,
+        AttendanceRecord.student_id == student_id).order_by(AttendanceRecord.id.desc()).with_for_update().first()
+
+
+def _apply_record_patch(record, body):
+    record.status = body.status
+    # Omission means retain; explicit JSON null means clear.
+    if "remark" in body.model_fields_set:
+        record.remark = body.remark
 
 
 @router.post("", response_model=list[RecordOut], status_code=201)
 def create_records(task_id: str, body: list[RecordCreate], db: Session = Depends(get_db),
                    current_user: User = Depends(get_current_user)):
-    task = db.query(AttendanceTask).filter(AttendanceTask.id == task_id).first()
-    if not task:
-        raise HTTPException(status_code=404, detail="任务不存在")
-    
-    # 检查任务权限（如 task 有 user_id，必须是本人或旧版 null 任务）
-    if task.user_id is not None and task.user_id != current_user.id:
-        raise HTTPException(status_code=403, detail="无权操作此任务")
-
-    task_class_ids = {tc.class_id for tc in task.task_classes}
-
-    created = []
+    task = owned_task(db, task_id, current_user, lock=True)
+    result = []
     for item in body:
         student = db.query(Student).filter(Student.id == item.student_id).first()
-        _validate_student_record_membership(task_class_ids, student, item.class_id)
-
-        existing = db.query(AttendanceRecord).filter(
-            AttendanceRecord.task_id == task_id,
-            AttendanceRecord.student_id == item.student_id,
-        ).first()
-        if existing:
-            # 已存在则更新（带保护检查）
-            try:
-                _check_record_editable(existing.id, current_user, db)
-                existing.status = item.status
-                if item.remark is not None:
-                    existing.remark = item.remark
-            except HTTPException as e:
-                detail = str(e.detail)
-                if "已提交审核" in detail or "该任务已放弃" in detail or "不可修改记录" in detail:
-                    # 保护性拒绝，跳过更新但返回现有记录
-                    pass
-                else:
-                    # 权限问题或其他错误，必须重新抛出
-                    raise
-            created.append(existing)
-            continue
-
-        record = AttendanceRecord(
-            task_id=task_id,
-            student_id=item.student_id,
-            class_id=student.class_id,
-            status=item.status,
-            remark=item.remark,
-        )
-        db.add(record)
-        created.append(record)
-
+        _validate_student_record_membership({tc.class_id for tc in task.task_classes}, student, item.class_id)
+        record = _record_for_student(db, task_id, item.student_id)
+        unchanged = record is not None and record.status == item.status and (
+            "remark" not in item.model_fields_set or record.remark == item.remark)
+        if not unchanged:
+            if task.status == "abandoned":
+                raise HTTPException(status_code=403, detail="该任务已放弃，不可修改记录")
+            ensure_task_mutable(db, task)
+            if record is None:
+                record = AttendanceRecord(task_id=task_id, student_id=item.student_id,
+                                          class_id=student.class_id, status=item.status)
+                db.add(record)
+            _apply_record_patch(record, item)
+            db.flush()
+        result.append(record)
     db.commit()
-    for r in created:
-        db.refresh(r)
-    return created
+    return result
 
 
 @router.get("", response_model=list[RecordOut])
-def list_records(task_id: str, db: Session = Depends(get_db)):
-    records = (
-        db.query(AttendanceRecord)
-        .filter(AttendanceRecord.task_id == task_id)
-        .order_by(AttendanceRecord.id)
-        .all()
-    )
-    return records
-
-
-# 独立路由：按 record id 更新（不依赖 task_id 路径）
-record_router = APIRouter(prefix="/records", tags=["考勤记录"])
+def list_records(task_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    owned_task(db, task_id, current_user)
+    return db.query(AttendanceRecord).filter(AttendanceRecord.task_id == task_id).order_by(AttendanceRecord.id).all()
 
 
 @record_router.put("/by-task-student", response_model=RecordOut)
-def update_record_by_task_student(
-    task_id: str,
-    student_id: int,
-    body: RecordUpdate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    record = db.query(AttendanceRecord).filter(
-        AttendanceRecord.task_id == task_id,
-        AttendanceRecord.student_id == student_id,
-    ).first()
-    if not record:
+def update_record_by_task_student(task_id: str, student_id: int, body: RecordUpdate,
+    db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    owned_task(db, task_id, current_user, lock=True)
+    record = _record_for_student(db, task_id, student_id)
+    if record is None:
         raise HTTPException(status_code=404, detail="记录不存在")
-    
-    # 检查是否可编辑
     _check_record_editable(record.id, current_user, db)
-
-    record.status = body.status
-    if body.remark is not None:
-        record.remark = body.remark
+    _apply_record_patch(record, body)
     db.commit()
-    db.refresh(record)
     return record
 
 
-@record_router.put("/{record_id}", response_model=RecordOut)
-def update_record(
-    record_id: int, 
-    body: RecordUpdate, 
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    # 检查是否可编辑
-    record = _check_record_editable(record_id, current_user, db)
-
-    record.status = body.status
-    if body.remark is not None:
-        record.remark = body.remark
-    db.commit()
-    db.refresh(record)
-    return record
+@record_router.delete("/by-task-student")
+def delete_record_by_task_student(task_id: str, student_id: int,
+    db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    task = owned_task(db, task_id, current_user, lock=True)
+    records = db.query(AttendanceRecord).filter(AttendanceRecord.task_id == task_id,
+        AttendanceRecord.student_id == student_id).with_for_update().all()
+    if records:
+        if task.status == "abandoned":
+            raise HTTPException(status_code=403, detail="该任务已放弃，不可修改记录")
+        ensure_task_mutable(db, task)
+        for record in records:
+            # Cancelled/rejected history does not keep FK links; submitted data
+            # is protected above before any physical removal.
+            db.delete(record)
+        db.commit()
+    return {"task_id": task_id, "student_id": student_id, "deleted": bool(records)}
 
 
 @record_router.post("/batch-update", response_model=RecordBatchUpdateResult)
-def batch_update_records(
-    body: list[RecordBatchUpdateItem],
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    """批量更新考勤记录状态。
-    
-    每个 item 包含 task_id + student_id + status，按顺序处理。
-    已关联 pending/approved submission 的记录会被跳过并返回失败。
-    """
-    success = []
-    failed = []
-    
-    for item in body:
+def batch_update_records(body: list[RecordBatchUpdateItem], db: Session = Depends(get_db),
+                         current_user: User = Depends(get_current_user)):
+    success, failed = [], []
+    for item in sorted(body, key=lambda item: (item.task_id, item.student_id)):
         try:
-            record = db.query(AttendanceRecord).filter(
-                AttendanceRecord.task_id == item.task_id,
-                AttendanceRecord.student_id == item.student_id,
-            ).first()
-            
-            if not record:
-                failed.append({
-                    "task_id": item.task_id,
-                    "student_id": item.student_id,
-                    "reason": "记录不存在"
-                })
-                continue
-            
-            # 检查是否可编辑（保留现有校验逻辑）
-            # 1. 检查任务是否已放弃
-            task = db.query(AttendanceTask).filter(
-                AttendanceTask.id == item.task_id
-            ).first()
-            if not task:
-                failed.append({
-                    "task_id": item.task_id,
-                    "student_id": item.student_id,
-                    "reason": "任务不存在"
-                })
-                continue
-
-            student = db.query(Student).filter(
-                Student.id == item.student_id
-            ).first()
-            try:
-                _validate_student_record_membership(
-                    {tc.class_id for tc in task.task_classes},
-                    student,
-                    record.class_id,
-                )
-            except HTTPException as e:
-                failed.append({
-                    "task_id": item.task_id,
-                    "student_id": item.student_id,
-                    "reason": str(e.detail)
-                })
-                continue
-
-            if task and task.status == "abandoned":
-                failed.append({
-                    "task_id": item.task_id,
-                    "student_id": item.student_id,
-                    "reason": "该任务已放弃，不可修改记录"
-                })
-                continue
-            
-            # 2. 检查是否已关联 pending/approved 的 submission
-            sr = db.query(SubmissionRecord).join(Submission).filter(
-                SubmissionRecord.record_id == record.id,
-                Submission.status.in_(["pending", "approved"])
-            ).first()
-            
-            if sr:
-                failed.append({
-                    "task_id": item.task_id,
-                    "student_id": item.student_id,
-                    "reason": "该记录已提交审核，不可修改。如需修改，请先撤回提交。"
-                })
-                continue
-            
-            # 3. 检查是否属于自己的任务
-            if task and task.user_id is not None and task.user_id != current_user.id:
-                failed.append({
-                    "task_id": item.task_id,
-                    "student_id": item.student_id,
-                    "reason": "无权修改此记录"
-                })
-                continue
-            
-            # 执行更新
-            record.status = item.status
-            if item.remark is not None:
-                record.remark = item.remark
-            
-            success.append({
-                "task_id": item.task_id,
-                "student_id": item.student_id,
-                "record_id": record.id
-            })
-            
-        except Exception as e:
-            failed.append({
-                "task_id": item.task_id,
-                "student_id": item.student_id,
-                "reason": str(e)
-            })
-    
+            with db.begin_nested():
+                task = owned_task(db, item.task_id, current_user, lock=True)
+                record = _record_for_student(db, item.task_id, item.student_id)
+                if record is None:
+                    raise HTTPException(status_code=404, detail="记录不存在")
+                _validate_student_record_membership({tc.class_id for tc in task.task_classes},
+                    db.query(Student).filter(Student.id == item.student_id).first(), record.class_id)
+                _check_record_editable(record.id, current_user, db)
+                _apply_record_patch(record, item)
+                db.flush()
+                success.append({"task_id": item.task_id, "student_id": item.student_id, "record_id": record.id})
+        except HTTPException as exc:
+            failed.append({"task_id": item.task_id, "student_id": item.student_id, "reason": str(exc.detail)})
     db.commit()
     return {"success": success, "failed": failed}
+
+
+@record_router.put("/{record_id}", response_model=RecordOut)
+def update_record(record_id: int, body: RecordUpdate, db: Session = Depends(get_db),
+                  current_user: User = Depends(get_current_user)):
+    record = _check_record_editable(record_id, current_user, db)
+    _apply_record_patch(record, body)
+    db.commit()
+    return record

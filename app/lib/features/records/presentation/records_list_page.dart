@@ -37,6 +37,7 @@ class _RecordsListPageState extends ConsumerState<RecordsListPage> {
     setState(() => _loading = true);
     final repo = ref.read(recordsRepositoryProvider);
     final summaries = await repo.getTaskSummaries();
+    if (!mounted) return;
     setState(() {
       _summaries = summaries;
       _loading = false;
@@ -83,6 +84,7 @@ class _RecordsListPageState extends ConsumerState<RecordsListPage> {
                           summary: s,
                           onTap: () async {
                             await context.push('/records/${s.id}');
+                            if (!mounted) return;
                             _load();
                           },
                           onDelete: () => _confirmDelete(s),
@@ -102,10 +104,12 @@ class _RecordsListPageState extends ConsumerState<RecordsListPage> {
   Future<void> _resumeTask(TaskSummary summary) async {
     final attendanceRepo = ref.read(attendanceRepositoryProvider);
     final task = await attendanceRepo.getTask(summary.id);
+    if (!mounted) return;
     if (task == null || !mounted) return;
 
     final studentRepo = ref.read(studentRepositoryProvider);
     final allClasses = await studentRepo.getClasses();
+    if (!mounted) return;
     final classNames = task.classIds.map((id) {
       final cls = allClasses.where((c) => c.id == id);
       return cls.isNotEmpty ? cls.first.displayName : '未知';
@@ -127,6 +131,7 @@ class _RecordsListPageState extends ConsumerState<RecordsListPage> {
         'resumeTaskId': task.id,
       },
     );
+    if (!mounted) return;
     _load();
   }
 
@@ -140,11 +145,13 @@ class _RecordsListPageState extends ConsumerState<RecordsListPage> {
     // 检查是否已提交
     try {
       final submittedIds = await ref.read(submittedTaskIdsProvider.future);
+      if (!mounted) return;
       if (submittedIds.contains(summary.id)) {
         Toast.show(context, '该记录已提交审核，无法放弃。如需放弃，请先撤销提交。');
         return;
       }
     } catch (_) {
+      if (!mounted) return;
       // 获取失败时忽略检查
     }
 
@@ -185,11 +192,7 @@ class _RecordsListPageState extends ConsumerState<RecordsListPage> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(
-                    Icons.info_outline,
-                    color: c.stateWarning,
-                    size: 18,
-                  ),
+                  Icon(Icons.info_outline, color: c.stateWarning, size: 18),
                   const SizedBox(width: AppSpacing.sm),
                   Expanded(
                     child: Text(
@@ -215,9 +218,11 @@ class _RecordsListPageState extends ConsumerState<RecordsListPage> {
         ],
       ),
     );
+    if (!mounted) return;
     if (confirm == true) {
       final repo = ref.read(recordsRepositoryProvider);
       await repo.deleteTask(summary.id);
+      if (!mounted) return;
 
       // 放弃后刷新名单提交页的 provider，避免已放弃任务仍显示
       ref.invalidate(weekNameCheckTasksProvider);
@@ -268,8 +273,7 @@ class _TaskCard extends StatelessWidget {
                           ? StatusPillVariant.info
                           : StatusPillVariant.success,
                     ),
-                    if (isAbandoned)
-                      const StatusPill.danger(label: '已放弃'),
+                    if (isAbandoned) const StatusPill.danger(label: '已放弃'),
                     if (summary.status == TaskStatus.inProgress)
                       const StatusPill.info(label: '进行中'),
                     if (summary.status == TaskStatus.completed &&
@@ -287,10 +291,10 @@ class _TaskCard extends StatelessWidget {
                   ),
                   onPressed: onDelete,
                   padding: EdgeInsets.zero,
-                  visualDensity: VisualDensity.compact,
+                  visualDensity: VisualDensity.standard,
                   constraints: const BoxConstraints(
-                    minWidth: 32,
-                    minHeight: 32,
+                    minWidth: 48,
+                    minHeight: 48,
                   ),
                   tooltip: '放弃',
                 ),

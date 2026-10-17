@@ -1,6 +1,8 @@
 # 考勤助手 开发文档
 
-> 版本：0.7.0+34 | 更新日期：2026-06-23 | 仓库：https://github.com/Keleoz-Cyber/LessonSearch
+> 版本：0.7.1+35 | 更新日期：2026-10-17 | 仓库：https://github.com/Keleoz-Cyber/LessonSearch
+
+服务端 0.7.1 的升级、备份、只读预检与安全配置以[服务端上线准备](../server/deploy/README.md)为准。新客户端需要新接口和学期结构，不能跳过迁移评审后直接覆盖重启。
 
 ---
 
@@ -774,13 +776,13 @@ systemctl status lesson-search.service
 
 ```bash
 # 执行SQL
-docker exec -i 1Panel-mysql-ErMk mysql -u root -pWw3277977 lesson_search -e "SQL语句"
+docker exec -it 1Panel-mysql-ErMk mysql -u root -p lesson_search -e "SQL语句"
 
 # 查看用户
-docker exec -i 1Panel-mysql-ErMk mysql -u root -pWw3277977 lesson_search -e "SELECT id, email, role, real_name FROM users;"
+docker exec -it 1Panel-mysql-ErMk mysql -u root -p lesson_search -e "SELECT id, email, role, real_name FROM users;"
 
 # 查看周次配置
-docker exec -i 1Panel-mysql-ErMk mysql -u root -pWw3277977 lesson_search -e "SELECT * FROM week_config WHERE is_active=TRUE;"
+docker exec -it 1Panel-mysql-ErMk mysql -u root -p lesson_search -e "SELECT * FROM week_config WHERE is_active=TRUE;"
 ```
 
 ### 更新部署
@@ -798,7 +800,7 @@ journalctl -u lesson-search.service -n 20
 
 ```bash
 # 执行迁移脚本
-docker exec -i 1Panel-mysql-ErMk mysql -u root -pWw3277977 lesson_search < server/migrations/add_gender.sql
+docker exec -it 1Panel-mysql-ErMk mysql -u root -p lesson_search < server/migrations/add_gender.sql
 ```
 
 ---
@@ -808,35 +810,35 @@ docker exec -i 1Panel-mysql-ErMk mysql -u root -pWw3277977 lesson_search < serve
 ### 分配管理员角色
 
 ```bash
-docker exec -i 1Panel-mysql-ErMk mysql -u root -pWw3277977 lesson_search -e "UPDATE users SET role='admin' WHERE id=用户ID;"
+docker exec -it 1Panel-mysql-ErMk mysql -u root -p lesson_search -e "UPDATE users SET role='admin' WHERE id=用户ID;"
 ```
 
 ### 设置新学期周次
 
 ```bash
 # 禁用旧学期
-docker exec -i 1Panel-mysql-ErMk mysql -u root -pWw3277977 lesson_search -e "UPDATE week_config SET is_active=FALSE;"
+docker exec -it 1Panel-mysql-ErMk mysql -u root -p lesson_search -e "UPDATE week_config SET is_active=FALSE;"
 
 # 创建新学期（start_date必须是周一）
-docker exec -i 1Panel-mysql-ErMk mysql -u root -pWw3277977 lesson_search -e "INSERT INTO week_config (start_date, semester_name, is_active) VALUES ('2026-09-07', '2026-2027学年第一学期', TRUE);"
+docker exec -it 1Panel-mysql-ErMk mysql -u root -p lesson_search -e "INSERT INTO week_config (start_date, semester_name, is_active) VALUES ('2026-09-07', '2026-2027学年第一学期', TRUE);"
 ```
 
 ### 分配查课职务
 
 ```bash
-docker exec -i 1Panel-mysql-ErMk mysql -u root -pWw3277977 lesson_search -e "INSERT INTO duty_assignments (user_id, assigned_by) VALUES (成员ID, 管理员ID);"
+docker exec -it 1Panel-mysql-ErMk mysql -u root -p lesson_search -e "INSERT INTO duty_assignments (user_id, assigned_by) VALUES (成员ID, 管理员ID);"
 ```
 
 ### 取消职务
 
 ```bash
-docker exec -i 1Panel-mysql-ErMk mysql -u root -pWw3277977 lesson_search -e "UPDATE duty_assignments SET is_active=FALSE, deactivated_at=NOW() WHERE user_id=成员ID;"
+docker exec -it 1Panel-mysql-ErMk mysql -u root -p lesson_search -e "UPDATE duty_assignments SET is_active=FALSE, deactivated_at=NOW() WHERE user_id=成员ID;"
 ```
 
 ### 发布公告
 
 ```bash
-docker exec -i 1Panel-mysql-ErMk mysql -u root -pWw3277977 lesson_search -e "INSERT INTO announcements (version, title, content, is_active, created_by) VALUES (版本号+1, '标题', '内容', TRUE, 管理员ID);"
+docker exec -it 1Panel-mysql-ErMk mysql -u root -p lesson_search -e "INSERT INTO announcements (version, title, content, is_active, created_by) VALUES (版本号+1, '标题', '内容', TRUE, 管理员ID);"
 ```
 
 ### 创建邀请码

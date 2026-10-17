@@ -1,7 +1,7 @@
 name: lesson_search
 description: "考勤助手 - 课堂考勤查课工具"
 publish_to: 'none'
-version: 0.7.0+34
+version: 0.7.1+35
 
 environment:
   sdk: ^3.11.0
@@ -46,6 +46,8 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  integration_test:
+    sdk: flutter
   flutter_lints: ^6.0.0
 
   # 代码生成
@@ -58,6 +60,8 @@ dev_dependencies:
   # Launcher 图标生成
   flutter_launcher_icons: ^0.14.3
 
+  flutter_local_notifications_platform_interface: ^7.2.0
+  sqlite3: ^2.9.4
 flutter_launcher_icons:
   android: true
   ios: true

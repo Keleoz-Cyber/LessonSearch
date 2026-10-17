@@ -47,6 +47,7 @@ class _LogTabState extends ConsumerState<LogTab> {
 
   Future<void> _clearLogs() async {
     await LoggerService.clear();
+    if (!mounted) return;
     setState(() => _logs.clear());
   }
 
@@ -72,15 +73,16 @@ class _LogTabState extends ConsumerState<LogTab> {
               Wrap(
                 spacing: 4,
                 children: [
-                  Text('日志',
-                      style: Theme.of(context).textTheme.titleSmall),
+                  Text('日志', style: Theme.of(context).textTheme.titleSmall),
                   const SizedBox(width: 8),
-                  ...LogFilter.values.map((f) => ChoiceChip(
-                        label: Text(_filterLabels[f]!),
-                        selected: _filter == f,
-                        onSelected: (_) => setState(() => _filter = f),
-                        visualDensity: VisualDensity.compact,
-                      )),
+                  ...LogFilter.values.map(
+                    (f) => ChoiceChip(
+                      label: Text(_filterLabels[f]!),
+                      selected: _filter == f,
+                      onSelected: (_) => setState(() => _filter = f),
+                      visualDensity: VisualDensity.compact,
+                    ),
+                  ),
                 ],
               ),
               Row(
@@ -112,8 +114,7 @@ class _LogTabState extends ConsumerState<LogTab> {
                     children: [
                       Icon(Icons.history, size: 32, color: c.textTertiary),
                       const SizedBox(height: 8),
-                      Text('暂无日志',
-                          style: TextStyle(color: c.textTertiary)),
+                      Text('暂无日志', style: TextStyle(color: c.textTertiary)),
                     ],
                   ),
                 )
@@ -147,4 +148,3 @@ class _LogTabState extends ConsumerState<LogTab> {
     );
   }
 }
-

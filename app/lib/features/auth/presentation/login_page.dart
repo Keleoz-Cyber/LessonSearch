@@ -1,9 +1,9 @@
+import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/logger/logger_service.dart';
 import '../../../shared/design_system/colors.dart';
 import '../../../shared/design_system/tokens.dart';
 import '../../../shared/design_system/typography.dart';
@@ -11,6 +11,8 @@ import '../../../shared/design_system/widgets/app_button.dart';
 import '../../../shared/design_system/widgets/segmented_control.dart';
 import '../../../shared/providers.dart';
 import '../../../shared/widgets/toast.dart';
+import '../../../core/auth/account_session.dart';
+import '../../../core/network/error_message.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
@@ -28,25 +30,19 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   bool _isSendingCode = false;
   int _countdown = 0;
   bool _usePassword = false;
+  Timer? _countdownTimer;
 
   @override
   void dispose() {
+    _countdownTimer?.cancel();
     _emailController.dispose();
     _codeController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
 
-  /// 统一解析后端返回的 detail 字段，兼容 String / List / Map / null
-  String _parseErrorDetail(dynamic detail) {
-    if (detail == null) return '';
-    if (detail is String) return detail;
-    if (detail is List && detail.isNotEmpty) return detail.first.toString();
-    if (detail is Map) return detail['msg']?.toString() ?? detail.toString();
-    return detail.toString();
-  }
-
   Future<void> _sendCode() async {
+    if (_isSendingCode || _countdown > 0) return;
     final email = _emailController.text.trim();
     if (email.isEmpty || !email.contains('@')) {
       Toast.show(context, '请输入正确的邮箱地址');
@@ -57,37 +53,32 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
     try {
       final apiClient = ref.read(apiClientProvider);
-      LoggerService.network('发送验证码到: $email');
       await apiClient.sendVerificationCode(email);
-
+      if (!mounted) return;
       Toast.show(context, '验证码已发送');
-
       setState(() => _countdown = 60);
-      while (_countdown > 0) {
-        await Future.delayed(const Duration(seconds: 1));
-        if (!mounted) break;
-        setState(() => _countdown--);
-      }
+      _countdownTimer?.cancel();
+      _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+        if (!mounted || _countdown <= 1) {
+          timer.cancel();
+          if (mounted) setState(() => _countdown = 0);
+        } else {
+          setState(() => _countdown--);
+        }
+      });
     } on DioException catch (e) {
-      final status = e.response?.statusCode;
-      String hint = '发送失败';
-      if (status == 429) {
-        hint = '请求过于频繁，请稍后再试';
-      } else if (status == 500) {
-        hint = '服务器错误，请检查SMTP配置';
-      } else {
-        final detail = _parseErrorDetail(e.response?.data['detail']);
-        hint = detail.isNotEmpty ? detail : '发送失败';
+      if (mounted) {
+        Toast.show(context, dioErrorMessage(e, fallback: '发送失败，请稍后重试'));
       }
-      Toast.show(context, hint);
     } on Exception {
-      Toast.show(context, '网络错误，请稍后重试');
+      if (mounted) Toast.show(context, '网络错误，请稍后重试');
     } finally {
       if (mounted) setState(() => _isSendingCode = false);
     }
   }
 
   Future<void> _login() async {
+    if (_isLoading) return;
     if (_usePassword) {
       await _passwordLogin();
     } else {
@@ -113,7 +104,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
       await _handleLoginSuccess(response);
     } on DioException catch (e) {
-      final detail = _parseErrorDetail(e.response?.data['detail']);
+      final detail = dioErrorMessage(e, fallback: '登录失败');
       String hint = '登录失败';
       if (detail.contains('账户不存在')) {
         hint = '账户不存在，请先注册';
@@ -122,9 +113,11 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       } else if (detail.isNotEmpty) {
         hint = detail;
       }
-      Toast.show(context, hint);
+      if (mounted) Toast.show(context, hint);
+    } on AccountSessionException catch (e) {
+      if (mounted) Toast.show(context, e.message);
     } on Exception {
-      Toast.show(context, '网络错误，请稍后重试');
+      if (mounted) Toast.show(context, '网络错误，请稍后重试');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -155,7 +148,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
       await _handleLoginSuccess(response);
     } on DioException catch (e) {
-      final detail = _parseErrorDetail(e.response?.data['detail']);
+      final detail = dioErrorMessage(e, fallback: '登录失败');
       String hint = '登录失败';
       if (detail.contains('账户不存在')) {
         hint = '账户不存在，请先注册';
@@ -166,44 +159,20 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       } else if (detail.isNotEmpty) {
         hint = detail;
       }
-      Toast.show(context, hint);
+      if (mounted) Toast.show(context, hint);
+    } on AccountSessionException catch (e) {
+      if (mounted) Toast.show(context, e.message);
     } on Exception {
-      Toast.show(context, '网络错误，请稍后重试');
+      if (mounted) Toast.show(context, '网络错误，请稍后重试');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
   Future<void> _handleLoginSuccess(Map<String, dynamic> response) async {
-    final authService = ref.read(authServiceProvider);
-
-    await authService.saveAuth(
-      token: response['token'],
-      userId: response['user']['id'],
-      email: response['user']['email'],
-      nickname: response['user']['nickname'],
-      realName: response['user']['real_name'],
-      role: response['user']['role'],
-    );
-
-    ref.invalidate(authServiceProvider);
-    ref.invalidate(isLoggedInProvider);
-    ref.invalidate(userEmailProvider);
-    ref.invalidate(apiClientProvider);
-    // 重置认证过期状态
-    ref.read(authExpiredProvider.notifier).state = false;
-
+    if (!mounted) return;
+    await finalizeAuthentication(ref, response);
     if (mounted) {
-      // 登录成功后，重置因 401 标记为 failed 的同步项，让它们能继续同步
-      final localDS = ref.read(attendanceLocalDSProvider);
-      final resetCount = await localDS.resetAuthFailedSyncItems();
-      if (resetCount > 0) {
-        LoggerService.sync('登录成功: 重置 $resetCount 条因认证过期失败的同步项');
-      }
-
-      // 触发同步，继续之前失败的同步
-      ref.read(syncServiceProvider).syncNow();
-
       final realName = response['user']['real_name'];
       if (realName == null || realName.toString().trim().isEmpty) {
         context.go('/real-name');
@@ -211,6 +180,57 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         context.go('/');
       }
     }
+  }
+
+  Widget _buildCodeInput() {
+    final c = context.colors;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final stacked =
+            constraints.maxWidth < 300 ||
+            MediaQuery.textScalerOf(context).scale(1) > 1.3;
+        final input = TextField(
+          controller: _codeController,
+          decoration: InputDecoration(
+            hintText: '6 位数字',
+            prefixIcon: Icon(
+              Icons.shield_outlined,
+              size: 18,
+              color: c.textSecondary,
+            ),
+            counterText: '',
+          ),
+          keyboardType: TextInputType.number,
+          maxLength: 6,
+          style: AppTextStyles.body.copyWith(color: c.textPrimary),
+        );
+        final send = AppButton.secondary(
+          label: _countdown > 0 ? '${_countdown}s' : '发送',
+          onPressed: _countdown > 0 || _isSendingCode ? null : _sendCode,
+          loading: _isSendingCode,
+          size: AppButtonSize.lg,
+          fullWidth: stacked,
+        );
+        if (stacked) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              input,
+              const SizedBox(height: AppSpacing.md),
+              send,
+            ],
+          );
+        }
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(child: input),
+            const SizedBox(width: AppSpacing.md),
+            send,
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -227,8 +247,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
             // 登录方式切换
             AppSegmentedControl<bool>(
               items: const [
-                AppSegmentedItem(value: false, label: '验证码登录'),
-                AppSegmentedItem(value: true, label: '密码登录'),
+                AppSegmentedItem(value: false, label: '验证码'),
+                AppSegmentedItem(value: true, label: '密码'),
               ],
               value: _usePassword,
               onChanged: (val) => setState(() => _usePassword = val),
@@ -254,42 +274,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
             if (!_usePassword) ...[
               _FieldLabel(label: '验证码'),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _codeController,
-                      decoration: InputDecoration(
-                        hintText: '6 位数字',
-                        prefixIcon: Icon(
-                          Icons.shield_outlined,
-                          size: 18,
-                          color: c.textSecondary,
-                        ),
-                        counterText: '',
-                      ),
-                      keyboardType: TextInputType.number,
-                      maxLength: 6,
-                      style: AppTextStyles.body.copyWith(
-                        color: c.textPrimary,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.md),
-                  SizedBox(
-                    height: 48,
-                    child: AppButton.secondary(
-                      label: _countdown > 0 ? '${_countdown}s' : '发送',
-                      onPressed: _countdown > 0 || _isSendingCode
-                          ? null
-                          : _sendCode,
-                      loading: _isSendingCode,
-                      size: AppButtonSize.lg,
-                    ),
-                  ),
-                ],
-              ),
+              _buildCodeInput(),
             ] else ...[
               _FieldLabel(label: '密码'),
               TextField(
@@ -317,14 +302,14 @@ class _LoginPageState extends ConsumerState<LoginPage> {
             ),
             const SizedBox(height: AppSpacing.lg),
 
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+            Wrap(
+              alignment: WrapAlignment.center,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: AppSpacing.xs,
               children: [
                 Text(
                   '没有账户？',
-                  style: AppTextStyles.body.copyWith(
-                    color: c.textSecondary,
-                  ),
+                  style: AppTextStyles.body.copyWith(color: c.textSecondary),
                 ),
                 TextButton(
                   onPressed: () => context.push('/register'),

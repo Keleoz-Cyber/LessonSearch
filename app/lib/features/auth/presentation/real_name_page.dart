@@ -27,6 +27,7 @@ class _RealNamePageState extends ConsumerState<RealNamePage> {
   }
 
   Future<void> _submit() async {
+    if (_loading) return;
     final name = _controller.text.trim();
 
     if (name.isEmpty) {
@@ -42,10 +43,16 @@ class _RealNamePageState extends ConsumerState<RealNamePage> {
     setState(() => _loading = true);
 
     try {
+      final container = ProviderScope.containerOf(context, listen: false);
+      final auth = container.read(authServiceProvider);
+      final userId = auth.userId;
       final api = ref.read(apiClientProvider);
       await api.put('/user/real-name', {'real_name': name});
 
-      await ref.read(authServiceProvider).updateRealName(name);
+      if (!mounted || container.read(authServiceProvider).userId != userId) {
+        return;
+      }
+      await auth.updateRealName(name);
 
       if (mounted) {
         Toast.show(context, '姓名已保存');

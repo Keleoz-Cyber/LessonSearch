@@ -73,6 +73,7 @@ class _HomePageState extends ConsumerState<HomePage> {
           // 只清除 token，保留 userId 等用户信息
           // 避免清空本地数据库，让用户重新登录后继续同步
           await auth.clearTokenOnly();
+          if (!mounted) return;
           ref.invalidate(authServiceProvider);
           ref.invalidate(isLoggedInProvider);
           context.go('/login');
@@ -134,6 +135,7 @@ class _HomePageState extends ConsumerState<HomePage> {
               padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
               sliver: SliverList.list(
                 children: [
+                  _buildResumeCard(),
                   _buildSyncWarningCard(),
                   _buildPrimaryActions(),
                   const SizedBox(height: AppSpacing.lg),
@@ -197,7 +199,9 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   Widget _buildSyncIndicator(SyncState state, int count) {
     final c = context.colors;
-    if (count == 0 && state != SyncState.syncing) return const SizedBox.shrink();
+    if (count == 0 && state != SyncState.syncing) {
+      return const SizedBox.shrink();
+    }
 
     IconData icon;
     Color color;
@@ -235,7 +239,9 @@ class _HomePageState extends ConsumerState<HomePage> {
             top: 4,
             child: TweenAnimationBuilder<double>(
               tween: Tween(begin: 0.6, end: 1.0),
-              duration: const Duration(milliseconds: 350),
+              duration: MediaQuery.disableAnimationsOf(context)
+                  ? Duration.zero
+                  : const Duration(milliseconds: 350),
               curve: Curves.easeOutBack,
               builder: (context, scale, child) {
                 return Transform.scale(scale: scale, child: child);
@@ -263,35 +269,79 @@ class _HomePageState extends ConsumerState<HomePage> {
     );
   }
 
+  Widget _buildResumeCard() {
+    final tasks = ref.watch(resumableTasksProvider).valueOrNull;
+    if (tasks == null || tasks.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.lg),
+      child: AppCard(
+        onTap: () => TaskResumeChecker.check(context, ref),
+        child: Row(children: [
+          Icon(Icons.play_circle_outline, color: context.colors.brandPrimary),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('继续未完成任务', style: AppTextStyles.bodyMedium.copyWith(color: context.colors.textPrimary)),
+            Text('有 ${tasks.length} 个任务可恢复', style: AppTextStyles.sm.copyWith(color: context.colors.textSecondary)),
+          ])),
+          const Icon(Icons.chevron_right),
+        ]),
+      ),
+    );
+  }
+
   Widget _buildPrimaryActions() {
-    return Row(
-      children: [
-        Expanded(
-          flex: 7,
-          child: SizedBox(
-            height: 88,
-            child: AppButton.gradient(
-              label: '开始记名',
-              onPressed: () => _checkLoginAndNavigate('/name-check/select'),
-              leadingIcon: Icons.checklist,
-              fullWidth: true,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth < 340 ||
+            MediaQuery.textScalerOf(context).scale(1) > 1.3) {
+          return Column(
+            children: [
+              AppButton.gradient(
+                label: '开始记名',
+                leadingIcon: Icons.checklist,
+                fullWidth: true,
+                onPressed: () => _checkLoginAndNavigate('/name-check/select'),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              AppButton.secondary(
+                label: '点名',
+                leadingIcon: Icons.record_voice_over,
+                fullWidth: true,
+                onPressed: () => _checkLoginAndNavigate('/roll-call/select'),
+              ),
+            ],
+          );
+        }
+        return Row(
+          children: [
+            Expanded(
+              flex: 7,
+              child: SizedBox(
+                height: 88,
+                child: AppButton.gradient(
+                  label: '开始记名',
+                  onPressed: () => _checkLoginAndNavigate('/name-check/select'),
+                  leadingIcon: Icons.checklist,
+                  fullWidth: true,
+                ),
+              ),
             ),
-          ),
-        ),
-        const SizedBox(width: AppSpacing.md),
-        Expanded(
-          flex: 3,
-          child: SizedBox(
-            height: 88,
-            child: AppButton.secondary(
-              label: '点名',
-              onPressed: () => _checkLoginAndNavigate('/roll-call/select'),
-              leadingIcon: Icons.record_voice_over,
-              fullWidth: true,
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              flex: 3,
+              child: SizedBox(
+                height: 88,
+                child: AppButton.secondary(
+                  label: '点名',
+                  onPressed: () => _checkLoginAndNavigate('/roll-call/select'),
+                  leadingIcon: Icons.record_voice_over,
+                  fullWidth: true,
+                ),
+              ),
             ),
-          ),
-        ),
-      ],
+          ],
+        );
+      },
     );
   }
 
@@ -345,22 +395,31 @@ class _HomePageState extends ConsumerState<HomePage> {
       ),
     ];
 
-    return GridView.count(
-      crossAxisCount: 2,
-      crossAxisSpacing: AppSpacing.md,
-      mainAxisSpacing: AppSpacing.md,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      childAspectRatio: 1.5,
-      children: [
-        for (final e in entries)
-          _buildEntryCard(
-            icon: e.icon,
-            title: e.title,
-            subtitle: e.subtitle,
-            onTap: e.onTap,
-          ),
-      ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final singleColumn =
+            constraints.maxWidth < 340 ||
+            MediaQuery.textScalerOf(context).scale(1) > 1.3;
+        final width = singleColumn
+            ? constraints.maxWidth
+            : (constraints.maxWidth - AppSpacing.md) / 2;
+        return Wrap(
+          spacing: AppSpacing.md,
+          runSpacing: AppSpacing.md,
+          children: [
+            for (final e in entries)
+              SizedBox(
+                width: width,
+                child: _buildEntryCard(
+                  icon: e.icon,
+                  title: e.title,
+                  subtitle: e.subtitle,
+                  onTap: e.onTap,
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 
@@ -376,7 +435,7 @@ class _HomePageState extends ConsumerState<HomePage> {
       padding: const EdgeInsets.all(AppSpacing.lg),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Container(
             padding: const EdgeInsets.all(8),
@@ -386,11 +445,15 @@ class _HomePageState extends ConsumerState<HomePage> {
             ),
             child: Icon(icon, size: 18, color: c.brandPrimary),
           ),
+          const SizedBox(height: AppSpacing.md),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(title, style: AppTextStyles.h3.copyWith(color: c.textPrimary)),
+              Text(
+                title,
+                style: AppTextStyles.h3.copyWith(color: c.textPrimary),
+              ),
               const SizedBox(height: 2),
               Text(
                 subtitle,
@@ -410,7 +473,9 @@ class _HomePageState extends ConsumerState<HomePage> {
     final isSyncFailed = hasSyncFailed.valueOrNull ?? false;
 
     return AnimatedSwitcher(
-      duration: AppDuration.normal,
+      duration: MediaQuery.disableAnimationsOf(context)
+          ? Duration.zero
+          : AppDuration.normal,
       switchInCurve: AppCurves.normal,
       switchOutCurve: AppCurves.depart,
       child: issueCount.when(
@@ -419,29 +484,23 @@ class _HomePageState extends ConsumerState<HomePage> {
             return const SizedBox.shrink(key: ValueKey('sync-banner-empty'));
           }
 
-          if (syncState != SyncState.syncing && count > 0) {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              ref.read(syncServiceProvider).syncNow();
-            });
-          }
-
           final state = isSyncFailed
               ? SyncBannerState.failed
               : syncState == SyncState.syncing
-                  ? SyncBannerState.syncing
-                  : SyncBannerState.unknown;
+              ? SyncBannerState.syncing
+              : SyncBannerState.unknown;
 
           final title = isSyncFailed
               ? '$count 条数据同步失败'
               : syncState == SyncState.syncing
-                  ? '正在自动同步 $count 条记录'
-                  : '$count 条记录待同步';
+              ? '正在自动同步 $count 条记录'
+              : '$count 条记录待同步';
 
           final desc = isSyncFailed
               ? '请先处理后再继续编辑或提交'
               : syncState == SyncState.syncing
-                  ? '请避免同时编辑或提交，防止冲突'
-                  : '系统将在后台自动同步';
+              ? '请避免同时编辑或提交，防止冲突'
+              : '系统将在后台自动同步';
 
           return Padding(
             key: ValueKey('sync-banner-$state-$count'),

@@ -6,7 +6,7 @@
 
 **面向学校查课场景的 Flutter + FastAPI 全栈应用**
 
-[![Version](https://img.shields.io/badge/version-v0.7.0+34-blue)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-v0.7.1+35-blue)](CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Android-lightgrey)]()
 [![Flutter](https://img.shields.io/badge/Flutter-3.43-02569B?logo=flutter)]()
@@ -309,10 +309,16 @@ static const String defaultBaseUrl = 'https://your-domain.com/api';
 
 ```env
 # 数据库
-DATABASE_URL=mysql+pymysql://user:password@localhost/lesson_search
+APP_ENV=production
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_USER=lesson_search_app
+DB_PASSWORD=
+DB_NAME=lesson_search
 
 # JWT
-JWT_SECRET=your-secret-key
+# 填写至少 32 字符的随机密钥，不要更换已有生产密钥导致用户退出登录
+JWT_SECRET=
 JWT_EXPIRE_HOURS=720
 
 # SMTP（发送验证码）
@@ -322,7 +328,7 @@ SMTP_USER=your-email@example.com
 SMTP_PASSWORD=your-password
 ```
 
-**注意**：不要将真实的 `.env` 文件提交到仓库。
+完整模板见 [server/.env.example](server/.env.example)。生产配置不能为空；不要将真实的 `.env` 文件提交到仓库。升级现有服务时先核对已有配置，不要直接用模板覆盖。
 
 ---
 
@@ -366,16 +372,16 @@ SMTP_PASSWORD=your-password
 
 完整版本更新日志请查看 [CHANGELOG.md](CHANGELOG.md)。
 
-**当前版本（v0.7.0）亮点：**
+**当前版本（v0.7.1）亮点：**
 
-- 🎨 **设计系统重做**：24 个页面统一改造为商业 SaaS 风格（中性灰 + sky→blue 渐变，品牌色 #2563EB），新建 12 个设计系统组件
-- 📋 **查课计划 + 本地提醒**：提前排定查课任务，上课前 15 分钟系统通知提醒，**纯本地不依赖第三方推送**
-- ⚡ **性能优化**：8 个列表加 RepaintBoundary、Theme.of 缓存、AppCard 动画统一、移除 NoSplash 恢复 Material ripple、列表/详情 Hero 共享元素
-- ✨ **微交互全面升级**：AppButton 按下 scale 反馈、SkeletonCard shimmer 扫光、TweenAnimationBuilder 数字滚动、同步图标真旋转、班级选择 AnimatedSwitcher 弹出
-- 📚 **公共组件提升**：`AppNoticeBox` / `AppStatChip` / `AppStatTile` 三个 helper 提到设计系统层供复用
-- 🌗 **Android 路由用 Material ZoomPageTransitions**，iOS 保持 Cupertino swipe-back
+- 任务恢复、撤销、并发提交和同步失败反馈修复，完善账号切换后的本地数据隔离。
+- 历史记录、提交、排行榜与导出按学期隔离；2026-2027第一学期开学日期为 **2026-08-31**。
+- 完善 Android 系统提醒权限、提醒状态、重启恢复和通知入口；系统“强行停止”后需重新打开应用，实际送达仍受厂商省电影响。
+- 修复窄屏布局、加载/错误状态和交互流程，适配系统减少动画设置。
+- 统一客户端、诊断和服务端版本展示；更新检查只推荐更高的稳定版本和实际发布的 APK。
 
 **之前版本：**
+- v0.7.0：设计系统重做、查课计划与本地提醒。
 - v0.6.5：记名重复记录根因修复、SyncQueue create/update 区分、服务端防御性 upsert
 - v0.6.0：批量同步、401 保护、退出登录保护、密码登录
 

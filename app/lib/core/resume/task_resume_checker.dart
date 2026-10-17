@@ -15,13 +15,12 @@ class TaskResumeChecker {
     if (!isLoggedIn) return;
 
     final currentUserId = ref.read(authServiceProvider).userId;
-    final tasks = await repo.getInProgressTasks();
+    final tasks = await repo.getResumableTasks();
 
     // 恢复记名任务 + executing/confirming/text_generating 阶段 + 属于当前用户
     final resumable = tasks
         .where(
           (t) =>
-              t.type == TaskType.nameCheck &&
               (t.phase == TaskPhase.executing ||
                   t.phase == TaskPhase.confirming ||
                   t.phase == TaskPhase.textGenerating) &&
@@ -44,9 +43,11 @@ class TaskResumeChecker {
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
         title: const Text('发现未完成任务'),
-        content: Text(phaseLabel.isEmpty
-            ? '上次的记名任务尚未完成，是否继续？'
-            : '上次的记名任务$phaseLabel，尚未完成。是否继续？'),
+        content: Text(
+          phaseLabel.isEmpty
+              ? '上次的${task.type == TaskType.rollCall ? '点名' : '记名'}任务尚未完成，是否继续？'
+              : '上次的记名任务$phaseLabel，尚未完成。是否继续？',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, 'abandon'),
@@ -65,6 +66,17 @@ class TaskResumeChecker {
     if (result == 'abandon') {
       await repo.updateTaskStatus(task, status: TaskStatus.abandoned);
     } else if (result == 'resume') {
+      if (task.type == TaskType.nameCheck) {
+        await ref.read(nameCheckProvider.notifier).resumeTask(task.id);
+        if (!context.mounted) return;
+        final restored = ref.read(nameCheckProvider);
+        if (restored.task == null || restored.error != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(restored.error ?? '恢复任务失败，请稍后重试')),
+          );
+          return;
+        }
+      }
       // 获取班级名称
       final studentRepo = ref.read(studentRepositoryProvider);
       final allClasses = await studentRepo.getClasses();
@@ -81,9 +93,14 @@ class TaskResumeChecker {
         'gradeId': task.selectedGradeId ?? 0,
         'majorId': task.selectedMajorId ?? 0,
         'resumeTaskId': task.id,
+        'taskId': task.id,
       };
 
       // 根据 phase 跳不同页面
+      if (task.type == TaskType.rollCall) {
+        context.push('/roll-call/execute', extra: extra);
+        return;
+      }
       switch (task.phase) {
         case TaskPhase.confirming:
           context.push('/confirmation', extra: extra);

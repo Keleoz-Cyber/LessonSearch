@@ -40,6 +40,7 @@ class NameCheckPage extends ConsumerStatefulWidget {
 class _NameCheckPageState extends ConsumerState<NameCheckPage> {
   int? _focusedIndex = 0; // 默认选中第一个
   bool _isMarking = false;
+  bool _restoredPage = false;
   final PageController _pageController = PageController();
 
   @override
@@ -81,8 +82,9 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
                     padding: const EdgeInsets.only(right: 8),
                     child: Text(
                       '${state.processedStudents}/${state.totalStudents}',
-                      style: AppTextStyles.withTabular(AppTextStyles.bodyMedium)
-                          .copyWith(color: c.textSecondary),
+                      style: AppTextStyles.withTabular(
+                        AppTextStyles.bodyMedium,
+                      ).copyWith(color: c.textSecondary),
                     ),
                   ),
                   IconButton(
@@ -91,7 +93,7 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
                       color: c.brandPrimary,
                     ),
                     tooltip: '确认名单',
-                    onPressed: _isMarking
+                    onPressed: (_isMarking || state.isFinishing)
                         ? null
                         : () => _showFinishDialog(context, state),
                   ),
@@ -156,7 +158,7 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
     final c = context.colors;
     final disabled = onPressed == null;
     return SizedBox(
-      width: 40,
+      width: 48,
       height: 48,
       child: OutlinedButton(
         onPressed: onPressed,
@@ -184,6 +186,7 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
   void initState() {
     super.initState();
     Future.microtask(() {
+      if (!mounted) return;
       final authService = ref.read(authServiceProvider);
       if (widget.resumeTaskId != null) {
         ref.read(nameCheckProvider.notifier).resumeTask(widget.resumeTaskId!);
@@ -277,6 +280,14 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
       );
     }
 
+    if (!_restoredPage && state.classes.length > 1) {
+      _restoredPage = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _pageController.hasClients) {
+          _pageController.jumpToPage(state.currentClassIndex);
+        }
+      });
+    }
     return _buildExecutingView(context, state, isSyncFailed);
   }
 
@@ -287,129 +298,138 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
   ) {
     final students = state.currentStudents;
 
-    return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (didPop, result) async {
-        if (didPop) return;
-        await _showExitDialog(context);
-      },
-      child: Scaffold(
-        appBar: PreferredSize(
-          preferredSize: Size.fromHeight(
-            72 + MediaQuery.paddingOf(context).top,
-          ),
-          child: _buildTopBar(context, state),
-        ),
-        body: Column(
-          children: [
-            // 班级切换标签
-            if (state.classes.length > 1)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                child: AppSegmentedControl<int>(
-                  items: [
-                    for (var i = 0; i < state.classes.length; i++)
-                      AppSegmentedItem(
-                        value: i,
-                        label: state.classes[i].displayName,
-                      ),
-                  ],
-                  value: state.currentClassIndex,
-                  onChanged: (i) {
-                    ref.read(nameCheckProvider.notifier).switchClass(i);
-                    _pageController.animateToPage(
-                      i,
-                      duration: AppDuration.normal,
-                      curve: AppCurves.normal,
-                    );
-                    setState(() => _focusedIndex = 0);
-                  },
-                ),
-              ),
-
-            // 同步失败警告（不阻塞当前记名）
-            if (isSyncFailed)
-              const Padding(
-                padding: EdgeInsets.fromLTRB(16, 8, 16, 0),
-                child: SyncStatusBanner(
-                  state: SyncBannerState.failed,
-                  title: '存在同步失败数据',
-                  description: '本次记名仍可继续，标记会保留到本地。结束后请到「同步问题」处理。',
-                ),
-              ),
-
-            // 学生列表 - 使用 PageView 支持左右滑动
-            Expanded(
-              child: state.classes.length > 1
-                  ? PageView.builder(
-                      controller: _pageController,
-                      itemCount: state.classes.length,
-                      onPageChanged: (index) {
-                        ref.read(nameCheckProvider.notifier).switchClass(index);
-                        setState(() => _focusedIndex = 0);
-                      },
-                      itemBuilder: (context, classIndex) {
-                        final cls = state.classes[classIndex];
-                        final classStudents =
-                            state.studentsByClass[cls.id] ?? [];
-                        return _ClassStudentGrid(
-                          students: classStudents,
-                          focusedIndex: classIndex == state.currentClassIndex
-                              ? _focusedIndex
-                              : null,
-                          onTap: (index) {
-                            if (classIndex != state.currentClassIndex) {
-                              ref
-                                  .read(nameCheckProvider.notifier)
-                                  .switchClass(classIndex);
-                            }
-                            setState(() => _focusedIndex = index);
-                          },
-                        );
-                      },
-                    )
-                  : LayoutBuilder(
-                      builder: (context, constraints) {
-                        final crossAxisCount = 2;
-                        final itemWidth =
-                            (constraints.maxWidth - 12 * 2 - 8) /
-                            crossAxisCount;
-                        const itemHeight = 58.0;
-                        return GridView.builder(
-                          padding: const EdgeInsets.all(12),
-                          gridDelegate:
-                              SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: crossAxisCount,
-                                mainAxisSpacing: 8,
-                                crossAxisSpacing: 8,
-                                childAspectRatio: itemWidth / itemHeight,
-                              ),
-                          itemCount: students.length,
-                          itemBuilder: (context, index) {
-                            final sw = students[index];
-                            final isFocused = _focusedIndex == index;
-
-                            return RepaintBoundary(
-                              key: ValueKey(sw.student.id),
-                              child: _StudentCard(
-                                name: sw.student.name,
-                                studentNo: sw.student.studentNo,
-                                status: sw.status,
-                                remark: sw.remark,
-                                isFocused: isFocused,
-                                onTap: () =>
-                                    setState(() => _focusedIndex = index),
-                              ),
-                            );
-                          },
-                        );
-                      },
-                    ),
+    return LoadingOverlay(
+      isLoading: state.isFinishing,
+      message: '正在保存名单...',
+      child: PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, result) async {
+          if (didPop || state.isFinishing || _isMarking) return;
+          await _showExitDialog(context);
+        },
+        child: Scaffold(
+          appBar: PreferredSize(
+            preferredSize: Size.fromHeight(
+              72 + MediaQuery.paddingOf(context).top,
             ),
+            child: _buildTopBar(context, state),
+          ),
+          body: Column(
+            children: [
+              // 班级切换标签
+              if (state.classes.length > 1)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                  child: AppSegmentedControl<int>(
+                    items: [
+                      for (var i = 0; i < state.classes.length; i++)
+                        AppSegmentedItem(
+                          value: i,
+                          label: state.classes[i].displayName,
+                        ),
+                    ],
+                    value: state.currentClassIndex,
+                    onChanged: (i) {
+                      ref.read(nameCheckProvider.notifier).switchClass(i);
+                      _pageController.animateToPage(
+                        i,
+                        duration: MediaQuery.disableAnimationsOf(context)
+                            ? Duration.zero
+                            : AppDuration.normal,
+                        curve: AppCurves.normal,
+                      );
+                      setState(() => _focusedIndex = 0);
+                    },
+                  ),
+                ),
 
-            // 底部操作栏
-            _buildBottomBar(context, state, students),
-          ],
+              // 同步失败警告（不阻塞当前记名）
+              if (isSyncFailed)
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(16, 8, 16, 0),
+                  child: SyncStatusBanner(
+                    state: SyncBannerState.failed,
+                    title: '存在同步失败数据',
+                    description: '本次记名仍可继续，标记会保留到本地。结束后请到「同步问题」处理。',
+                  ),
+                ),
+
+              // 学生列表 - 使用 PageView 支持左右滑动
+              Expanded(
+                child: state.classes.length > 1
+                    ? PageView.builder(
+                        controller: _pageController,
+                        itemCount: state.classes.length,
+                        onPageChanged: (index) {
+                          ref
+                              .read(nameCheckProvider.notifier)
+                              .switchClass(index);
+                          setState(() => _focusedIndex = 0);
+                        },
+                        itemBuilder: (context, classIndex) {
+                          final cls = state.classes[classIndex];
+                          final classStudents =
+                              state.studentsByClass[cls.id] ?? [];
+                          return _ClassStudentGrid(
+                            students: classStudents,
+                            focusedIndex: classIndex == state.currentClassIndex
+                                ? _focusedIndex
+                                : null,
+                            onTap: (index) {
+                              if (classIndex != state.currentClassIndex) {
+                                ref
+                                    .read(nameCheckProvider.notifier)
+                                    .switchClass(classIndex);
+                              }
+                              setState(() => _focusedIndex = index);
+                            },
+                          );
+                        },
+                      )
+                    : LayoutBuilder(
+                        builder: (context, constraints) {
+                          final crossAxisCount = 2;
+                          final itemWidth =
+                              (constraints.maxWidth - 12 * 2 - 8) /
+                              crossAxisCount;
+                          final itemHeight =
+                              100.0 * MediaQuery.textScalerOf(context).scale(1);
+                          return GridView.builder(
+                            padding: const EdgeInsets.all(12),
+                            gridDelegate:
+                                SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: crossAxisCount,
+                                  mainAxisSpacing: 8,
+                                  crossAxisSpacing: 8,
+                                  childAspectRatio: itemWidth / itemHeight,
+                                ),
+                            itemCount: students.length,
+                            itemBuilder: (context, index) {
+                              final sw = students[index];
+                              final isFocused = _focusedIndex == index;
+
+                              return RepaintBoundary(
+                                key: ValueKey(sw.student.id),
+                                child: _StudentCard(
+                                  name: sw.student.name,
+                                  studentNo: sw.student.studentNo,
+                                  status: sw.status,
+                                  remark: sw.remark,
+                                  isFocused: isFocused,
+                                  onTap: () =>
+                                      setState(() => _focusedIndex = index),
+                                ),
+                              );
+                            },
+                          );
+                        },
+                      ),
+              ),
+
+              // 底部操作栏
+              _buildBottomBar(context, state, students),
+            ],
+          ),
         ),
       ),
     );
@@ -470,6 +490,7 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
 
     Future<void> mark(AttendanceStatus status, {String? remark}) async {
       if (_isMarking ||
+          ref.read(nameCheckProvider).isFinishing ||
           _focusedIndex == null ||
           _focusedIndex! >= students.length) {
         return;
@@ -503,6 +524,7 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
 
     Future<void> markPresent() async {
       if (_isMarking ||
+          ref.read(nameCheckProvider).isFinishing ||
           _focusedIndex == null ||
           _focusedIndex! >= students.length) {
         return;
@@ -557,6 +579,7 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
             ],
           ),
         );
+        if (!mounted) return;
         if (result != null && result.isNotEmpty) {
           await mark(AttendanceStatus.other, remark: result);
         }
@@ -575,12 +598,10 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
         : null;
 
     return BottomActionBar(
-      hintText: focused != null
-          ? '当前学生：${focused.student.name}'
-          : '请选择学生',
+      hintText: focused != null ? '当前学生：${focused.student.name}' : '请选择学生',
       primary: AppButton.primary(
         label: '到课',
-        onPressed: (!_isMarking && _focusedIndex != null)
+        onPressed: (!_isMarking && !state.isFinishing && _focusedIndex != null)
             ? markPresent
             : null,
         size: AppButtonSize.lg,
@@ -595,7 +616,7 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
             _smallActionButton(
               '缺',
               c.stateDanger,
-              (!_isMarking && _focusedIndex != null)
+              (!_isMarking && !state.isFinishing && _focusedIndex != null)
                   ? () => mark(AttendanceStatus.absent)
                   : null,
             ),
@@ -603,7 +624,7 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
             _smallActionButton(
               '迟',
               c.stateWarning,
-              (!_isMarking && _focusedIndex != null)
+              (!_isMarking && !state.isFinishing && _focusedIndex != null)
                   ? () => mark(AttendanceStatus.late_)
                   : null,
             ),
@@ -611,7 +632,7 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
             _smallActionButton(
               '假',
               c.stateInfo,
-              (!_isMarking && _focusedIndex != null)
+              (!_isMarking && !state.isFinishing && _focusedIndex != null)
                   ? () => mark(AttendanceStatus.leave)
                   : null,
             ),
@@ -619,7 +640,7 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
             _smallActionButton(
               '他',
               c.textSecondary,
-              (!_isMarking && _focusedIndex != null)
+              (!_isMarking && !state.isFinishing && _focusedIndex != null)
                   ? markOther
                   : null,
             ),
@@ -630,6 +651,7 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
   }
 
   Future<void> _showExitDialog(BuildContext context) async {
+    if (_isMarking || ref.read(nameCheckProvider).isFinishing) return;
     final result = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -654,7 +676,8 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
     if (!context.mounted) return;
     switch (result) {
       case 'save':
-        context.pop();
+        await ref.read(nameCheckProvider.notifier).saveProgress();
+        if (context.mounted) context.pop();
       case 'abandon':
         await ref.read(nameCheckProvider.notifier).abandonTask();
         if (context.mounted) context.pop();
@@ -689,12 +712,13 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
         ],
       ),
     );
-    if (confirm != true) return;
+    if (confirm != true || !mounted) return;
     await _runFinish(forceMarkPending: false);
   }
 
   /// 执行 finishNameCheck，并按返回结果处理：成功跳转 / 名单变化弹窗 / 失败提示
   Future<void> _runFinish({required bool forceMarkPending}) async {
+    if (ref.read(nameCheckProvider).isFinishing || _isMarking) return;
     final result = await ref
         .read(nameCheckProvider.notifier)
         .finishNameCheck(forceMarkPending: forceMarkPending);
@@ -722,9 +746,7 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
   ) async {
     final state = ref.read(nameCheckProvider);
     // 班级 id → 班级名（用于提示）
-    final classNameMap = {
-      for (final c in state.classes) c.id: c.displayName,
-    };
+    final classNameMap = {for (final c in state.classes) c.id: c.displayName};
     final totalNew = newByClass.values.fold<int>(0, (s, l) => s + l.length);
 
     final action = await showDialog<String>(
@@ -781,8 +803,7 @@ class _NameCheckPageState extends ConsumerState<NameCheckPage> {
     } else {
       // 返回标记：跳到第一个新增学生所在班级，让用户继续处理
       final firstClassId = newByClass.keys.first;
-      final classIndex =
-          state.classes.indexWhere((c) => c.id == firstClassId);
+      final classIndex = state.classes.indexWhere((c) => c.id == firstClassId);
       if (classIndex >= 0) {
         ref.read(nameCheckProvider.notifier).switchClass(classIndex);
         if (state.classes.length > 1) {
@@ -840,39 +861,58 @@ class _StudentCard extends StatelessWidget {
           decoration: BoxDecoration(
             color: bgColor,
             borderRadius: BorderRadius.circular(AppRadius.md),
-            border: Border.all(
-              color: borderColor,
-              width: isFocused ? 1.5 : 1,
-            ),
+            border: Border.all(color: borderColor, width: isFocused ? 1.5 : 1),
           ),
-          child: Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      name,
-                      style: AppTextStyles.bodyMedium.copyWith(
-                        color: c.textPrimary,
-                      ),
-                      overflow: TextOverflow.ellipsis,
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          name,
+                          style: AppTextStyles.bodyMedium.copyWith(
+                            color: c.textPrimary,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        Text(
+                          studentNo,
+                          style: AppTextStyles.withTabular(
+                            AppTextStyles.xs,
+                          ).copyWith(color: c.textTertiary),
+                        ),
+                      ],
                     ),
-                    Text(
-                      studentNo,
-                      style: AppTextStyles.withTabular(
-                        AppTextStyles.xs,
-                      ).copyWith(color: c.textTertiary),
-                    ),
+                  ),
+                  if (!isPending) ...[
+                    const SizedBox(width: 8),
+                    _statusPillFor(status, remark),
                   ],
-                ),
+                ],
               ),
-              if (!isPending) ...[
-                const SizedBox(width: 8),
-                _statusPillFor(status, remark),
-              ],
+              if (status == AttendanceStatus.other &&
+                  remark?.isNotEmpty == true)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Tooltip(
+                    message: remark!,
+                    child: Text(
+                      remark!,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.xs.copyWith(
+                        color: context.colors.textSecondary,
+                      ),
+                    ),
+                  ),
+                ),
             ],
           ),
         ),
@@ -886,7 +926,7 @@ class _StudentCard extends StatelessWidget {
       AttendanceStatus.absent => const StatusPill.danger(label: '缺'),
       AttendanceStatus.late_ => const StatusPill.warning(label: '迟'),
       AttendanceStatus.leave => const StatusPill.info(label: '假'),
-      AttendanceStatus.other => StatusPill.neutral(label: remark ?? '他'),
+      AttendanceStatus.other => const StatusPill.neutral(label: '他'),
       AttendanceStatus.pending => const SizedBox.shrink(),
     };
   }
@@ -909,7 +949,7 @@ class _ClassStudentGrid extends StatelessWidget {
       builder: (context, constraints) {
         final crossAxisCount = 2;
         final itemWidth = (constraints.maxWidth - 12 * 2 - 8) / crossAxisCount;
-        const itemHeight = 58.0;
+        final itemHeight = 100.0 * MediaQuery.textScalerOf(context).scale(1);
         return GridView.builder(
           padding: const EdgeInsets.all(12),
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(

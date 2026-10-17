@@ -1,25 +1,26 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+from typing import Literal
 from datetime import datetime
 
 
 class TaskCreate(BaseModel):
-    id: str
+    id: str = Field(min_length=1, max_length=36)
     user_id: int | None = None
-    type: str
-    class_ids: list[int]
+    type: Literal["roll_call", "name_check"]
+    class_ids: list[int] = Field(min_length=1, max_length=100)
     selected_grade_id: int | None = None
     selected_major_id: int | None = None
     status: str | None = None
     phase: str | None = None
-    current_class_index: int | None = None
-    current_student_index: int | None = None
+    current_class_index: int | None = Field(default=None, ge=0)
+    current_student_index: int | None = Field(default=None, ge=0)
 
 
 class TaskUpdate(BaseModel):
     status: str | None = None
     phase: str | None = None
-    current_class_index: int | None = None
-    current_student_index: int | None = None
+    current_class_index: int | None = Field(default=None, ge=0)
+    current_student_index: int | None = Field(default=None, ge=0)
 
 
 class TaskOut(BaseModel):

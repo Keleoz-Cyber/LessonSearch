@@ -1,5 +1,7 @@
 -- 排行榜数据库表迁移
--- 执行方式: docker exec -it 1Panel-mysql-ErMk mysql -u root -pWw3277977 lesson_search < ranking_tables.sql
+-- 先复制: docker cp ranking_tables.sql 1Panel-mysql-ErMk:/tmp/ranking_tables.sql
+-- 再执行: docker exec -it 1Panel-mysql-ErMk mysql -u root -p lesson_search -e "source /tmp/ranking_tables.sql"
+-- 密码由交互提示输入，不能写入脚本或版本控制。
 
 -- 创建 ranking_cache 表
 CREATE TABLE IF NOT EXISTS ranking_cache (

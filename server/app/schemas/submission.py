@@ -1,18 +1,20 @@
 """
 提交记录相关Schema
 """
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional, List
 from datetime import datetime
 
 
 class CreateSubmissionRequest(BaseModel):
-    week_number: int
-    task_ids: List[str]
+    semester_id: Optional[int] = Field(default=None, gt=0)
+    week_number: int = Field(ge=1)
+    task_ids: List[str] = Field(min_length=1, max_length=100)
 
 
 class SubmissionResponse(BaseModel):
     id: int
+    semester_id: int
     user_id: int
     week_number: int
     status: str
@@ -29,6 +31,7 @@ class SubmissionResponse(BaseModel):
 
 class SubmissionDetailResponse(BaseModel):
     id: int
+    semester_id: int
     user_id: int
     user_name: Optional[str] = None
     user_email: Optional[str] = None
@@ -53,6 +56,7 @@ class RejectSubmissionRequest(BaseModel):
 
 
 class WeekSummaryResponse(BaseModel):
+    semester_id: int
     week_number: int
     total_submissions: int
     pending_count: int
@@ -71,6 +75,7 @@ class WeekSummaryResponse(BaseModel):
 
 
 class ExportStatusResponse(BaseModel):
+    semester_id: int
     week_number: int
     is_published: bool
     exported_at: Optional[datetime] = None
@@ -87,6 +92,7 @@ class RecordDetail(BaseModel):
 
 class SubmissionRecordsResponse(BaseModel):
     id: int
+    semester_id: int
     user_id: int
     user_name: Optional[str] = None
     user_email: Optional[str] = None

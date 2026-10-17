@@ -5,6 +5,7 @@ import '../tokens.dart';
 import '../typography.dart';
 
 enum AppButtonVariant { primary, secondary, ghost, gradient }
+
 enum AppButtonSize { sm, md, lg }
 
 class AppButton extends StatefulWidget {
@@ -86,8 +87,8 @@ class _AppButtonState extends State<AppButton> {
     final disabled = widget.onPressed == null || widget.loading;
 
     final height = switch (widget.size) {
-      AppButtonSize.sm => 32.0,
-      AppButtonSize.md => 40.0,
+      AppButtonSize.sm => 48.0,
+      AppButtonSize.md => 48.0,
       AppButtonSize.lg => 48.0,
     };
     final paddingX = switch (widget.size) {
@@ -96,11 +97,14 @@ class _AppButtonState extends State<AppButton> {
       AppButtonSize.lg => 20.0,
     };
     final textStyle = switch (widget.size) {
-      AppButtonSize.sm =>
-        AppTextStyles.sm.copyWith(fontWeight: FontWeight.w500),
+      AppButtonSize.sm => AppTextStyles.sm.copyWith(
+        fontWeight: FontWeight.w500,
+      ),
       AppButtonSize.md => AppTextStyles.bodyMedium,
-      AppButtonSize.lg => AppTextStyles.bodyMedium
-          .copyWith(fontSize: 15, fontWeight: FontWeight.w600),
+      AppButtonSize.lg => AppTextStyles.bodyMedium.copyWith(
+        fontSize: 15,
+        fontWeight: FontWeight.w600,
+      ),
     };
 
     final fg = switch (widget.variant) {
@@ -112,23 +116,23 @@ class _AppButtonState extends State<AppButton> {
 
     final bgDecoration = switch (widget.variant) {
       AppButtonVariant.primary => BoxDecoration(
-          color: disabled ? c.borderSubtle : c.brandPrimary,
-          borderRadius: BorderRadius.circular(AppRadius.normal),
-        ),
+        color: disabled ? c.borderSubtle : c.brandPrimary,
+        borderRadius: BorderRadius.circular(AppRadius.normal),
+      ),
       AppButtonVariant.gradient => BoxDecoration(
-          gradient: disabled ? null : c.brandGradient,
-          color: disabled ? c.borderSubtle : null,
-          borderRadius: BorderRadius.circular(AppRadius.normal),
-        ),
+        gradient: disabled ? null : c.brandGradient,
+        color: disabled ? c.borderSubtle : null,
+        borderRadius: BorderRadius.circular(AppRadius.normal),
+      ),
       AppButtonVariant.secondary => BoxDecoration(
-          color: c.bgSurface,
-          border: Border.all(color: c.borderDefault),
-          borderRadius: BorderRadius.circular(AppRadius.normal),
-        ),
+        color: c.bgSurface,
+        border: Border.all(color: c.borderDefault),
+        borderRadius: BorderRadius.circular(AppRadius.normal),
+      ),
       AppButtonVariant.ghost => BoxDecoration(
-          color: Colors.transparent,
-          borderRadius: BorderRadius.circular(AppRadius.normal),
-        ),
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(AppRadius.normal),
+      ),
     };
 
     Widget content = Row(
@@ -148,8 +152,13 @@ class _AppButtonState extends State<AppButton> {
           Icon(widget.leadingIcon, size: 16, color: fg),
         if ((widget.loading || widget.leadingIcon != null))
           const SizedBox(width: 8),
-        Text(widget.label,
-            style: textStyle.copyWith(color: disabled ? c.textDisabled : fg)),
+        Flexible(
+          child: Text(
+            widget.label,
+            textAlign: TextAlign.center,
+            style: textStyle.copyWith(color: disabled ? c.textDisabled : fg),
+          ),
+        ),
         if (widget.trailingIcon != null) ...[
           const SizedBox(width: 8),
           Icon(widget.trailingIcon, size: 16, color: fg),
@@ -161,7 +170,9 @@ class _AppButtonState extends State<AppButton> {
       opacity: disabled ? 0.6 : 1.0,
       child: AnimatedScale(
         scale: _pressed && !disabled ? 0.96 : 1.0,
-        duration: AppDuration.fast,
+        duration: MediaQuery.disableAnimationsOf(context)
+            ? Duration.zero
+            : AppDuration.fast,
         curve: AppCurves.fast,
         child: Material(
           color: Colors.transparent,
@@ -169,14 +180,17 @@ class _AppButtonState extends State<AppButton> {
             onTap: disabled ? null : widget.onPressed,
             onTapDown: disabled ? null : (_) => setState(() => _pressed = true),
             onTapUp: disabled ? null : (_) => setState(() => _pressed = false),
-            onTapCancel:
-                disabled ? null : () => setState(() => _pressed = false),
+            onTapCancel: disabled
+                ? null
+                : () => setState(() => _pressed = false),
             borderRadius: BorderRadius.circular(AppRadius.normal),
             child: AnimatedContainer(
-              duration: AppDuration.fast,
+              duration: MediaQuery.disableAnimationsOf(context)
+                  ? Duration.zero
+                  : AppDuration.fast,
               curve: AppCurves.fast,
-              height: height,
-              padding: EdgeInsets.symmetric(horizontal: paddingX),
+              constraints: BoxConstraints(minHeight: height),
+              padding: EdgeInsets.symmetric(horizontal: paddingX, vertical: 10),
               decoration: bgDecoration,
               child: content,
             ),

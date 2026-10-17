@@ -25,14 +25,62 @@ class PeriodSchedule {
 }
 
 const kPeriodSchedules = <PeriodSchedule>[
-  PeriodSchedule(period: 1, startHour: 8, startMinute: 30, endHour: 9, endMinute: 15),
-  PeriodSchedule(period: 2, startHour: 9, startMinute: 20, endHour: 10, endMinute: 5),
-  PeriodSchedule(period: 3, startHour: 10, startMinute: 25, endHour: 11, endMinute: 10),
-  PeriodSchedule(period: 4, startHour: 11, startMinute: 15, endHour: 12, endMinute: 0),
-  PeriodSchedule(period: 5, startHour: 14, startMinute: 30, endHour: 15, endMinute: 15),
-  PeriodSchedule(period: 6, startHour: 15, startMinute: 20, endHour: 16, endMinute: 5),
-  PeriodSchedule(period: 7, startHour: 16, startMinute: 25, endHour: 17, endMinute: 10),
-  PeriodSchedule(period: 8, startHour: 17, startMinute: 15, endHour: 18, endMinute: 0),
+  PeriodSchedule(
+    period: 1,
+    startHour: 8,
+    startMinute: 30,
+    endHour: 9,
+    endMinute: 15,
+  ),
+  PeriodSchedule(
+    period: 2,
+    startHour: 9,
+    startMinute: 20,
+    endHour: 10,
+    endMinute: 5,
+  ),
+  PeriodSchedule(
+    period: 3,
+    startHour: 10,
+    startMinute: 25,
+    endHour: 11,
+    endMinute: 10,
+  ),
+  PeriodSchedule(
+    period: 4,
+    startHour: 11,
+    startMinute: 15,
+    endHour: 12,
+    endMinute: 0,
+  ),
+  PeriodSchedule(
+    period: 5,
+    startHour: 14,
+    startMinute: 30,
+    endHour: 15,
+    endMinute: 15,
+  ),
+  PeriodSchedule(
+    period: 6,
+    startHour: 15,
+    startMinute: 20,
+    endHour: 16,
+    endMinute: 5,
+  ),
+  PeriodSchedule(
+    period: 7,
+    startHour: 16,
+    startMinute: 25,
+    endHour: 17,
+    endMinute: 10,
+  ),
+  PeriodSchedule(
+    period: 8,
+    startHour: 17,
+    startMinute: 15,
+    endHour: 18,
+    endMinute: 0,
+  ),
 ];
 
 PeriodSchedule periodOf(int period) {
@@ -59,6 +107,8 @@ class DutyPlan {
   final String? remark;
   final int notificationId;
   final bool reminderEnabled;
+  final String reminderStatus;
+  final String? reminderError;
   final DateTime classStartAt;
   final DateTime createdAt;
 
@@ -73,12 +123,13 @@ class DutyPlan {
     this.remark,
     required this.notificationId,
     this.reminderEnabled = true,
+    this.reminderStatus = 'unknown',
+    this.reminderError,
     required this.classStartAt,
     required this.createdAt,
   });
 
-  DateTime get remindAt =>
-      classStartAt.subtract(const Duration(minutes: 15));
+  DateTime get remindAt => classStartAt.subtract(const Duration(minutes: 15));
 
   String get weekdayLabel => kWeekdayLabels[weekday] ?? '?';
   String get periodLabel => periodOf(period).label;
@@ -98,6 +149,49 @@ class DutyPlan {
   static int computeNotificationId(int weekNumber, int weekday, int period) {
     return weekNumber * 100 + weekday * 10 + period;
   }
+
+  /// Stable across process launches; the repository also resolves rare hash collisions.
+  static int notificationIdFor(String planId) {
+    var hash = 0x811c9dc5;
+    for (final unit in planId.codeUnits) {
+      hash = ((hash ^ unit) * 0x01000193) & 0x1fffffff;
+    }
+    return hash + 1000;
+  }
+
+  DutyPlan copyWith({
+    int? notificationId,
+    bool? reminderEnabled,
+    String? reminderStatus,
+    String? reminderError,
+  }) => DutyPlan(
+    id: id,
+    weekNumber: weekNumber,
+    weekday: weekday,
+    period: period,
+    classIds: classIds,
+    className: className,
+    classroom: classroom,
+    remark: remark,
+    notificationId: notificationId ?? this.notificationId,
+    reminderEnabled: reminderEnabled ?? this.reminderEnabled,
+    reminderStatus: reminderStatus ?? this.reminderStatus,
+    reminderError: reminderError,
+    classStartAt: classStartAt,
+    createdAt: createdAt,
+  );
+
+  String get reminderLabel => !reminderEnabled
+      ? '提醒已关'
+      : switch (reminderStatus) {
+          'scheduledExact' => '已设提醒',
+          'scheduledInexact' => '可能延迟',
+          'permissionDenied' => '待开通知',
+          'elapsed' => '提醒时间已过',
+          'failed' => '提醒未设置',
+          'unsupported' => '暂不支持提醒',
+          _ => '待核对提醒',
+        };
 
   /// 由 startDate (周一) + weekday + period 计算上课绝对时间
   static DateTime computeClassStartAt({

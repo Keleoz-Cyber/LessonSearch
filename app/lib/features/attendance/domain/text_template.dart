@@ -126,7 +126,11 @@ String generateGroupReport(
 
     // 全勤时只显示全勤，不显示各状态
     String report;
-    if (cs.present == cs.total) {
+    if (cs.present == cs.total &&
+        cs.absent == 0 &&
+        cs.late_ == 0 &&
+        cs.leave == 0 &&
+        cs.other == 0) {
       report =
           '''${cs.className}：
 应到 ${cs.total} 人，实到 ${cs.present} 人

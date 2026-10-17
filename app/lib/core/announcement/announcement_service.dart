@@ -61,10 +61,10 @@ class AnnouncementService {
     }
 
     announcement ??= {
-        'version': announcementVersion,
-        'title': announcementTitle,
-        'content': announcementContent,
-      };
+      'version': announcementVersion,
+      'title': announcementTitle,
+      'content': announcementContent,
+    };
 
     final version = announcement['version'] as int;
     if (dismissed >= version) return;
@@ -101,7 +101,7 @@ class AnnouncementService {
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: MarkdownBody(
-                  data: updateNotes.trim(),
+                  data: latestUpdateNotes.trim(),
                   styleSheet: MarkdownStyleSheet(
                     p: const TextStyle(fontSize: 13, height: 1.5),
                     listBullet: const TextStyle(fontSize: 13, height: 1.5),

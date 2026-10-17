@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/logger/logger_service.dart';
+import '../../../core/app_version.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/sync/sync_service.dart';
 import '../../../shared/providers.dart';
@@ -102,9 +103,13 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
       final local = ref.read(attendanceLocalDSProvider);
       final db = ref.read(databaseProvider);
       final pending = await local.getPendingSyncItems();
+      if (!mounted) return;
       final failed = await local.getFailedSyncItems();
+      if (!mounted) return;
       final tasks = await (db.select(db.attendanceTasks)).get();
+      if (!mounted) return;
       final records = await (db.select(db.attendanceRecords)).get();
+      if (!mounted) return;
       setState(() {
         _taskCount = tasks.length;
         _recordCount = records.length;
@@ -113,6 +118,7 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
         _loading = false;
       });
     } catch (_) {
+      if (!mounted) return;
       setState(() => _loading = false);
     }
   }
@@ -127,6 +133,7 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
       final api = ref.read(apiClientProvider);
       final sw = Stopwatch()..start();
       final response = await api.dio.get('/sync/version');
+      if (!mounted) return;
       sw.stop();
       if (response.statusCode == 200) {
         setState(() {
@@ -137,6 +144,7 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
         setState(() => _networkResult = 'HTTP ${response.statusCode}');
       }
     } catch (e) {
+      if (!mounted) return;
       String msg = '网络错误';
       if (e.toString().contains('connectionTimeout') ||
           e.toString().contains('ConnectionTimeout')) {
@@ -152,7 +160,7 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
       }
       setState(() => _networkResult = msg);
     } finally {
-      setState(() => _networkLoading = false);
+      if (mounted) setState(() => _networkLoading = false);
     }
   }
 
@@ -197,6 +205,7 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
         setState(() => _tokenRemainingTime = '$days天 $hours小时 $minutes分');
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() => _tokenRemainingTime = '解析失败: $e');
     }
   }
@@ -205,6 +214,7 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
     final authService = ref.read(authServiceProvider);
     // 只清除 token，保留 userId，模拟"token 过期"状态
     await authService.clearTokenOnly();
+    if (!mounted) return;
     ref.invalidate(authServiceProvider);
     ref.invalidate(isLoggedInProvider);
     ref.invalidate(apiClientProvider);
@@ -226,22 +236,31 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
       final local = ref.read(attendanceLocalDSProvider);
       final db = ref.read(databaseProvider);
       final allLogs = LoggerService.getLogs();
-      final errorLogs =
-          allLogs.where((l) => l.contains('❌') || l.toLowerCase().contains('error')).take(30).toList();
+      final errorLogs = allLogs
+          .where((l) => l.contains('❌') || l.toLowerCase().contains('error'))
+          .take(30)
+          .toList();
 
       final pending = await local.getPendingSyncItems();
+      if (!mounted) return;
       final failed = await local.getFailedSyncItems();
+      if (!mounted) return;
       final tasks = await db.select(db.attendanceTasks).get();
+      if (!mounted) return;
       final records = await db.select(db.attendanceRecords).get();
+      if (!mounted) return;
       final issueCount = await local.getSyncIssueCount();
+      if (!mounted) return;
 
       final buf = StringBuffer()
         ..writeln('=== 考勤助手诊断信息 ===')
         ..writeln('生成时间: ${DateTime.now()}')
         ..writeln()
         ..writeln('## 版本')
-        ..writeln('- App: 0.7.0+34')
-        ..writeln('- 平台: ${Platform.operatingSystem} ${Platform.operatingSystemVersion}')
+        ..writeln('- App: $appFullVersion')
+        ..writeln(
+          '- 平台: ${Platform.operatingSystem} ${Platform.operatingSystemVersion}',
+        )
         ..writeln('- API: ${ApiClient.defaultBaseUrl}')
         ..writeln()
         ..writeln('## 用户')
@@ -250,7 +269,9 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
         ..writeln('- 邮箱: ${auth.userEmail ?? "-"}')
         ..writeln('- 角色: ${auth.userRole}')
         ..writeln('- 实名: ${auth.userRealName ?? "未填写"}')
-        ..writeln('- Token: ${auth.token != null ? "有效 (${auth.token!.length} 字符)" : "无效"}')
+        ..writeln(
+          '- Token: ${auth.token != null ? "有效 (${auth.token!.length} 字符)" : "无效"}',
+        )
         ..writeln()
         ..writeln('## 数据统计')
         ..writeln('- 任务: ${tasks.length}')
@@ -261,14 +282,17 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
         ..writeln()
         ..writeln('## 网络')
         ..writeln('- 测试结果: ${_networkResult ?? "未测试"}')
-        ..writeln('- 延迟: ${_networkLatency != null ? "${_networkLatency}ms" : "-"}')
+        ..writeln(
+          '- 延迟: ${_networkLatency != null ? "${_networkLatency}ms" : "-"}',
+        )
         ..writeln();
 
       if (failed.isNotEmpty) {
         buf.writeln('## 失败同步项 (前 10)');
         for (final f in failed.take(10)) {
           buf.writeln(
-              '- [${f.entityType}/${f.action}] #${f.entityId} retryCount=${f.retryCount}');
+            '- [${f.entityType}/${f.action}] #${f.entityId} retryCount=${f.retryCount}',
+          );
         }
         buf.writeln();
       }
@@ -283,8 +307,10 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
       }
 
       await Clipboard.setData(ClipboardData(text: buf.toString()));
+      if (!mounted) return;
       if (mounted) Toast.show(context, '诊断信息已复制到剪贴板');
     } catch (e) {
+      if (!mounted) return;
       if (mounted) Toast.show(context, '复制失败: $e');
     } finally {
       if (mounted) setState(() => _copyingDiagnostic = false);
@@ -313,10 +339,21 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
             runSpacing: 8,
             children: [
               _StatChip(label: '任务', value: '$_taskCount', color: c.stateInfo),
-              _StatChip(label: '记录', value: '$_recordCount', color: c.stateSuccess),
               _StatChip(
-                  label: '待同步', value: '$_pendingCount', color: c.stateWarning),
-              _StatChip(label: '失败', value: '$_failedCount', color: c.stateDanger),
+                label: '记录',
+                value: '$_recordCount',
+                color: c.stateSuccess,
+              ),
+              _StatChip(
+                label: '待同步',
+                value: '$_pendingCount',
+                color: c.stateWarning,
+              ),
+              _StatChip(
+                label: '失败',
+                value: '$_failedCount',
+                color: c.stateDanger,
+              ),
             ],
           ),
           const SizedBox(height: 8),
@@ -326,29 +363,29 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
                 syncState == SyncState.syncing
                     ? Icons.sync
                     : syncState == SyncState.error
-                        ? Icons.sync_problem
-                        : Icons.check_circle,
+                    ? Icons.sync_problem
+                    : Icons.check_circle,
                 size: 16,
                 color: syncState == SyncState.error
                     ? c.stateDanger
                     : syncState == SyncState.syncing
-                        ? c.stateWarning
-                        : c.stateSuccess,
+                    ? c.stateWarning
+                    : c.stateSuccess,
               ),
               const SizedBox(width: 4),
               Text(
                 syncState == SyncState.syncing
                     ? '同步中...'
                     : syncState == SyncState.error
-                        ? '同步异常'
-                        : '同步正常',
+                    ? '同步异常'
+                    : '同步正常',
                 style: TextStyle(
                   fontSize: 13,
                   color: syncState == SyncState.error
                       ? c.stateDanger
                       : syncState == SyncState.syncing
-                          ? c.stateWarning
-                          : c.stateSuccess,
+                      ? c.stateWarning
+                      : c.stateSuccess,
                 ),
               ),
             ],
@@ -362,8 +399,9 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
               side: BorderSide(
-                color: (_networkResult == 'ok' ? c.stateSuccess : c.textTertiary)
-                    .withValues(alpha: 0.3),
+                color:
+                    (_networkResult == 'ok' ? c.stateSuccess : c.textTertiary)
+                        .withValues(alpha: 0.3),
               ),
             ),
             child: Padding(
@@ -378,22 +416,24 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
                           _networkResult == null
                               ? '点击测试'
                               : _networkResult == 'ok'
-                                  ? '连接正常'
-                                  : _networkResult!,
+                              ? '连接正常'
+                              : _networkResult!,
                           style: TextStyle(
                             fontWeight: FontWeight.w500,
                             color: _networkResult == 'ok'
                                 ? c.stateSuccess
                                 : _networkResult != null
-                                    ? c.stateDanger
-                                    : null,
+                                ? c.stateDanger
+                                : null,
                           ),
                         ),
                         if (_networkLatency != null)
                           Text(
                             '延迟: ${_networkLatency}ms',
-                            style:
-                                TextStyle(fontSize: 12, color: c.textTertiary),
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: c.textTertiary,
+                            ),
                           ),
                       ],
                     ),
@@ -428,12 +468,10 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
                 children: [
                   _InfoRow(label: '已登录', value: auth.isLoggedIn ? '是' : '否'),
                   if (auth.isLoggedIn) ...[
-                    _InfoRow(
-                        label: '用户ID', value: '${auth.userId ?? "-"}'),
+                    _InfoRow(label: '用户ID', value: '${auth.userId ?? "-"}'),
                     _InfoRow(label: '邮箱', value: auth.userEmail ?? '-'),
                     _InfoRow(label: '角色', value: auth.userRole),
-                    _InfoRow(
-                        label: '实名', value: auth.userRealName ?? '未填写'),
+                    _InfoRow(label: '实名', value: auth.userRealName ?? '未填写'),
                   ],
                 ],
               ),
@@ -455,15 +493,15 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _InfoRow(
-                      label: 'Token 状态',
-                      value: auth.token != null ? '有效' : '无效'),
+                    label: 'Token 状态',
+                    value: auth.token != null ? '有效' : '无效',
+                  ),
                   if (auth.token != null) ...[
                     _InfoRow(
-                        label: 'Token 长度',
-                        value: '${auth.token!.length} 字符'),
-                    _InfoRow(
-                        label: '自动刷新',
-                        value: '剩余<7天时自动刷新'),
+                      label: 'Token 长度',
+                      value: '${auth.token!.length} 字符',
+                    ),
+                    _InfoRow(label: '自动刷新', value: '剩余<7天时自动刷新'),
                   ],
                   const SizedBox(height: 8),
                   Row(
@@ -478,14 +516,22 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
                       const SizedBox(width: 8),
                       Expanded(
                         child: OutlinedButton.icon(
-                          onPressed: auth.isLoggedIn ? _simulateTokenExpiry : null,
-                          icon: Icon(Icons.logout, size: 18,
-                              color: c.stateDanger),
-                          label: Text('模拟过期',
-                              style: TextStyle(color: c.stateDanger)),
+                          onPressed: auth.isLoggedIn
+                              ? _simulateTokenExpiry
+                              : null,
+                          icon: Icon(
+                            Icons.logout,
+                            size: 18,
+                            color: c.stateDanger,
+                          ),
+                          label: Text(
+                            '模拟过期',
+                            style: TextStyle(color: c.stateDanger),
+                          ),
                           style: OutlinedButton.styleFrom(
                             side: BorderSide(
-                                color: c.stateDanger.withValues(alpha: 0.3)),
+                              color: c.stateDanger.withValues(alpha: 0.3),
+                            ),
                           ),
                         ),
                       ),
@@ -501,7 +547,11 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
                       ),
                       child: Row(
                         children: [
-                          Icon(Icons.access_time, size: 16, color: c.stateWarning),
+                          Icon(
+                            Icons.access_time,
+                            size: 16,
+                            color: c.stateWarning,
+                          ),
                           const SizedBox(width: 8),
                           Text(
                             '剩余时间: $_tokenRemainingTime',
@@ -533,9 +583,8 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
               padding: const EdgeInsets.all(12),
               child: Column(
                 children: [
-                  _InfoRow(label: 'App版本', value: '0.7.0+34'),
-                  _InfoRow(
-                      label: 'API地址', value: ApiClient.defaultBaseUrl),
+                  _InfoRow(label: 'App版本', value: appFullVersion),
+                  _InfoRow(label: 'API地址', value: ApiClient.defaultBaseUrl),
                   _InfoRow(label: '平台', value: Platform.operatingSystem),
                 ],
               ),
@@ -582,10 +631,9 @@ Widget _sectionHeader(BuildContext context, String title, IconData icon) {
       const SizedBox(width: 6),
       Text(
         title,
-        style: Theme.of(context)
-            .textTheme
-            .titleSmall
-            ?.copyWith(fontWeight: FontWeight.bold),
+        style: Theme.of(
+          context,
+        ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
       ),
     ],
   );
@@ -612,9 +660,14 @@ class _StatChip extends StatelessWidget {
       ),
       child: Column(
         children: [
-          Text(value,
-              style: TextStyle(
-                  fontSize: 16, fontWeight: FontWeight.bold, color: color)),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
           const SizedBox(height: 2),
           Text(label, style: TextStyle(fontSize: 11, color: color)),
         ],
@@ -638,12 +691,12 @@ class _InfoRow extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(label, style: TextStyle(fontSize: 13, color: c.textTertiary)),
-          Text(value,
-              style:
-                  const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+          Text(
+            value,
+            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+          ),
         ],
       ),
     );
   }
 }
-

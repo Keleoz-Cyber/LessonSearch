@@ -62,7 +62,7 @@ class AppColors {
     textTertiary: Color(0xFF71717A),
     textDisabled: Color(0xFFA1A1AA),
     brandPrimary: Color(0xFF2563EB),
-    brandGradientFrom: Color(0xFF38BDF8),
+    brandGradientFrom: Color(0xFF0369A1),
     brandGradientTo: Color(0xFF2563EB),
     brandSubtle: Color(0xFFEFF6FF),
     onBrand: Color(0xFFFFFFFF),
@@ -96,10 +96,10 @@ class AppColors {
   );
 
   LinearGradient get brandGradient => LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [brandGradientFrom, brandGradientTo],
-      );
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [brandGradientFrom, brandGradientTo],
+  );
 }
 
 extension AppColorsExt on BuildContext {

@@ -13,6 +13,7 @@ import '../features/records/data/records_repository.dart';
 import '../features/attendance/data/local/attendance_local_ds.dart';
 import '../features/attendance/data/remote/attendance_remote_ds.dart';
 import '../features/attendance/data/attendance_repository.dart';
+import '../features/attendance/domain/models.dart' as attendance_domain;
 import '../features/student/data/student_repository.dart';
 import '../features/duty_plan/data/duty_plan_repository.dart';
 import '../features/duty_plan/domain/duty_plan.dart';
@@ -96,7 +97,10 @@ final apiClientProvider = Provider<ApiClient>((ref) {
 
 /// 本地数据源
 final attendanceLocalDSProvider = Provider<AttendanceLocalDataSource>((ref) {
-  return AttendanceLocalDataSource(ref.watch(databaseProvider));
+  return AttendanceLocalDataSource(
+    ref.watch(databaseProvider),
+    userId: ref.watch(authServiceProvider).userId,
+  );
 });
 
 /// 远程数据源
@@ -112,6 +116,24 @@ final attendanceRepositoryProvider = Provider<AttendanceRepository>((ref) {
   );
 });
 
+/// The home card reacts immediately after saving/leaving a task, not only at
+/// the next application launch. Historical completed workflows are excluded.
+final resumableTasksProvider =
+    StreamProvider<List<attendance_domain.AttendanceTask>>((ref) {
+      final auth = ref.watch(authServiceProvider);
+      final userId = auth.userId;
+      if (!auth.isLoggedIn || userId == null) return Stream.value([]);
+      final database = ref.watch(databaseProvider);
+      final repo = ref.watch(attendanceRepositoryProvider);
+      return (database.select(
+        database.attendanceTasks,
+      )..where((t) => t.userId.equals(userId))).watch().asyncMap(
+        (_) async => (await repo.getResumableTasks())
+            .where((t) => t.userId == userId)
+            .toList(),
+      );
+    });
+
 /// 学生数据仓库
 final studentRepositoryProvider = Provider<StudentRepository>((ref) {
   return StudentRepository(
@@ -123,11 +145,18 @@ final studentRepositoryProvider = Provider<StudentRepository>((ref) {
 
 /// 同步服务
 final syncServiceProvider = Provider<SyncService>((ref) {
+  final auth = ref.watch(authServiceProvider);
+  final expectedUserId = auth.userId;
   final service = SyncService(
     ref.watch(attendanceLocalDSProvider),
     ref.watch(attendanceRemoteDSProvider),
+    userId: expectedUserId,
+    canSync: () =>
+        auth.isLoggedIn &&
+        expectedUserId != null &&
+        auth.userId == expectedUserId,
   );
-  service.start();
+  if (auth.isLoggedIn && expectedUserId != null) service.start();
   ref.onDispose(() => service.dispose());
   return service;
 });
@@ -135,6 +164,9 @@ final syncServiceProvider = Provider<SyncService>((ref) {
 /// 同步状态（供 UI 监听）
 final syncStateProvider = Provider<SyncState>((ref) {
   final service = ref.watch(syncServiceProvider);
+  void update() => ref.invalidateSelf();
+  service.state.addListener(update);
+  ref.onDispose(() => service.state.removeListener(update));
   return service.state.value;
 });
 
@@ -142,23 +174,18 @@ final syncStateProvider = Provider<SyncState>((ref) {
 /// 包含：pending、failed(retry < 5)、auth_failed(retry == 999)
 final pendingSyncCountProvider = StreamProvider<int>((ref) async* {
   final db = ref.watch(databaseProvider);
-  
+
   // 获取所有记录，然后在 Dart 中过滤
   Future<int> countPending() async {
     final all = await db.select(db.syncQueue).get();
     return all.where((s) {
-      if (s.syncStatus == 'pending') return true;
-      if (s.syncStatus == 'failed') {
-        // 普通失败（可重试）或认证过期失败（需重新登录后重试）
-        if (s.retryCount < 5 || s.retryCount == 999) return true;
-      }
-      return false;
+      return s.syncStatus != 'synced';
     }).length;
   }
-  
+
   // 初始查询
   yield await countPending();
-  
+
   // 定时刷新（每2秒检查一次）
   await for (final _ in Stream.periodic(const Duration(seconds: 2))) {
     yield await countPending();
@@ -169,16 +196,14 @@ final pendingSyncCountProvider = StreamProvider<int>((ref) async* {
 /// 包含：pending + failed（所有 failed，包括 retryCount >= 5 和 999）
 final syncIssueCountProvider = StreamProvider<int>((ref) async* {
   final db = ref.watch(databaseProvider);
-  
+
   Future<int> countIssues() async {
     final all = await db.select(db.syncQueue).get();
-    return all.where((s) =>
-      s.syncStatus == 'pending' || s.syncStatus == 'failed'
-    ).length;
+    return all.where((s) => s.syncStatus != 'synced').length;
   }
-  
+
   yield await countIssues();
-  
+
   await for (final _ in Stream.periodic(const Duration(seconds: 2))) {
     yield await countIssues();
   }
@@ -187,14 +212,14 @@ final syncIssueCountProvider = StreamProvider<int>((ref) async* {
 /// 是否存在 syncStatus == 'failed' 的记录（实时）
 final hasSyncFailedProvider = StreamProvider<bool>((ref) async* {
   final db = ref.watch(databaseProvider);
-  
+
   Future<bool> checkFailed() async {
     final all = await db.select(db.syncQueue).get();
     return all.any((s) => s.syncStatus == 'failed');
   }
-  
+
   yield await checkFailed();
-  
+
   await for (final _ in Stream.periodic(const Duration(seconds: 2))) {
     yield await checkFailed();
   }
@@ -224,6 +249,7 @@ final recordsRepositoryProvider = Provider<RecordsRepository>((ref) {
   return RecordsRepository(
     ref.watch(databaseProvider),
     ref.watch(attendanceLocalDSProvider),
+    userId: ref.watch(authServiceProvider).userId,
   );
 });
 
@@ -239,8 +265,7 @@ final dutyPlansProvider = FutureProvider<List<DutyPlan>>((ref) async {
 });
 
 /// 即将到来的查课计划（用于首页 hero 卡片）
-final upcomingDutyPlansProvider =
-    FutureProvider<List<DutyPlan>>((ref) async {
+final upcomingDutyPlansProvider = FutureProvider<List<DutyPlan>>((ref) async {
   final repo = ref.watch(dutyPlanRepositoryProvider);
   return repo.getUpcoming(limit: 5);
 });

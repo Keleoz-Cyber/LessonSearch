@@ -7,13 +7,37 @@ typedef OnTokenRefreshed = void Function(String newToken);
 
 class ApiClient {
   static const String defaultBaseUrl = 'https://api.keleoz.cn/api';
+  static const _credentialExchangePaths = {
+    'auth/login',
+    'auth/password-login',
+    'auth/register',
+    'auth/send-code',
+  };
+
+  static bool _isCredentialExchange(RequestOptions request) {
+    var path = request.uri.path;
+    final basePath = Uri.parse(
+      request.baseUrl,
+    ).path.replaceFirst(RegExp(r'/+$'), '');
+    if (basePath.isNotEmpty && path.startsWith('$basePath/')) {
+      path = path.substring(basePath.length);
+    }
+    return _credentialExchangePaths.contains(
+      path.replaceAll(RegExp(r'^/+|/+$'), ''),
+    );
+  }
 
   late final Dio dio;
   String? _token;
   OnAuthExpired? onAuthExpired;
   OnTokenRefreshed? onTokenRefreshed;
 
-  ApiClient({String? baseUrl, String? token, this.onAuthExpired, this.onTokenRefreshed}) {
+  ApiClient({
+    String? baseUrl,
+    String? token,
+    this.onAuthExpired,
+    this.onTokenRefreshed,
+  }) {
     _token = token;
     dio = Dio(
       BaseOptions(
@@ -32,9 +56,7 @@ class ApiClient {
           if (_token != null) {
             options.headers['Authorization'] = 'Bearer $_token';
           }
-          LoggerService.network(
-            '→ ${options.method} ${options.uri}',
-          );
+          LoggerService.network('→ ${options.method} ${options.uri}');
           handler.next(options);
         },
         onResponse: (response, handler) {
@@ -53,7 +75,7 @@ class ApiClient {
           final statusCode = error.response?.statusCode;
           final uri = error.requestOptions.uri;
           final responseData = error.response?.data;
-          
+
           // 提取 detail 字段
           String detail = '';
           if (responseData is Map) {
@@ -61,7 +83,7 @@ class ApiClient {
           } else if (responseData is String) {
             detail = responseData;
           }
-          
+
           // statusCode null 时区分具体错误类型
           String errorMsg;
           if (statusCode != null) {
@@ -69,8 +91,8 @@ class ApiClient {
                 ? '$statusCode $uri: $detail'
                 : '$statusCode $uri: ${error.message}';
           } else if (error.type == DioExceptionType.connectionTimeout ||
-                     error.type == DioExceptionType.sendTimeout ||
-                     error.type == DioExceptionType.receiveTimeout) {
+              error.type == DioExceptionType.sendTimeout ||
+              error.type == DioExceptionType.receiveTimeout) {
             errorMsg = 'TIMEOUT $uri: ${error.type.name}';
           } else if (error.type == DioExceptionType.connectionError) {
             errorMsg = 'CONN_ERROR $uri: ${error.message ?? "连接失败"}';
@@ -79,9 +101,13 @@ class ApiClient {
           } else {
             errorMsg = 'UNKNOWN $uri: ${error.message}';
           }
-          
+
           LoggerService.network('✗ $errorMsg', isError: true);
-          if (statusCode == 401) {
+          // Invalid credentials for a new login are not evidence that the
+          // existing signed-in session has expired. Protected endpoints still
+          // use the normal session-expiry flow.
+          if (statusCode == 401 &&
+              !_isCredentialExchange(error.requestOptions)) {
             _token = null;
             onAuthExpired?.call();
           }
@@ -143,10 +169,7 @@ class ApiClient {
   }
 
   Future<void> setPassword(String password) async {
-    await dio.post(
-      '/auth/set-password',
-      data: {'password': password},
-    );
+    await dio.post('/auth/set-password', data: {'password': password});
   }
 
   // === 应用版本 ===

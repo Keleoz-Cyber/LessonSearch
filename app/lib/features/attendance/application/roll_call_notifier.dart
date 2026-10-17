@@ -1,6 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/logger/logger_service.dart';
 import '../domain/models.dart';
 import '../data/attendance_repository.dart';
 import '../../student/data/student_repository.dart';
@@ -15,6 +14,7 @@ class RollCallState {
   final int? finalCount; // 提前结束时记录实际已点人数
   final bool isLoading;
   final bool isFinished;
+  final bool isMutating;
   final String? error;
 
   const RollCallState({
@@ -26,6 +26,7 @@ class RollCallState {
     this.finalCount,
     this.isLoading = false,
     this.isFinished = false,
+    this.isMutating = false,
     this.error,
   });
 
@@ -72,6 +73,7 @@ class RollCallState {
     int? finalCount,
     bool? isLoading,
     bool? isFinished,
+    bool? isMutating,
     String? error,
   }) {
     return RollCallState(
@@ -83,6 +85,7 @@ class RollCallState {
       finalCount: finalCount ?? this.finalCount,
       isLoading: isLoading ?? this.isLoading,
       isFinished: isFinished ?? this.isFinished,
+      isMutating: isMutating ?? this.isMutating,
       error: error,
     );
   }
@@ -140,7 +143,7 @@ class RollCallNotifier extends StateNotifier<RollCallState> {
         task: task,
         students: allStudents,
         classNameMap: classNameMap,
-        currentIndex: resumeIndex < allStudents.length ? resumeIndex : 0,
+        currentIndex: resumeIndex.clamp(0, allStudents.length),
         calledRecordIds: calledRecordIds,
         isLoading: false,
       );
@@ -227,60 +230,49 @@ class RollCallNotifier extends StateNotifier<RollCallState> {
   }
 
   /// 下一位（记录当前学生为已点）
-  Future<void> nextStudent() async {
+  Future<void> nextStudent() => _mutate(() async {
     final student = state.currentStudent;
     final task = state.task;
-    if (student == null || task == null) return;
+    if (student == null || task == null || state.isFinished) return;
 
     // 创建考勤记录并存储 recordId
-    final record = await _attendanceRepo.createRecord(
-      taskId: task.id,
-      studentId: student.id,
-      classId: student.classId,
-      status: AttendanceStatus.present,
-    );
-
+    final last = !state.hasNext;
+    final newIndex = state.currentIndex + 1;
+    final result = await _attendanceRepo.transaction(() async {
+      final record = await _attendanceRepo.createRecord(
+        taskId: task.id,
+        studentId: student.id,
+        classId: student.classId,
+        status: AttendanceStatus.present,
+      );
+      final updated = await _attendanceRepo.updateTaskStatus(
+        task,
+        currentStudentIndex: newIndex,
+        status: last ? TaskStatus.completed : null,
+        phase: last ? TaskPhase.finished : null,
+      );
+      return (record: record, task: updated);
+    });
+    final record = result.record;
     final newCalledRecordIds = Map<int, int>.from(state.calledRecordIds);
     if (record.id != null) {
       newCalledRecordIds[student.id] = record.id!;
     }
 
-    if (state.hasNext) {
-      final newIndex = state.currentIndex + 1;
-      try {
-        final updated = await _attendanceRepo.updateTaskStatus(
-          task,
-          currentStudentIndex: newIndex,
-        );
-        state = state.copyWith(
-          task: updated,
-          currentIndex: newIndex,
-          calledRecordIds: newCalledRecordIds,
-        );
-      } catch (e) {
-        // updateTaskStatus 失败，回滚刚创建的 record
-        if (record.id != null) {
-          await _attendanceRepo.deleteRecord(record.id!);
-        }
-        newCalledRecordIds.remove(student.id);
-        LoggerService.error('nextStudent updateTaskStatus 失败，已回滚 record: $e');
-        rethrow;
-      }
-    } else {
-      // 最后一个学生，已点人数 = currentIndex + 1
-      state = state.copyWith(
-        finalCount: state.currentIndex + 1,
-        calledRecordIds: newCalledRecordIds,
-      );
-      await finishRollCall();
-    }
-  }
+    state = state.copyWith(
+      task: result.task,
+      currentIndex: newIndex,
+      calledRecordIds: newCalledRecordIds,
+      isFinished: last,
+      finalCount: last ? newIndex : null,
+    );
+  });
 
   /// 上一位（撤销当前学生的点名记录，回退界面）
-  Future<void> prevStudent() async {
-    if (!state.hasPrev) return;
+  Future<void> prevStudent() => _mutate(() async {
+    if (!state.hasPrev || state.isFinished) return;
 
-    final student = state.currentStudent;
+    final student = state.prevStudent;
     final task = state.task;
     if (student == null || task == null) return;
 
@@ -289,58 +281,72 @@ class RollCallNotifier extends StateNotifier<RollCallState> {
     final newCalledRecordIds = Map<int, int>.from(state.calledRecordIds);
     newCalledRecordIds.remove(student.id);
 
-    final updated = await _attendanceRepo.updateTaskStatus(
-      task,
-      currentStudentIndex: newIndex,
-    );
+    final updated = await _attendanceRepo.transaction(() async {
+      final updated = await _attendanceRepo.updateTaskStatus(
+        task,
+        currentStudentIndex: newIndex,
+      );
 
-    // 索引回退成功后再删除 record
-    final recordId = state.calledRecordIds[student.id];
-    if (recordId != null) {
-      await _attendanceRepo.deleteRecord(recordId);
-    }
+      // 索引回退成功后再删除 record
+      final recordId = state.calledRecordIds[student.id];
+      if (recordId != null) {
+        await _attendanceRepo.deleteRecord(recordId);
+      }
+      return updated;
+    });
 
     state = state.copyWith(
       task: updated,
       currentIndex: newIndex,
       calledRecordIds: newCalledRecordIds,
     );
-  }
+  });
 
   /// 保存当前进度（保存退出时调用）
-  Future<void> saveProgress() async {
+  Future<void> saveProgress() => _mutate(() async {
     final task = state.task;
     if (task == null) return;
-    await _attendanceRepo.updateTaskStatus(
+    final updated = await _attendanceRepo.updateTaskStatus(
       task,
       currentStudentIndex: state.currentIndex,
     );
-  }
+    state = state.copyWith(task: updated);
+  });
 
   /// 结束点名（提前结束时记录实际已点人数）
-  Future<void> finishRollCall() async {
+  Future<void> finishRollCall() => _mutate(() async {
     final task = state.task;
     if (task == null) return;
 
     // 如果是提前结束（不是通过 nextStudent 最后一个触发的），记录当前已点数
     final count = state.finalCount ?? state.currentIndex;
 
-    await _attendanceRepo.updateTaskStatus(
+    final updated = await _attendanceRepo.updateTaskStatus(
       task,
       status: TaskStatus.completed,
-      phase: TaskPhase.confirming,
+      phase: TaskPhase.finished,
     );
 
-    state = state.copyWith(finalCount: count, isFinished: true);
-  }
+    state = state.copyWith(task: updated, finalCount: count, isFinished: true);
+  });
 
   /// 放弃任务
-  Future<void> abandonTask() async {
+  Future<void> abandonTask() => _mutate(() async {
     final task = state.task;
     if (task == null) return;
 
     await _attendanceRepo.updateTaskStatus(task, status: TaskStatus.abandoned);
 
     state = const RollCallState();
+  });
+
+  Future<void> _mutate(Future<void> Function() action) async {
+    if (state.isMutating || state.isLoading) return;
+    state = state.copyWith(isMutating: true);
+    try {
+      await action();
+    } finally {
+      if (mounted) state = state.copyWith(isMutating: false);
+    }
   }
 }

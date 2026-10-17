@@ -1,7 +1,7 @@
 # AGENT.md — AI Agent 协作指南
 
 > 本文档面向接手此项目的 AI Agent。请在开始任何工作前完整阅读此文件。
-> 最后更新：2026-06-23 · 当前版本：v0.7.0+34
+> 最后更新：2026-10-17 · 当前版本：v0.7.1+35
 > 
 > 项目：考勤助手（查课 App）· 课堂考勤 Flutter 应用（Android 优先）
 > 仓库：https://github.com/Keleoz-Cyber/LessonSearch
@@ -197,10 +197,11 @@ scripts/
 
 ## 六、数据库
 
-### 本地 SQLite（Drift）— 8张表
+### 本地 SQLite（Drift）— 10张表
 
 | 表 | 说明 |
 |----|------|
+| users | 用户缓存 |
 | grades | 年级 |
 | majors | 专业 |
 | classes | 班级 |
@@ -213,21 +214,25 @@ scripts/
 
 详细表结构见 `docs/dev-guide.md` 第四章。
 
-### 服务端 MySQL — 14张表
+### 服务端 MySQL — 20张表
 
 | 表 | 说明 |
 |----|------|
 | users | 用户（role, real_name, password_hash） |
+| grades / majors / classes / students | 年级、专业、班级、学生 |
+| attendance_tasks / task_classes / attendance_records | 任务、任务班级关联、考勤记录 |
 | verification_codes | 验证码 |
 | invitation_codes | 邀请码 |
 | week_config | 周次配置 |
 | submissions | 提交记录 |
 | submission_records | 提交-记录关联 |
+| submission_snapshots | 审核快照 |
 | week_exports | 周导出记录 |
 | duty_assignments | 职务分配 |
 | announcements | 公告 |
 | ranking_cache | 排行榜缓存 |
 | ranking_summary | 排行榜汇总 |
+| data_version | 基础数据版本与离线缓存校验 |
 
 详细表结构见 `docs/dev-guide.md` 第四章。
 
@@ -326,19 +331,19 @@ scripts/
 
 ```bash
 # 分配管理员角色
-docker exec -i 1Panel-mysql-ErMk mysql -u root -pWw3277977 lesson_search -e "UPDATE users SET role='admin' WHERE id=用户ID;"
+docker exec -it 1Panel-mysql-ErMk mysql -u root -p lesson_search -e "UPDATE users SET role='admin' WHERE id=用户ID;"
 
 # 设置新学期周次（start_date必须是周一）
-docker exec -i 1Panel-mysql-ErMk mysql -u root -pWw3277977 lesson_search -e "UPDATE week_config SET is_active=FALSE; INSERT INTO week_config (start_date, semester_name, is_active) VALUES ('2026-09-07', '新学期', TRUE);"
+docker exec -it 1Panel-mysql-ErMk mysql -u root -p lesson_search -e "UPDATE week_config SET is_active=FALSE; INSERT INTO week_config (start_date, semester_name, is_active) VALUES ('2026-09-07', '新学期', TRUE);"
 
 # 分配查课职务
-docker exec -i 1Panel-mysql-ErMk mysql -u root -pWw3277977 lesson_search -e "INSERT INTO duty_assignments (user_id, assigned_by) VALUES (用户ID, 管理员ID);"
+docker exec -it 1Panel-mysql-ErMk mysql -u root -p lesson_search -e "INSERT INTO duty_assignments (user_id, assigned_by) VALUES (用户ID, 管理员ID);"
 
 # 取消职务
-docker exec -i 1Panel-mysql-ErMk mysql -u root -pWw3277977 lesson_search -e "UPDATE duty_assignments SET is_active=FALSE, deactivated_at=NOW() WHERE user_id=用户ID;"
+docker exec -it 1Panel-mysql-ErMk mysql -u root -p lesson_search -e "UPDATE duty_assignments SET is_active=FALSE, deactivated_at=NOW() WHERE user_id=用户ID;"
 
 # 发布公告
-docker exec -i 1Panel-mysql-ErMk mysql -u root -pWw3277977 lesson_search -e "INSERT INTO announcements (version, title, content, is_active, created_by) VALUES (版本号+1, '标题', '内容', TRUE, 管理员ID);"
+docker exec -it 1Panel-mysql-ErMk mysql -u root -p lesson_search -e "INSERT INTO announcements (version, title, content, is_active, created_by) VALUES (版本号+1, '标题', '内容', TRUE, 管理员ID);"
 
 # 生成邀请码
 cd /opt/lesson-search/scripts
@@ -455,7 +460,7 @@ python import_students_2022plus.py --commit --clear
 3. **Drift查询 `select(table).get()` 返回列表**
 4. **FastAPI路由顺序** — 动态路径要在静态路径之后
 5. **服务器仅 2GB 内存** — 注意内存使用，精简监控 agent
-6. **server/app 目录被 .gitignore** — 提交需 `git add -f`
+6. **server/app 是生产服务端源码** — 新增文件正常纳入版本控制，不能整体忽略此目录
 
 ---
 
